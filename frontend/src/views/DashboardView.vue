@@ -40,7 +40,7 @@
         <div v-for="p in validPortfolios" :key="p.id" class="card portfolio-card" @click="$router.push(`/portfolios/${p.id}`)">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
             <strong>{{ p.name }}</strong>
-            <span class="badge badge-info">{{ p.market }}</span>
+            <MarketBadge :market="p.market" />
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span class="text-muted">Cash</span>
@@ -76,6 +76,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import MarketBadge from '@/components/MarketBadge.vue'
 import { usePortfolioStore } from '@/stores/portfolios'
 import { useMarketStore } from '@/stores/markets'
 import { getPortfolioSummary } from '@/api/portfolios'

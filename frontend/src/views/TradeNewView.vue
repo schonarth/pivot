@@ -19,7 +19,7 @@
         <div v-if="searchResults.length" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
           <div v-for="a in searchResults" :key="a.id" style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border);" @click="selectAsset(a)">
             <strong>{{ a.display_symbol }}</strong> - {{ a.name }}
-            <span class="badge badge-info" style="margin-left: 0.5rem;">{{ a.market }}</span>
+            <MarketBadge :market="a.market" style="margin-left: 0.5rem;" />
           </div>
         </div>
       </div>
@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MarketBadge from '@/components/MarketBadge.vue'
 import { searchAssets as apiSearchAssets, getAssetPrice, getAsset } from '@/api/assets'
 import { createTrade } from '@/api/trades'
 import { getPortfolio } from '@/api/portfolios'

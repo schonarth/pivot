@@ -9,7 +9,7 @@
       <div v-for="p in validPortfolios" :key="p.id" class="card portfolio-card" @click="$router.push(`/portfolios/${p.id}`)">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <strong>{{ p.name }}</strong>
-          <span class="badge badge-info">{{ p.market }}</span>
+          <MarketBadge :market="p.market" />
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span class="text-muted">Currency</span>
@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import MarketBadge from '@/components/MarketBadge.vue'
 import { usePortfolioStore } from '@/stores/portfolios'
 import { formatCurrency } from '@/utils/numbers'
 import { storeToRefs } from 'pinia'

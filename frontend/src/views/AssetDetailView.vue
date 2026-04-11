@@ -7,7 +7,7 @@
     <div class="card">
       <div class="grid grid-3">
         <div><span class="text-muted">Name:</span> {{ asset.name }}</div>
-        <div><span class="text-muted">Market:</span> <span class="badge badge-info">{{ asset.market }}</span></div>
+        <div><span class="text-muted">Market:</span> <MarketBadge :market="asset.market" /></div>
         <div><span class="text-muted">Currency:</span> {{ asset.currency }}</div>
         <div><span class="text-muted">Exchange:</span> {{ asset.exchange }}</div>
         <div><span class="text-muted">Sector:</span> {{ asset.sector || '-' }}</div>
@@ -83,6 +83,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MarketBadge from '@/components/MarketBadge.vue'
 import { getAsset, getAssetPrice, refreshAssetPrice } from '@/api/assets'
 import { getPortfolios } from '@/api/portfolios'
 import type { Asset, AssetQuote, Portfolio } from '@/types'

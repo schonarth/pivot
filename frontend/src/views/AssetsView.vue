@@ -8,14 +8,15 @@
         <div class="form-group" style="flex: 1; margin-bottom: 0;">
           <input v-model="search" type="text" placeholder="Search assets..." @input="debouncedSearch" />
         </div>
-        <div class="form-group" style="width: 150px; margin-bottom: 0;">
-          <select v-model="marketFilter" @change="doSearch">
-            <option value="">All</option>
-            <option value="BR">Brazil</option>
-            <option value="US">US</option>
-            <option value="UK">UK</option>
-            <option value="EU">EU</option>
-          </select>
+        <div class="market-pills" style="margin-bottom: 0;">
+          <button
+            v-for="m in markets"
+            :key="m.code"
+            class="market-pill"
+            :class="{ active: marketFilter === m.code }"
+            :title="m.label"
+            @click="toggleMarket(m.code)"
+          >{{ m.flag }}</button>
         </div>
       </div>
     </div>
@@ -61,7 +62,7 @@
           >
             <td class="cell"><strong>{{ asset.display_symbol }}</strong></td>
             <td class="cell">{{ asset.name }}</td>
-            <td class="cell"><span class="badge badge-info">{{ asset.market }}</span></td>
+            <td class="cell"><MarketBadge :market="asset.market" /></td>
             <td class="cell">{{ asset.currency }}</td>
             <td class="cell">{{ asset.sector || '-' }}</td>
           </tr>
@@ -78,6 +79,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { searchAssets } from '@/api/assets'
 import type { Asset } from '@/types'
+import MarketBadge from '@/components/MarketBadge.vue'
 
 const ROW_HEIGHT = 48
 const OVERSCAN = 5
@@ -96,8 +98,20 @@ const colWidths = ref([100, 320, 80, 90, 160])
 const tableWidth = computed(() => colWidths.value.reduce((s, w) => s + w, 0))
 const colPcts = computed(() => colWidths.value.map(w => (w / tableWidth.value * 100).toFixed(2) + '%'))
 
+const markets = [
+  { code: 'BR', flag: '🇧🇷', label: 'BR' },
+  { code: 'EU', flag: '🇪🇺', label: 'EU' },
+  { code: 'US', flag: '🇺🇸', label: 'US' },
+  { code: 'UK', flag: '🇬🇧', label: 'UK' },
+]
+
 const search = ref('')
 const marketFilter = ref('')
+
+function toggleMarket(code: string) {
+  marketFilter.value = marketFilter.value === code ? '' : code
+  doSearch()
+}
 const assets = ref<Asset[]>([])
 const loading = ref(false)
 
@@ -215,6 +229,28 @@ async function doSearch() {
 </script>
 
 <style scoped>
+.market-pills {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.market-pill {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0.35rem 0.6rem;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+.market-pill:hover {
+  border-color: var(--accent);
+}
+.market-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
 .col-header {
   position: sticky;
   top: 0;

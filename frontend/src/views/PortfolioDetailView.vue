@@ -36,7 +36,7 @@
       </div>
       <div class="card">
         <div class="text-muted" style="font-size: 0.75rem;">Market</div>
-        <span class="badge badge-info">{{ summary.market }}</span>
+        <MarketBadge :market="summary.market" />
       </div>
     </div>
 
@@ -279,6 +279,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import MarketBadge from '@/components/MarketBadge.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw } from '@/api/portfolios'
 import { getAlerts, createAlert, deleteAlert, pauseAlert, resumeAlert } from '@/api/alerts'
