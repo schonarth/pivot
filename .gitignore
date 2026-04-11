@@ -20,3 +20,5 @@ venv/
 .venv/
 htmlcov/
 .coverage
+playwright-report/
+test-results/

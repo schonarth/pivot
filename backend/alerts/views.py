@@ -15,11 +15,12 @@ class AlertViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         portfolio_id = self.kwargs.get("portfolio_pk")
-        return (
-            Alert.objects.filter(portfolio_id=portfolio_id, portfolio__user=self.request.user)
-            .select_related("asset")
-            .prefetch_related("triggers__trade")
-        )
+        queryset = Alert.objects.filter(portfolio__user=self.request.user).select_related("asset").prefetch_related("triggers__trade")
+
+        if portfolio_id:
+            queryset = queryset.filter(portfolio_id=portfolio_id)
+
+        return queryset
 
     def create(self, request, *args, **kwargs):
         portfolio_id = self.kwargs.get("portfolio_pk")
@@ -62,6 +63,9 @@ class AlertViewSet(viewsets.ModelViewSet):
 
         alert.save()
         return Response(AlertSerializer(alert).data)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
     def pause(self, request, pk=None, **kwargs):

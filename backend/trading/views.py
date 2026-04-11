@@ -14,6 +14,7 @@ from .services import execute_buy, execute_sell
 class PositionViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = PositionDetailSerializer
+    lookup_field = 'asset_id'
 
     def get_queryset(self):
         portfolio_id = self.kwargs.get("portfolio_pk")

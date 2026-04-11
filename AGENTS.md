@@ -29,6 +29,49 @@ npm run lint                      # ESLint (NOTE: uses --ext flag incompatible w
 
 **Always run `npm run typecheck` before considering frontend work done.** The Docker build runs `npm run build` which includes `vue-tsc --noEmit`. Type errors that slip through locally will break the container build.
 
+## Testing
+
+**Always run tests before considering any work done.** Tests catch bugs and verify integration. When tests fail, fix the underlying software issue or update tests to match new requirements.
+
+### Backend Tests
+
+```bash
+pytest                             # run all backend tests
+pytest alerts/test_views.py -v     # run specific test module
+docker compose exec backend pytest  # run tests in container
+```
+
+All backend tests must pass: **70/70 tests PASSING** (accounts, alerts, markets, portfolios, trading modules).
+- Use `docker compose exec backend pytest` when running in Docker environment
+- Test fixtures in `conftest.py` provide `authenticated_client` (DRF APIClient) and model factories
+- Mock `realtime.services.publish_event` in tests that trigger async events
+
+### Frontend Unit Tests
+
+```bash
+npm run test            # run all unit tests (vitest)
+npm run test:ui        # interactive test UI
+```
+
+Frontend unit tests use Vitest + Vue Test Utils. Currently have setup issues (Pinia initialization, Vue Router routing) that need fixes for full pass rate. These tests cover component rendering and basic operations.
+
+### Frontend E2E Tests
+
+```bash
+npx playwright test     # run end-to-end tests from frontend/
+npx playwright test --headed  # run with browser visible
+```
+
+Playwright e2E tests in `frontend/e2e/` should verify complete user journeys (auth → portfolio creation → trading → alerts). Currently has configuration issues; fix before considering feature complete.
+
+**Before considering any feature done:**
+1. Run backend tests: `docker compose exec backend pytest` — all must pass
+2. Run frontend typecheck: `npm run typecheck` — no type errors
+3. Run frontend unit tests: `npm run test` — fix or update as needed
+4. Run frontend e2e tests: `npx playwright test` — full user journeys must work
+
+If any test fails, investigate and fix the software issue (not the test). Tests are the source of truth.
+
 ### Docker
 
 ```bash
