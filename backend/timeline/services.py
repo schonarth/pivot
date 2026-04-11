@@ -14,7 +14,7 @@ def create_timeline_event(*, portfolio_id, event_type: str, description: str, me
     from realtime.services import publish_event
 
     publish_event(
-        f"portfolio:{portfolio_id}",
+        f"portfolio_{portfolio_id}",
         "portfolio.updated",
         {"event_type": event_type, "event_id": str(event.id), "portfolio_id": str(portfolio_id)},
     )
@@ -33,7 +33,7 @@ def create_notification_event(*, user_id, portfolio_id, event_type: str, descrip
     from realtime.services import publish_event
 
     publish_event(
-        f"user:{user_id}",
+        f"user_{user_id}",
         "notification.created",
         {"event_type": event_type, "event_id": str(event.id)},
     )

@@ -86,7 +86,7 @@ def execute_buy(*, portfolio, asset, quantity: int, rationale: str = "Manual ope
     from realtime.services import publish_event
 
     publish_event(
-        f"portfolio:{portfolio.id}",
+        f"portfolio_{portfolio.id}",
         "trade.executed",
         {"trade_id": str(trade.id), "portfolio_id": str(portfolio.id), "action": "BUY"},
     )
@@ -160,7 +160,7 @@ def execute_sell(*, portfolio, asset, quantity: int, rationale: str = "Manual op
     from realtime.services import publish_event
 
     publish_event(
-        f"portfolio:{portfolio.id}",
+        f"portfolio_{portfolio.id}",
         "trade.executed",
         {"trade_id": str(trade.id), "portfolio_id": str(portfolio.id), "action": "SELL"},
     )

@@ -13,7 +13,7 @@ class PortfolioConsumer(AsyncWebsocketConsumer):
             return
 
         self.user_id = str(self.scope["user"].id)
-        self.user_group = f"user:{self.user_id}"
+        self.user_group = f"user_{self.user_id}"
         self.portfolio_groups = set()
 
         await self.channel_layer.group_add(self.user_group, self.channel_name)
@@ -32,13 +32,13 @@ class PortfolioConsumer(AsyncWebsocketConsumer):
             if action == "subscribe_portfolio":
                 portfolio_id = data.get("portfolio_id")
                 if portfolio_id:
-                    group = f"portfolio:{portfolio_id}"
+                    group = f"portfolio_{portfolio_id}"
                     await self.channel_layer.group_add(group, self.channel_name)
                     self.portfolio_groups.add(group)
 
             elif action == "unsubscribe_portfolio":
                 portfolio_id = data.get("portfolio_id")
-                group = f"portfolio:{portfolio_id}"
+                group = f"portfolio_{portfolio_id}"
                 if group in self.portfolio_groups:
                     await self.channel_layer.group_discard(group, self.channel_name)
                     self.portfolio_groups.discard(group)

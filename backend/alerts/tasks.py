@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.db import transaction
 
 logger = logging.getLogger("paper_trader.alerts")
 
@@ -25,9 +26,10 @@ def evaluate_alerts_for_assets(asset_ids: list[str]):
 
         current_price = quote.price
 
-        alerts = Alert.objects.filter(asset_id=asset_id, status="active").select_for_update()
-        for alert in alerts:
-            try:
-                evaluate_alert(alert, current_price)
-            except Exception:
-                logger.exception("Failed to evaluate alert %s", alert.id)
+        with transaction.atomic():
+            alerts = Alert.objects.filter(asset_id=asset_id, status="active").select_for_update()
+            for alert in alerts:
+                try:
+                    evaluate_alert(alert, current_price)
+                except Exception:
+                    logger.exception("Failed to evaluate alert %s", alert.id)

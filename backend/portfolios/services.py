@@ -58,8 +58,8 @@ def create_portfolio(*, user, name: str, market: str, initial_capital: Decimal) 
 
     from realtime.services import publish_event
 
-    publish_event(f"portfolio:{portfolio.id}", "portfolio.updated", {"portfolio_id": str(portfolio.id)})
-    publish_event(f"user:{user.id}", "portfolio.updated", {"portfolio_id": str(portfolio.id), "user_id": str(user.id)})
+    publish_event(f"portfolio_{portfolio.id}", "portfolio.updated", {"portfolio_id": str(portfolio.id)})
+    publish_event(f"user_{user.id}", "portfolio.updated", {"portfolio_id": str(portfolio.id), "user_id": str(user.id)})
 
     return {
         "portfolio": portfolio,
@@ -89,7 +89,7 @@ def deposit(*, portfolio, amount: Decimal) -> dict:
     from realtime.services import publish_event
 
     publish_event(
-        f"portfolio:{portfolio.id}", "cash.updated", {"portfolio_id": str(portfolio.id), "transaction_type": "deposit"}
+        f"portfolio_{portfolio.id}", "cash.updated", {"portfolio_id": str(portfolio.id), "transaction_type": "deposit"}
     )
 
     return {"transaction": transaction, "snapshot": snapshot}
@@ -117,7 +117,7 @@ def withdraw(*, portfolio, amount: Decimal) -> dict:
     from realtime.services import publish_event
 
     publish_event(
-        f"portfolio:{portfolio.id}",
+        f"portfolio_{portfolio.id}",
         "cash.updated",
         {"portfolio_id": str(portfolio.id), "transaction_type": "withdrawal"},
     )

@@ -10,13 +10,18 @@
       <div v-if="createError" class="alert-danger">{{ createError }}</div>
       <div class="form-group">
         <label>Asset</label>
-        <input v-model="assetSearch" type="text" placeholder="Search asset..." @input="searchAssetsDebounced" />
-        <div v-if="assetResults.length" style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
-          <div v-for="a in assetResults" :key="a.id" style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);" @click="selectNewAsset(a)">
-            {{ a.display_symbol }} - {{ a.name }}
+        <template v-if="newAsset && presetAsset">
+          <div>{{ newAsset.display_symbol }} — {{ newAsset.name }}</div>
+        </template>
+        <template v-else>
+          <input v-model="assetSearch" type="text" placeholder="Search asset..." @input="searchAssetsDebounced" />
+          <div v-if="assetResults.length" style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+            <div v-for="a in assetResults" :key="a.id" style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);" @click="selectNewAsset(a)">
+              {{ a.display_symbol }} - {{ a.name }}
+            </div>
           </div>
-        </div>
-        <div v-if="newAsset" style="margin-top: 0.5rem;" class="text-muted">Selected: {{ newAsset.display_symbol }}</div>
+          <div v-if="newAsset" style="margin-top: 0.5rem;" class="text-muted">Selected: {{ newAsset.display_symbol }}</div>
+        </template>
       </div>
       <div class="form-group">
         <label>Condition</label>
@@ -26,7 +31,12 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Threshold</label>
+        <label>
+          Threshold
+          <span v-if="selectedAssetPrice" class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">
+            Current: {{ selectedAssetPrice }}
+          </span>
+        </label>
         <input v-model="newAlert.threshold" type="text" inputmode="decimal" placeholder="0.00" />
       </div>
       <div class="form-group">
@@ -100,7 +110,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAlerts, createAlert, deleteAlert, pauseAlert } from '@/api/alerts'
-import { searchAssets } from '@/api/assets'
+import { searchAssets, getAsset, getAssetPrice } from '@/api/assets'
 import { getPortfolio } from '@/api/portfolios'
 import { parseNumericInput } from '@/utils/numbers'
 import type { Alert, Asset } from '@/types'
@@ -120,6 +130,8 @@ const createError = ref('')
 const assetSearch = ref('')
 const assetResults = ref<Asset[]>([])
 const newAsset = ref<Asset | null>(null)
+const presetAsset = ref(false)
+const selectedAssetPrice = ref<string | null>(null)
 const sizingType = ref<'quantity' | 'pct'>('quantity')
 
 const newAlert = ref({
@@ -141,6 +153,16 @@ onMounted(async () => {
     return
   }
   alerts.value = await getAlerts(portfolioId)
+
+  const presetAssetId = route.query.asset as string | undefined
+  if (presetAssetId) {
+    try {
+      const asset = await getAsset(presetAssetId)
+      selectNewAsset(asset)
+      presetAsset.value = true
+      showCreate.value = true
+    } catch {}
+  }
 })
 
 let searchTimeout: ReturnType<typeof setTimeout>
@@ -157,10 +179,15 @@ function searchAssetsDebounced() {
   }, 300)
 }
 
-function selectNewAsset(asset: Asset) {
+async function selectNewAsset(asset: Asset) {
   newAsset.value = asset
   assetSearch.value = asset.display_symbol
   assetResults.value = []
+  selectedAssetPrice.value = null
+  try {
+    const quote = await getAssetPrice(asset.id)
+    selectedAssetPrice.value = quote.price
+  } catch {}
 }
 
 async function handleCreate() {

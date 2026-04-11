@@ -2,8 +2,32 @@ from rest_framework import serializers
 from .models import Alert, AlertTrigger
 
 
+class TriggerTradeSerializer(serializers.Serializer):
+    action = serializers.CharField()
+    quantity = serializers.IntegerField()
+    price = serializers.DecimalField(max_digits=20, decimal_places=4)
+    gross_value = serializers.DecimalField(max_digits=20, decimal_places=2)
+    fees = serializers.DecimalField(max_digits=20, decimal_places=2)
+    net_cash_impact = serializers.DecimalField(max_digits=20, decimal_places=2)
+
+
+class AlertTriggerSummarySerializer(serializers.ModelSerializer):
+    trade = TriggerTradeSerializer(read_only=True)
+
+    class Meta:
+        model = AlertTrigger
+        fields = ("id", "triggered_price", "triggered_at", "outcome", "notification_sent", "trade")
+
+
 class AlertSerializer(serializers.ModelSerializer):
     asset_display_symbol = serializers.CharField(source="asset.display_symbol", read_only=True)
+    latest_trigger = serializers.SerializerMethodField()
+
+    def get_latest_trigger(self, obj):
+        trigger = obj.triggers.select_related("trade").first()
+        if trigger is None:
+            return None
+        return AlertTriggerSummarySerializer(trigger).data
 
     class Meta:
         model = Alert
@@ -22,6 +46,7 @@ class AlertSerializer(serializers.ModelSerializer):
             "status",
             "last_evaluated_at",
             "triggered_at",
+            "latest_trigger",
             "created_at",
             "updated_at",
         )

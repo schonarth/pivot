@@ -55,7 +55,7 @@ def evaluate_alert(alert: Alert, current_price: Decimal) -> AlertTrigger | None:
     from realtime.services import publish_event
 
     publish_event(
-        f"portfolio:{alert.portfolio_id}",
+        f"portfolio_{alert.portfolio_id}",
         "alert.triggered",
         {"alert_id": str(alert.id), "trigger_id": str(trigger.id), "portfolio_id": str(alert.portfolio_id)},
     )
@@ -107,11 +107,11 @@ def _execute_auto_trade(alert: Alert, current_price: Decimal) -> tuple:
             price = current_price
             fee_rate = Decimal(str(__import__("portfolios.services", fromlist=["get_fee_rate"]).get_fee_rate(portfolio.market)))
             gross_with_fees = price * (1 + fee_rate)
-            quantity = int((gross_possible / gross_with_fees).to(Decimal("1"), rounding=ROUND_DOWN))
+            quantity = int((gross_possible / gross_with_fees).quantize(Decimal("1"), rounding=ROUND_DOWN))
         elif side == "SELL":
             try:
                 position = Position.objects.get(portfolio=portfolio, asset=asset)
-                quantity = int((Decimal(str(position.quantity)) * pct).to(Decimal("1"), rounding=ROUND_DOWN))
+                quantity = int((Decimal(str(position.quantity)) * pct).quantize(Decimal("1"), rounding=ROUND_DOWN))
             except Position.DoesNotExist:
                 return None, "trade_skipped"
 

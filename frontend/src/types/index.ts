@@ -95,6 +95,24 @@ export interface AssetQuote {
   stale?: boolean
 }
 
+export interface AlertTriggerTrade {
+  action: 'BUY' | 'SELL'
+  quantity: number
+  price: string
+  gross_value: string
+  fees: string
+  net_cash_impact: string
+}
+
+export interface AlertLatestTrigger {
+  id: string
+  triggered_price: string
+  triggered_at: string
+  outcome: string
+  notification_sent: boolean
+  trade: AlertTriggerTrade | null
+}
+
 export interface Alert {
   id: string
   portfolio: string
@@ -110,6 +128,7 @@ export interface Alert {
   status: 'active' | 'triggered' | 'paused'
   last_evaluated_at: string | null
   triggered_at: string | null
+  latest_trigger: AlertLatestTrigger | null
   created_at: string
   updated_at: string
 }
