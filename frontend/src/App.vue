@@ -83,5 +83,10 @@ function handleLogout() {
   padding: 1.5rem;
   max-width: 1280px;
   margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 </style>

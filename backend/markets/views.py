@@ -18,6 +18,7 @@ class MarketConfigViewSet(viewsets.ReadOnlyModelViewSet):
 class AssetViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = AssetSerializer
+    pagination_class = None
 
     def get_queryset(self):
         queryset = Asset.objects.all()

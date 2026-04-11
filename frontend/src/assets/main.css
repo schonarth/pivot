@@ -45,6 +45,12 @@ html, body, #app {
   color: var(--text-primary);
 }
 
+#app-layout {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
