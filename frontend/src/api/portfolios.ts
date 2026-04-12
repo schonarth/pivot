@@ -36,7 +36,7 @@ export async function getPortfolioPerformance(id: string) {
 }
 
 export async function refreshPortfolioPrices(id: string) {
-  const { data } = await api.post(`/portfolios/${id}/refresh-prices/`)
+  const { data } = await api.post(`/portfolios/${id}/refresh_prices/`)
   return data
 }
 
@@ -51,7 +51,7 @@ export async function withdraw(id: string, amount: string) {
 }
 
 export async function getCashTransactions(id: string): Promise<CashTransaction[]> {
-  const { data } = await api.get(`/portfolios/${id}/cash-transactions/`)
+  const { data } = await api.get(`/portfolios/${id}/cash_transactions/`)
   return data.results ?? data
 }
 

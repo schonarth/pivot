@@ -18,11 +18,49 @@
         <button class="btn" :class="{ 'btn-secondary': settings.marketBadgeStyle !== 'both' }" @click="settings.setMarketBadgeStyle('both')">Both</button>
       </div>
     </div>
+    <div class="card" style="max-width: 500px;">
+      <h3>Alert Toasts</h3>
+      <div style="display: flex; gap: 1rem; margin: 1rem 0;">
+        <button class="btn" :class="{ 'btn-secondary': settings.toastSetting !== 'none' }" @click="settings.setToastSetting('none')">None</button>
+        <button class="btn" :class="{ 'btn-secondary': settings.toastSetting !== 'disappear' }" @click="settings.setToastSetting('disappear')">Disappear</button>
+        <button class="btn" :class="{ 'btn-secondary': settings.toastSetting !== 'stay' }" @click="settings.setToastSetting('stay')">Stay</button>
+      </div>
+      <div v-if="settings.toastSetting === 'disappear'" style="margin-top: 1rem;">
+        <label>Disappear after (seconds):</label>
+        <input
+          type="number"
+          min="1"
+          max="300"
+          :value="settings.toastDuration"
+          @change="(e) => settings.setToastDuration(parseInt((e.target as HTMLInputElement).value))"
+          style="margin-top: 0.5rem; width: 100%; padding: 0.5rem; border-radius: 0.25rem; border: 1px solid var(--border);"
+        />
+      </div>
+      <div style="margin-top: 1rem;">
+        <button class="btn btn-secondary" @click="sendTestNotifications">Send Test Notifications</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useSettingsStore } from '@/stores/settings'
+import { useToast } from '@/composables/useToast'
+import { useNotifications } from '@/composables/useNotifications'
 
 const settings = useSettingsStore()
+const toast = useToast()
+const { showNotification } = useNotifications()
+
+async function sendTestNotifications() {
+  toast.success('Success notification')
+  toast.warning('Warning notification')
+  toast.info('Info notification')
+  toast.error('Error notification')
+
+  showNotification('Test Browser Notification', {
+    body: 'This is a browser notification test',
+    icon: '/icon.png',
+  })
+}
 </script>

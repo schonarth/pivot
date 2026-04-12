@@ -7,6 +7,7 @@ logger = logging.getLogger("paper_trader.celery_tasks")
 @shared_task
 def capture_portfolio_snapshots():
     from portfolios.models import Portfolio
+    from realtime.services import publish_event
 
     portfolios = Portfolio.objects.all()
     from portfolios.services import _create_snapshot
@@ -14,6 +15,7 @@ def capture_portfolio_snapshots():
     for portfolio in portfolios:
         try:
             _create_snapshot(portfolio)
+            publish_event(f"portfolio_{portfolio.id}", "price.updated", {"portfolio_id": str(portfolio.id)})
         except Exception:
             logger.exception("Failed to capture snapshot for portfolio %s", portfolio.id)
 

@@ -78,8 +78,10 @@ class PortfolioViewSet(viewsets.ModelViewSet):
                 pass
 
         from .services import _create_snapshot
+        from realtime.services import publish_event
 
         _create_snapshot(portfolio)
+        publish_event(f"portfolio_{portfolio.id}", "price.updated", {"portfolio_id": str(portfolio.id)})
 
         return Response({"refreshed": refreshed})
 

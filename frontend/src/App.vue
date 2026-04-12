@@ -18,6 +18,7 @@
     <main class="main-content">
       <router-view />
     </main>
+    <ToastContainer />
   </div>
 </template>
 
@@ -25,13 +26,19 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useWebSocketStore } from '@/stores/websocket'
+import { useNotifications } from '@/composables/useNotifications'
+import ToastContainer from '@/components/ToastContainer.vue'
 
 const auth = useAuthStore()
+useWebSocketStore()
+const { requestPermission } = useNotifications()
 const router = useRouter()
 
 onMounted(() => {
   if (auth.isAuthenticated) {
     auth.fetchUser()
+    requestPermission()
   }
 })
 

@@ -278,23 +278,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw } from '@/api/portfolios'
 import { getAlerts, createAlert, deleteAlert, pauseAlert, resumeAlert } from '@/api/alerts'
 import { searchAssets, getAssetPrice } from '@/api/assets'
 import { parseNumericInput, formatCurrency } from '@/utils/numbers'
+import { useWebSocketStore } from '@/stores/websocket'
+import { useNotifications } from '@/composables/useNotifications'
+import { useToast } from '@/composables/useToast'
 import type { Alert, Asset, PortfolioSummary } from '@/types'
 
 const props = defineProps<{ id?: string | string[] }>()
 const route = useRoute()
 const router = useRouter()
+const ws = useWebSocketStore()
+const { showNotification } = useNotifications()
+const toast = useToast()
 
-const routePortfolioId = route.params.id as string | string[] | undefined
-const propsId = props.id ?? routePortfolioId
-const rawId = Array.isArray(propsId) ? propsId[0] : propsId
-const portfolioId = rawId ?? ''
+const getPortfolioId = () => {
+  const routePortfolioId = route.params.id as string | string[] | undefined
+  const propsId = props.id ?? routePortfolioId
+  const rawId = Array.isArray(propsId) ? propsId[0] : propsId
+  return rawId ?? ''
+}
+
+const portfolioId = ref(getPortfolioId())
 
 const summary = ref<PortfolioSummary | null>(null)
 const timeline = ref<any[]>([])
@@ -345,18 +355,26 @@ watch(showWithdraw, (val) => {
   }
 })
 
+watch(() => route.params.id, () => {
+  const newPortfolioId = getPortfolioId()
+  if (newPortfolioId && newPortfolioId !== portfolioId.value) {
+    portfolioId.value = newPortfolioId
+    load()
+  }
+})
+
 async function load() {
-  if (!portfolioId || portfolioId === 'undefined') {
+  if (!portfolioId.value || portfolioId.value === 'undefined') {
     await router.replace('/portfolios')
     return
   }
-  summary.value = await getPortfolioSummary(portfolioId)
-  timeline.value = await getPortfolioTimeline(portfolioId)
+  summary.value = await getPortfolioSummary(portfolioId.value)
+  timeline.value = await getPortfolioTimeline(portfolioId.value)
   await loadAlerts()
 }
 
 async function loadAlerts() {
-  alerts.value = await getAlerts(portfolioId)
+  alerts.value = await getAlerts(portfolioId.value)
   const assetIds = [...new Set(activeAlerts.value.map((a) => a.asset))]
   const priceResults = await Promise.all(
     assetIds.map((id) => getAssetPrice(id).then((q) => ({ id, price: q.price })).catch(() => null))
@@ -368,14 +386,41 @@ async function loadAlerts() {
   alertPrices.value = map
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  ws.on('trade.executed', () => {
+    load()
+    toast.success('Trade executed')
+  })
+  ws.on('alert.triggered', () => {
+    load()
+    showNotification('Alert Triggered', {
+      body: `Price alert has been triggered for your portfolio`,
+      icon: '/icon.png',
+    })
+    toast.warning('Price alert triggered')
+  })
+  ws.on('price.updated', () => {
+    load()
+  })
+  ws.on('portfolio.updated', () => {
+    load()
+    toast.info('Portfolio updated')
+  })
+})
+
+onUnmounted(() => {
+  ws.off('trade.executed')
+  ws.off('alert.triggered')
+  ws.off('price.updated')
+  ws.off('portfolio.updated')
+})
 
 async function handleRefresh() {
   refreshing.value = true
   try {
-    if (!portfolioId || portfolioId === 'undefined') return
-    await refreshPortfolioPrices(portfolioId)
-    await load()
+    if (!portfolioId.value || portfolioId.value === 'undefined') return
+    await refreshPortfolioPrices(portfolioId.value)
   } finally {
     refreshing.value = false
   }
@@ -383,30 +428,35 @@ async function handleRefresh() {
 
 async function handleDeposit() {
   try {
-    if (!portfolioId || portfolioId === 'undefined') return
-    await deposit(portfolioId, parseNumericInput(depositAmount.value))
+    if (!portfolioId.value || portfolioId.value === 'undefined') return
+    await deposit(portfolioId.value, parseNumericInput(depositAmount.value))
     showDeposit.value = false
     depositAmount.value = ''
     await load()
+    toast.success('Deposit successful')
   } catch (e: any) {
     console.error(e)
+    toast.error('Failed to deposit')
   }
 }
 
 async function handleWithdraw() {
   withdrawWarning.value = ''
   try {
-    if (!portfolioId || portfolioId === 'undefined') return
-    const result = await withdraw(portfolioId, parseNumericInput(withdrawAmount.value))
+    if (!portfolioId.value || portfolioId.value === 'undefined') return
+    const result = await withdraw(portfolioId.value, parseNumericInput(withdrawAmount.value))
     if (result.warning) {
       withdrawWarning.value = result.warning
+      toast.warning(result.warning)
     } else {
       showWithdraw.value = false
       withdrawAmount.value = ''
       await load()
+      toast.success('Withdrawal successful')
     }
   } catch (e: any) {
     console.error(e)
+    toast.error('Failed to withdraw')
   }
 }
 
@@ -417,7 +467,7 @@ function searchAssetsDebounced() {
     if (assetSearch.value.length < 2) return
     try {
       const { getPortfolio } = await import('@/api/portfolios')
-      const portfolio = await getPortfolio(portfolioId)
+      const portfolio = await getPortfolio(portfolioId.value)
       assetResults.value = await searchAssets(assetSearch.value, portfolio.market)
     } catch {
       assetResults.value = []
@@ -473,27 +523,44 @@ async function handleCreateAlert() {
         payload.auto_trade_pct = parseNumericInput(newAlertForm.value.auto_trade_pct ?? '0')
       }
     }
-    await createAlert(portfolioId, payload)
+    await createAlert(portfolioId.value, payload)
     cancelCreate()
     await loadAlerts()
+    toast.success('Alert created')
   } catch (e: any) {
     createError.value = e.response?.data?.error?.message || 'Failed to create alert'
+    toast.error('Failed to create alert')
   }
 }
 
 async function handlePauseAlert(id: string) {
-  await pauseAlert(id)
-  await loadAlerts()
+  try {
+    await pauseAlert(id)
+    await loadAlerts()
+    toast.success('Alert paused')
+  } catch {
+    toast.error('Failed to pause alert')
+  }
 }
 
 async function handleResumeAlert(id: string) {
-  await resumeAlert(id)
-  await loadAlerts()
+  try {
+    await resumeAlert(id)
+    await loadAlerts()
+    toast.success('Alert resumed')
+  } catch {
+    toast.error('Failed to resume alert')
+  }
 }
 
 async function handleDeleteAlert(id: string) {
-  await deleteAlert(id)
-  await loadAlerts()
+  try {
+    await deleteAlert(id)
+    await loadAlerts()
+    toast.success('Alert deleted')
+  } catch {
+    toast.error('Failed to delete alert')
+  }
 }
 
 function formatNum(val: string | number): string {

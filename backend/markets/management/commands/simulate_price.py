@@ -55,6 +55,13 @@ class Command(BaseCommand):
 
         evaluate_alerts_for_assets([str(asset.id)])
 
+        from trading.models import Position
+        from realtime.services import publish_event
+
+        portfolio_ids = Position.objects.filter(asset=asset).values_list("portfolio_id", flat=True)
+        for portfolio_id in portfolio_ids:
+            publish_event(f"portfolio_{portfolio_id}", "price.updated", {"portfolio_id": str(portfolio_id)})
+
         self.stdout.write(
             self.style.SUCCESS(f"Simulated {symbol} @ {price} — alert evaluation complete")
         )

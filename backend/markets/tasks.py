@@ -26,6 +26,7 @@ def fetch_market_prices():
     )
 
     refreshed_asset_ids = []
+    portfolios_to_notify = set()
     for market_code, cfg in MARKET_CONFIGS.items():
         if not is_market_open(market_code):
             continue
@@ -35,8 +36,15 @@ def fetch_market_prices():
                 quote = refresh_asset_quote(str(asset.id))
                 if quote:
                     refreshed_asset_ids.append(str(asset.id))
+                    for position in asset.positions.all():
+                        portfolios_to_notify.add(str(position.portfolio_id))
             except Exception:
                 logger.exception("Failed to refresh quote for asset %s", asset.display_symbol)
+
+    if portfolios_to_notify:
+        from realtime.services import publish_event
+        for portfolio_id in portfolios_to_notify:
+            publish_event(f"portfolio_{portfolio_id}", "price.updated", {"portfolio_id": portfolio_id})
 
     if refreshed_asset_ids:
         from alerts.tasks import evaluate_alerts_for_assets
