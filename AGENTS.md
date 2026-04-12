@@ -17,6 +17,20 @@ ruff check --fix .                # lint + auto-fix
 pytest                            # run tests (DJANGO_SETTINGS_MODULE=config.settings)
 ```
 
+### Market Simulation (root-level shortcuts)
+
+```bash
+# Single price update (manual)
+./simulate_price.sh SYMBOL PRICE   # e.g., ./simulate_price.sh AAPL 150.00
+
+# Continuous market simulator (random ±1% fluctuations)
+./simulate_market.sh               # discover and simulate all seeded assets
+./simulate_market.sh BR            # discover and simulate assets in BR market only
+./simulate_market.sh PETR4 VALE3   # simulate specific symbols repeatedly
+```
+
+The simulator runs indefinitely (Ctrl+C to stop), applying random price fluctuations and throttling realistically (1–60 sec per symbol based on total count). Use to test price alerts and portfolio updates when markets are closed.
+
 ### Frontend (from `frontend/` dir)
 
 ```bash
@@ -109,6 +123,10 @@ docker compose build --no-cache frontend   # force rebuild frontend
 2. **`QuerySet.aggregate()` with non-expression values**: Django's `.aggregate(total=Decimal("0"))` raises `TypeError`. Never pass raw Python values — use `Sum()`, `Count()`, etc.
 3. **`publish_event` with f-strings**: `publish_event("portfolio:{portfolio_id}", ...)` was a literal string, not an f-string. Always verify f-string syntax in `realtime/services.py` and `portfolios/services.py`.
 4. **Trailing slash mismatches**: DRF DefaultRouter appends `/`. Frontend must match, or Django APPEND_SLASH redirects drop auth headers on POST requests.
+
+### Design Notes (Future Implementation)
+
+**Simulated Price Data Handling**: When price histories are kept (MLP phase), the `AssetQuote` model must distinguish simulated prices from real market data via a flag (e.g., `is_simulated=True`). During market open hours, a scheduled Celery task should delete or exclude simulated entries to prevent corrupting historical charts and analytics. Simulated entries are only intended for offline dev/testing. Details to be fleshed out when price history features are implemented.
 
 ## Docker Compose Watch
 
