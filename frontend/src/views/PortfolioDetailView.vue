@@ -5,14 +5,15 @@
         <h1>{{ summary.name }}</h1>
         <span v-if="summary.is_simulating" class="badge badge-warning" title="Alerts will fire on simulated prices">Simulating</span>
       </div>
-      <div style="display: flex; gap: 0.5rem;">
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
         <button class="btn btn-secondary btn-sm" @click="handleRefresh" :disabled="refreshing">Refresh Prices</button>
         <button class="btn btn-secondary btn-sm" @click="showDeposit = true">Deposit</button>
         <button class="btn btn-secondary btn-sm" @click="showWithdraw = true">Withdraw</button>
         <router-link :to="`/portfolios/${portfolioId}/trades/new`" class="btn btn-sm">New Trade</router-link>
-        <button :class="['btn', 'btn-sm', summary.is_simulating ? 'btn-warning' : 'btn-secondary']" @click="handleToggleSimulating">
-          {{ summary.is_simulating ? 'Disable Simulating' : 'Enable Simulating' }}
-        </button>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="summary.is_simulating" @change="handleToggleSimulating" />
+          <span class="toggle-label">{{ summary.is_simulating ? 'Simulating' : 'Real' }}</span>
+        </label>
       </div>
     </div>
     <div class="grid grid-4">
@@ -647,5 +648,56 @@ function outcomeLabel(outcome: string): string {
   font-size: 0.7rem;
   font-weight: 700;
   cursor: default;
+}
+
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggle-switch input {
+  appearance: none;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 0.625rem;
+  background: var(--border);
+  cursor: pointer;
+  transition: background-color 0.3s;
+  border: none;
+  padding: 0;
+  position: relative;
+}
+
+.toggle-switch input::before {
+  content: '';
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: white;
+  left: 0.125rem;
+  top: 0.125rem;
+  transition: left 0.3s;
+}
+
+.toggle-switch input:checked {
+  background: #ffc107;
+}
+
+.toggle-switch input:checked::before {
+  left: 1.125rem;
+}
+
+.toggle-switch input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toggle-label {
+  font-size: 0.875rem;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 </style>

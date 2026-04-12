@@ -2,7 +2,10 @@
   <div id="app-layout">
     <nav v-if="auth.isAuthenticated" class="navbar">
       <div class="nav-brand">
-        <router-link to="/">Paper Trader</router-link>
+        <router-link to="/" class="brand-link">
+          <img :src="pivotLogo" alt="Pivot" class="brand-logo" />
+          <span>Pivot</span>
+        </router-link>
       </div>
       <div class="nav-links">
         <router-link to="/">Dashboard</router-link>
@@ -34,6 +37,7 @@ const auth = useAuthStore()
 useWebSocketStore()
 const { requestPermission } = useNotifications()
 const router = useRouter()
+const pivotLogo = '/pivot-logo.png'
 
 onMounted(() => {
   if (auth.isAuthenticated) {
@@ -60,9 +64,18 @@ function handleLogout() {
 }
 
 .nav-brand a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--text-primary);
+  text-decoration: none;
+}
+
+.brand-logo {
+  height: 1.75rem;
+  width: auto;
 }
 
 .nav-links {
