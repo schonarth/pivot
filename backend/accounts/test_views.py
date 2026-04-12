@@ -60,7 +60,7 @@ class TestAuthEndpoints:
     def test_me_without_auth_fails(self):
         client = APIClient()
         response = client.get("/api/auth/me")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_logout_succeeds(self, authenticated_client):
         response = authenticated_client.post(

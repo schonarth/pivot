@@ -1,5 +1,6 @@
 export interface User {
   id: string
+  api_uuid: string
   username: string
   email: string
   first_name: string

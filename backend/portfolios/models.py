@@ -39,12 +39,14 @@ class CashTransaction(models.Model):
         ("deposit", "Deposit"),
         ("withdrawal", "Withdrawal"),
     ]
+    INITIATED_BY_CHOICES = [("user", "User"), ("agent", "Agent")]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="cash_transactions")
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=20, decimal_places=2)
     resulting_cash = models.DecimalField(max_digits=20, decimal_places=2)
+    initiated_by = models.CharField(max_length=10, choices=INITIATED_BY_CHOICES, default="user")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

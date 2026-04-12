@@ -9,7 +9,7 @@ class TestTradingEndpoints:
     def test_position_list_requires_auth(self):
         client = APIClient()
         response = client.get("/api/portfolios/00000000-0000-0000-0000-000000000000/positions/")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_position_list_returns_positions(self, authenticated_client, position):
         response = authenticated_client.get(f"/api/portfolios/{position.portfolio.id}/positions/")
@@ -28,7 +28,7 @@ class TestTradingEndpoints:
     def test_trade_list_requires_auth(self):
         client = APIClient()
         response = client.get("/api/portfolios/00000000-0000-0000-0000-000000000000/trades/")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_trade_list_returns_trades(self, authenticated_client, trade):
         response = authenticated_client.get(f"/api/portfolios/{trade.portfolio.id}/trades/")

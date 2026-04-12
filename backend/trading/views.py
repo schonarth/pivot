@@ -82,6 +82,7 @@ class TradeViewSet(viewsets.ModelViewSet):
         from portfolios.services import get_portfolio_summary
         from portfolios.serializers import PortfolioSummarySerializer
 
+        portfolio.refresh_from_db()
         summary = get_portfolio_summary(portfolio)
 
         response_data = {

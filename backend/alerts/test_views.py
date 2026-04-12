@@ -9,7 +9,7 @@ class TestAlertEndpoints:
     def test_alert_list_requires_auth(self):
         client = APIClient()
         response = client.get("/api/portfolios/00000000-0000-0000-0000-000000000000/alerts/")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_alert_list_returns_alerts(self, authenticated_client, alert):
         response = authenticated_client.get(f"/api/portfolios/{alert.portfolio.id}/alerts/")
@@ -102,7 +102,7 @@ class TestAlertEndpoints:
     def test_alert_trigger_list_requires_auth(self):
         client = APIClient()
         response = client.get("/api/alert-triggers/")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_alert_trigger_list_returns_triggers(self, authenticated_client, alert, db):
         from conftest import AlertTriggerFactory

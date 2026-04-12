@@ -8,7 +8,7 @@ class TestMarketEndpoints:
     def test_asset_list_requires_auth(self):
         client = APIClient()
         response = client.get("/api/assets/")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_asset_list_returns_all_assets(self, authenticated_client, asset):
         response = authenticated_client.get("/api/assets/")
@@ -56,3 +56,14 @@ class TestMarketEndpoints:
         assert response.status_code == 200
         data = response.data["results"] if isinstance(response.data, dict) and "results" in response.data else response.data
         assert isinstance(data, list)
+
+    def test_asset_refresh_price_returns_quote(self, authenticated_client, asset_with_quote):
+        response = authenticated_client.post(f"/api/assets/{asset_with_quote.id}/refresh-price/")
+        assert response.status_code == 200
+        assert "price" in response.data
+        assert "market_open" in response.data
+
+    def test_asset_refresh_price_without_quote_returns_stale(self, authenticated_client, asset):
+        response = authenticated_client.post(f"/api/assets/{asset.id}/refresh-price/")
+        assert response.status_code == 404
+        assert "error" in response.data

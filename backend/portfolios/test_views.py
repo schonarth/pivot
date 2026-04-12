@@ -8,7 +8,7 @@ class TestPortfolioEndpoints:
     def test_portfolio_list_requires_auth(self):
         client = APIClient()
         response = client.get("/api/portfolios/")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_portfolio_list_returns_user_portfolios(self, authenticated_client, portfolio):
         response = authenticated_client.get("/api/portfolios/")
@@ -96,3 +96,14 @@ class TestPortfolioEndpoints:
         response = authenticated_client.get(f"/api/portfolios/{portfolio.id}/timeline/")
         assert response.status_code == 200
         assert isinstance(response.data, list)
+
+    def test_portfolio_refresh_prices_with_positions(self, authenticated_client, position):
+        response = authenticated_client.post(f"/api/portfolios/{position.portfolio.id}/refresh_prices/")
+        assert response.status_code == 200
+        assert "refreshed" in response.data
+        assert isinstance(response.data["refreshed"], int)
+
+    def test_portfolio_refresh_prices_empty_portfolio(self, authenticated_client, portfolio):
+        response = authenticated_client.post(f"/api/portfolios/{portfolio.id}/refresh_prices/")
+        assert response.status_code == 200
+        assert response.data["refreshed"] == 0

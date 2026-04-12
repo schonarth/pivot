@@ -165,6 +165,132 @@ To get browser hot-module-replacement in watch mode:
 - `python manage.py migrate` runs on every backend container start
 - `python manage.py seed_assets` also runs on every start (idempotent)
 
+## Data Safety
+
+**CRITICAL: All destructive database operations require explicit user authorization.**
+
+Before executing any command that deletes or resets database data, you **must**:
+
+1. **Explicitly inform the user** what data will be deleted/modified
+2. **Describe the impact** clearly (e.g., "all portfolios, trades, alerts will be lost")
+3. **Offer backup options** if the user wants to preserve data first
+4. **Wait for explicit approval** before proceeding
+
+Destructive operations include:
+- `docker compose down -v` (deletes all database volumes)
+- `python manage.py flush` (clears all data)
+- Database migrations that alter structure
+- Any operation that could delete, modify, or reset persistent data
+
+**Never assume a fresh database is acceptable.** Always ask first.
+
 ## Market Config
 
 Four markets defined in `config.settings.MARKET_CONFIG`: BR (BRL/BVMF), US (USD/XNYS), UK (GBP/XLON), EU (EUR/XPAR). Fee rates are per-market (BR 0.03%, US 0%, UK/EU 0.1%).
+
+## API Endpoint Reference (Source of Truth)
+
+All endpoints use `application/json` for request/response. All monetary values are strings with 2 decimals. All IDs are UUIDs unless otherwise noted. **Auth:** All endpoints require JWT access token in `Authorization: Bearer <token>` header (except `/auth/register`, `/auth/login`, and `/mcp/token/exchange/` which are public).
+
+### Authentication (`/api/auth/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/auth/register` | None | Register new user. Body: `{email, password}`. Returns user object + JWT tokens. |
+| POST | `/api/auth/login` | None | Login user. Body: `{email, password}`. Returns JWT tokens. |
+| POST | `/api/auth/logout` | JWT | Blacklist refresh token. Body: `{refresh}`. |
+| GET | `/api/auth/me` | JWT | Current user profile. Returns user object with `api_uuid` field (MCP integration). |
+| POST | `/api/auth/token/refresh` | None | Refresh JWT access token. Body: `{refresh}`. Returns new `access` token. |
+
+### Portfolios (`/api/portfolios/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/portfolios/` | JWT | List user's portfolios. Returns array of portfolio objects. |
+| POST | `/api/portfolios/` | JWT | Create portfolio. Body: `{name, market, initial_capital}`. `market` ∈ {BR, US, UK, EU}. |
+| GET | `/api/portfolios/{id}/` | JWT | Retrieve portfolio details. |
+| PUT/PATCH | `/api/portfolios/{id}/` | JWT | Update portfolio (name, etc.). |
+| DELETE | `/api/portfolios/{id}/` | JWT | Delete portfolio. |
+| GET | `/api/portfolios/{id}/summary/` | JWT | Get portfolio summary: cash, positions, positions_value, total_equity, trading P&L, net flows. |
+| GET | `/api/portfolios/{id}/performance/` | JWT | Get portfolio performance: TWR and historical snapshots. |
+| POST | `/api/portfolios/{id}/deposit` | JWT | Deposit cash. Body: `{amount}`. Returns transaction object + updated cash. |
+| POST | `/api/portfolios/{id}/withdraw` | JWT | Withdraw cash. Body: `{amount}`. Returns transaction object + updated cash + warning if clamped. |
+| POST | `/api/portfolios/{id}/refresh_prices` | JWT | Manually refresh quotes for all positions. Returns count of refreshed assets. |
+| GET | `/api/portfolios/{id}/cash_transactions/` | JWT | List cash deposits/withdrawals. |
+| GET | `/api/portfolios/{id}/timeline/` | JWT | List portfolio activity (trades, alerts triggered, deposits). |
+
+### Positions (`/api/portfolios/{portfolio_id}/positions/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/portfolios/{portfolio_id}/positions/` | JWT | List all positions in portfolio. |
+| GET | `/api/portfolios/{portfolio_id}/positions/{asset_id}/` | JWT | Get position detail: quantity, avg cost, current price, unrealized P&L, etc. |
+
+### Trades (`/api/portfolios/{portfolio_id}/trades/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/portfolios/{portfolio_id}/trades/` | JWT | List trades in portfolio. |
+| POST | `/api/portfolios/{portfolio_id}/trades/` | JWT | Execute trade. Body: `{asset_id, action, quantity, rationale?}`. `action` ∈ {BUY, SELL} (case-insensitive). Returns `{trade, cash, summary, position?}`. |
+| GET | `/api/trades/{id}/` | JWT | Retrieve single trade detail. |
+
+### Assets (`/api/assets/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/assets/` | JWT | List all seeded assets. Query params: `?market=BR` to filter by market, `?q=PETR` to search by symbol/name. |
+| GET | `/api/assets/{id}/` | JWT | Retrieve asset detail. |
+| GET | `/api/assets/{id}/price/` | JWT | Get latest quote for asset: price, currency, source, as_of, is_delayed, market_open. |
+| POST | `/api/assets/{id}/refresh-price/` | JWT | Manually refresh quote from Yahoo Finance. Returns quote object or `stale=true` if refresh failed. |
+
+### Markets (`/api/markets/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/markets/` | JWT | List all market configs (BR, US, UK, EU). |
+| GET | `/api/markets/{id}/` | JWT | Get market config detail (fees, currency, exchange, tz, etc.). |
+| GET | `/api/markets/status` | JWT | Get open/closed status for all markets. Returns `{BR: {open: bool}, US: {...}, ...}`. |
+
+### Alerts (`/api/portfolios/{portfolio_id}/alerts/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/portfolios/{portfolio_id}/alerts/` | JWT | List alerts in portfolio. |
+| POST | `/api/portfolios/{portfolio_id}/alerts/` | JWT | Create alert. Body: `{asset_id, condition (ABOVE/BELOW), target_price, should_auto_trade?, action?, quantity?}`. |
+| GET | `/api/alerts/{id}/` | JWT | Retrieve alert detail. |
+| PUT/PATCH | `/api/alerts/{id}/` | JWT | Update alert (all fields). |
+| DELETE | `/api/alerts/{id}/` | JWT | Delete alert. |
+| POST | `/api/alerts/{id}/pause/` | JWT | Pause alert (stop checking until resumed). |
+| POST | `/api/alerts/{id}/resume/` | JWT | Resume alert (start checking again). |
+| GET | `/api/alert-triggers/` | JWT | List all alert triggers (execution history) across all portfolios. |
+
+### MCP (Agent Authentication) (`/api/mcp/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/mcp/otp/generate/` | JWT | Generate 60-second OTP for agent auth. Returns `{code, expires_at}`. |
+| POST | `/api/mcp/token/exchange/` | OTP | Exchange OTP for agent token. Body: `{user_id (api_uuid), otp, name?, origin?}`. Returns `{token}`. |
+| GET | `/api/mcp/agents/` | JWT | List authenticated agents. |
+| DELETE | `/api/mcp/agents/{agent_id}/` | JWT | Revoke agent token. |
+
+### Health & System (`/api/`)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/health` | None | Service health check. Returns `{status: ok}`. |
+| GET | `/api/system/stats` | None | System stats (uptime, memory, etc.). |
+
+### Field Naming Standardization
+
+**Current:** API uses `asset_id` in request bodies (trades, alerts) but responses include `asset` (UUID) + `asset_display_symbol`, `asset_name`, `asset_market`, `asset_currency` from serializers.
+
+**Pending:** Standardize all request bodies to use `asset` instead of `asset_id` for consistency with response field naming. This affects:
+- `POST /api/portfolios/{portfolio_id}/trades/` — change `asset_id` → `asset`
+- `POST /api/portfolios/{portfolio_id}/alerts/` — change `asset_id` → `asset`
+
+### Documentation for Users
+
+**Separate portfolios for simulation vs real-market tracking:**
+- The `simulate_market.sh` script applies random ±1% price fluctuations indefinitely. Simulated prices are not distinguished from real quotes in the database (no `is_simulated` flag yet).
+- **Recommendation:** Use a dedicated portfolio for testing/simulation, separate from portfolios tracking real market behavior. This prevents mixing simulated price history with actual market data.
+- In the future (MLP phase), the `AssetQuote` model will add `is_simulated=True` flag, and the scheduler will auto-delete simulated entries during market open hours.
