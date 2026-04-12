@@ -20,6 +20,7 @@ export interface Portfolio {
   initial_capital: string
   current_cash: string
   is_primary: boolean
+  is_simulating: boolean
   created_at: string
   updated_at: string
 }
@@ -35,6 +36,7 @@ export interface PortfolioSummary {
   total_equity: string
   net_external_cash_flows: string
   trading_pnl: string
+  is_simulating: boolean
   positions: PositionDetail[]
 }
 
@@ -111,6 +113,7 @@ export interface AlertLatestTrigger {
   triggered_at: string
   outcome: string
   notification_sent: boolean
+  price_was_override: boolean
   trade: AlertTriggerTrade | null
 }
 

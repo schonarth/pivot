@@ -49,6 +49,7 @@ class Command(BaseCommand):
             price=price,
             currency=asset.currency,
             source="simulated",
+            is_override=True,
             as_of=now,
             is_delayed=False,
         )

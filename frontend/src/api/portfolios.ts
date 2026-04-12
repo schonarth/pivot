@@ -17,7 +17,7 @@ export async function createPortfolio(name: string, market: string, initialCapit
 }
 
 export async function updatePortfolio(id: string, payload: Partial<Portfolio>): Promise<Portfolio> {
-  const { data } = await api.put(`/portfolios/${id}/`, payload)
+  const { data } = await api.patch(`/portfolios/${id}/`, payload)
   return data
 }
 

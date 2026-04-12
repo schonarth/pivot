@@ -291,6 +291,13 @@ All endpoints use `application/json` for request/response. All monetary values a
 ### Documentation for Users
 
 **Separate portfolios for simulation vs real-market tracking:**
-- The `simulate_market.sh` script applies random ±1% price fluctuations indefinitely. Simulated prices are not distinguished from real quotes in the database (no `is_simulated` flag yet).
-- **Recommendation:** Use a dedicated portfolio for testing/simulation, separate from portfolios tracking real market behavior. This prevents mixing simulated price history with actual market data.
-- In the future (MLP phase), the `AssetQuote` model will add `is_simulated=True` flag, and the scheduler will auto-delete simulated entries during market open hours.
+- The `simulate_market.sh` script applies random ±1% price fluctuations indefinitely. The `simulate_price.sh` script allows manual price overrides for testing.
+- Both simulated and manual price overrides set `is_override=True` on the `AssetQuote` record.
+- **Alert Protection:** Alerts only fire on overridden prices if the portfolio has `is_simulating=True` enabled. Real portfolios (default `is_simulating=False`) are protected from accidentally triggering auto-trades on simulated prices.
+- **How to use:**
+  1. Create a dedicated portfolio for testing/simulation
+  2. Toggle `is_simulating=ON` in that portfolio (visual orange tint indicates simulation mode)
+  3. Use `./simulate_price.sh` or `./simulate_market.sh` to test price movements
+  4. Alerts and auto-trades will only fire in portfolios with `is_simulating=ON`
+  5. Your real portfolios are automatically protected from simulated price triggers
+- **Important:** Always verify `is_simulating=OFF` (no orange tint) on portfolios tracking real market behavior before submitting real trades.

@@ -6,7 +6,7 @@
     </div>
     <div v-if="loading" style="text-align: center; padding: 2rem;"><span class="spinner"></span></div>
     <div v-else-if="validPortfolios.length" class="grid grid-3">
-      <div v-for="p in validPortfolios" :key="p.id" class="card portfolio-card" @click="$router.push(`/portfolios/${p.id}`)">
+      <div v-for="p in validPortfolios" :key="p.id" class="card portfolio-card" :style="p.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.05)' } : {}" @click="$router.push(`/portfolios/${p.id}`)">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <strong>{{ p.name }}</strong>
           <MarketBadge :market="p.market" />
@@ -23,8 +23,13 @@
           <span class="text-muted">Current Cash</span>
           <span>{{ p.base_currency }} {{ formatNum(p.current_cash) }}</span>
         </div>
-        <div v-if="p.is_primary" style="margin-top: 0.5rem;">
-          <span class="badge badge-success">Primary</span>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <div v-if="p.is_primary">
+            <span class="badge badge-success">Primary</span>
+          </div>
+          <div v-if="p.is_simulating">
+            <span class="badge badge-warning">Simulating</span>
+          </div>
         </div>
       </div>
     </div>

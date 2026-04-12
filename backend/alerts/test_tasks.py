@@ -114,3 +114,35 @@ class TestEvaluateAlertsForAssetsTask:
         assert triggered.status == "triggered"
         assert paused.status == "paused"
         assert AlertTrigger.objects.count() == 0
+
+    def test_override_price_skips_alert_on_real_portfolio(self, mock_pub, make_alert, asset, portfolio, db):
+        alert = make_alert("price_above", "150.00")
+        AssetQuote.objects.all().delete()
+        AssetQuote.objects.create(
+            asset=asset,
+            price=Decimal("180.00"),
+            currency="USD",
+            is_override=True,
+            as_of=timezone.now(),
+        )
+        evaluate_alerts_for_assets([str(asset.id)])
+        alert.refresh_from_db()
+        assert alert.status == "active"
+        assert AlertTrigger.objects.count() == 0
+
+    def test_override_price_triggers_alert_on_simulating_portfolio(self, mock_pub, make_alert, asset, portfolio, db):
+        portfolio.is_simulating = True
+        portfolio.save()
+        alert = make_alert("price_above", "150.00")
+        AssetQuote.objects.all().delete()
+        AssetQuote.objects.create(
+            asset=asset,
+            price=Decimal("180.00"),
+            currency="USD",
+            is_override=True,
+            as_of=timezone.now(),
+        )
+        evaluate_alerts_for_assets([str(asset.id)])
+        alert.refresh_from_db()
+        assert alert.status == "triggered"
+        assert AlertTrigger.objects.count() == 1

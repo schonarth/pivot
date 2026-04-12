@@ -6,7 +6,7 @@ from django.utils import timezone
 from .models import Alert, AlertTrigger
 
 
-def evaluate_alert(alert: Alert, current_price: Decimal) -> AlertTrigger | None:
+def evaluate_alert(alert: Alert, current_price: Decimal, is_override: bool = False) -> AlertTrigger | None:
     matched = False
     if alert.condition_type == "price_above" and current_price > alert.threshold:
         matched = True
@@ -45,6 +45,7 @@ def evaluate_alert(alert: Alert, current_price: Decimal) -> AlertTrigger | None:
         outcome=outcome,
         details={"threshold": str(alert.threshold), "condition_type": alert.condition_type, "price_at_trigger": str(current_price)},
         notification_sent=notification_sent,
+        price_was_override=is_override,
         trade=trade,
     )
 

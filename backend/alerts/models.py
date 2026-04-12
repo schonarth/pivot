@@ -54,6 +54,7 @@ class AlertTrigger(models.Model):
     outcome = models.CharField(max_length=35, choices=OUTCOME_CHOICES)
     details = models.JSONField(default=dict)
     notification_sent = models.BooleanField(default=False)
+    price_was_override = models.BooleanField(default=False)
     trade = models.ForeignKey("trading.Trade", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:

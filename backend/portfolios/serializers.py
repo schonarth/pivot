@@ -17,6 +17,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
             "initial_capital",
             "current_cash",
             "is_primary",
+            "is_simulating",
             "created_at",
             "updated_at",
         )

@@ -51,6 +51,7 @@ class AssetQuote(models.Model):
     price = models.DecimalField(max_digits=20, decimal_places=4)
     currency = models.CharField(max_length=3)
     source = models.CharField(max_length=50, default="yahoo_finance")
+    is_override = models.BooleanField(default=False)
     as_of = models.DateTimeField()
     fetched_at = models.DateTimeField(auto_now_add=True)
     is_delayed = models.BooleanField(default=True)

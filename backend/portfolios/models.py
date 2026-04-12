@@ -17,6 +17,7 @@ class Portfolio(models.Model):
     initial_capital = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("0"))
     current_cash = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("0"))
     is_primary = models.BooleanField(default=False)
+    is_simulating = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

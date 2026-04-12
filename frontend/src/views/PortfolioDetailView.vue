@@ -1,12 +1,18 @@
 <template>
-  <div v-if="summary">
+  <div v-if="summary" :style="summary.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.03)', minHeight: '100vh' } : {}">
     <div class="page-header">
-      <h1>{{ summary.name }}</h1>
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <h1>{{ summary.name }}</h1>
+        <span v-if="summary.is_simulating" class="badge badge-warning" title="Alerts will fire on simulated prices">Simulating</span>
+      </div>
       <div style="display: flex; gap: 0.5rem;">
         <button class="btn btn-secondary btn-sm" @click="handleRefresh" :disabled="refreshing">Refresh Prices</button>
         <button class="btn btn-secondary btn-sm" @click="showDeposit = true">Deposit</button>
         <button class="btn btn-secondary btn-sm" @click="showWithdraw = true">Withdraw</button>
         <router-link :to="`/portfolios/${portfolioId}/trades/new`" class="btn btn-sm">New Trade</router-link>
+        <button :class="['btn', 'btn-sm', summary.is_simulating ? 'btn-warning' : 'btn-secondary']" @click="handleToggleSimulating">
+          {{ summary.is_simulating ? 'Disable Simulating' : 'Enable Simulating' }}
+        </button>
       </div>
     </div>
     <div class="grid grid-4">
@@ -200,18 +206,23 @@
             </span>
           </div>
           <div v-if="a.latest_trigger" style="margin-top: 0.4rem; font-size: 0.82rem;">
-            <template v-if="a.latest_trigger.trade">
-              <span class="badge" :class="a.latest_trigger.trade.action === 'BUY' ? 'badge-success' : 'badge-danger'">
-                {{ a.latest_trigger.trade.action }}
-              </span>
-              <span style="margin-left: 0.4rem;">
-                {{ a.latest_trigger.trade.quantity }} shares @ {{ a.latest_trigger.trade.price }}
-                (gross {{ a.latest_trigger.trade.gross_value }}<template v-if="Number(a.latest_trigger.trade.fees) > 0">, fees {{ a.latest_trigger.trade.fees }}</template>)
-              </span>
-            </template>
-            <template v-else>
-              <span class="text-muted">{{ outcomeLabel(a.latest_trigger.outcome) }}</span>
-            </template>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+              <template v-if="a.latest_trigger.trade">
+                <span class="badge" :class="a.latest_trigger.trade.action === 'BUY' ? 'badge-success' : 'badge-danger'">
+                  {{ a.latest_trigger.trade.action }}
+                </span>
+                <span style="margin-left: 0.4rem;">
+                  {{ a.latest_trigger.trade.quantity }} shares @ {{ a.latest_trigger.trade.price }}
+                  (gross {{ a.latest_trigger.trade.gross_value }}<template v-if="Number(a.latest_trigger.trade.fees) > 0">, fees {{ a.latest_trigger.trade.fees }}</template>)
+                </span>
+              </template>
+              <template v-else>
+                <span class="text-muted">{{ outcomeLabel(a.latest_trigger.outcome) }}</span>
+              </template>
+            </div>
+            <div v-if="a.latest_trigger.price_was_override" style="font-size: 0.75rem; color: #ff9800;">
+              Triggered by simulated price
+            </div>
           </div>
         </div>
       </div>
@@ -281,7 +292,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw } from '@/api/portfolios'
+import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw, updatePortfolio } from '@/api/portfolios'
 import { getAlerts, createAlert, deleteAlert, pauseAlert, resumeAlert } from '@/api/alerts'
 import { searchAssets, getAssetPrice } from '@/api/assets'
 import { parseNumericInput, formatCurrency } from '@/utils/numbers'
@@ -457,6 +468,19 @@ async function handleWithdraw() {
   } catch (e: any) {
     console.error(e)
     toast.error('Failed to withdraw')
+  }
+}
+
+async function handleToggleSimulating() {
+  try {
+    if (!portfolioId.value || portfolioId.value === 'undefined') return
+    await updatePortfolio(portfolioId.value, { is_simulating: !summary.value?.is_simulating })
+    await load()
+    const action = summary.value?.is_simulating ? 'enabled' : 'disabled'
+    toast.info(`Simulating ${action}`)
+  } catch (e: any) {
+    console.error(e)
+    toast.error('Failed to update portfolio')
   }
 }
 

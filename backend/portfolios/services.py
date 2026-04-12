@@ -205,6 +205,7 @@ def get_portfolio_summary(portfolio) -> dict:
         "base_currency": portfolio.base_currency,
         "initial_capital": str(portfolio.initial_capital),
         "current_cash": str(portfolio.current_cash),
+        "is_simulating": portfolio.is_simulating,
         "positions_value": str(positions_value),
         "total_equity": str(total_equity),
         "net_external_cash_flows": str(net_flows),

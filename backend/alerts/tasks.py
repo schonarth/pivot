@@ -29,7 +29,9 @@ def evaluate_alerts_for_assets(asset_ids: list[str]):
         with transaction.atomic():
             alerts = Alert.objects.filter(asset_id=asset_id, status="active").select_for_update()
             for alert in alerts:
+                if quote.is_override and not alert.portfolio.is_simulating:
+                    continue
                 try:
-                    evaluate_alert(alert, current_price)
+                    evaluate_alert(alert, current_price, is_override=quote.is_override)
                 except Exception:
                     logger.exception("Failed to evaluate alert %s", alert.id)

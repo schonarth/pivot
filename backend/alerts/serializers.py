@@ -16,7 +16,7 @@ class AlertTriggerSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AlertTrigger
-        fields = ("id", "triggered_price", "triggered_at", "outcome", "notification_sent", "trade")
+        fields = ("id", "triggered_price", "triggered_at", "outcome", "notification_sent", "price_was_override", "trade")
 
 
 class AlertSerializer(serializers.ModelSerializer):
@@ -87,4 +87,4 @@ class AlertCreateSerializer(serializers.Serializer):
 class AlertTriggerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlertTrigger
-        fields = ("id", "alert", "triggered_price", "triggered_at", "outcome", "details", "notification_sent", "trade")
+        fields = ("id", "alert", "triggered_price", "triggered_at", "outcome", "details", "notification_sent", "price_was_override", "trade")
