@@ -16,9 +16,17 @@ if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
     export DJANGO_SETTINGS_MODULE=config.settings
 fi
 
-# Parse arguments to determine symbol source
+# Parse arguments to determine symbol source and options
 MARKET_FILTER=""
 EXPLICIT_SYMBOLS=""
+ENABLE_TRENDS=false
+
+# Check for --trends flag
+if [[ "$*" == *"--trends"* ]]; then
+    ENABLE_TRENDS=true
+    # Remove --trends from arguments
+    set -- "${@/--trends/}"
+fi
 
 if [ $# -eq 0 ]; then
     # No args: discover all seeded assets across all markets
@@ -33,6 +41,10 @@ else
     # Multiple args or single non-market arg: treat as explicit symbols
     EXPLICIT_SYMBOLS="$@"
     echo "Using explicit symbols: $EXPLICIT_SYMBOLS"
+fi
+
+if [ "$ENABLE_TRENDS" = true ]; then
+    echo "Trends enabled: each asset will have a persistent directional bias"
 fi
 
 # Helper: get latest price for a symbol from database
@@ -79,14 +91,20 @@ EOF
     fi
 }
 
-# Helper: apply random ±1% fluctuation
+# Helper: apply realistic price fluctuation (normal distribution, mostly small changes)
 apply_fluctuation() {
     local price=$1
-    # Use awk for random number generation: multiplier between 0.99 and 1.01
-    # RANDOM gives 0-32767, divide by 32768 for 0-1, multiply by 0.02 for 0-0.02, subtract 0.01 for -0.01 to 0.01
-    awk -v p="$price" 'BEGIN {
+    local trend=$2
+    # Use awk for realistic fluctuation: normal distribution centered at 0, stddev ~0.003 (±0.3% typical)
+    # This gives mostly small changes (cents) with occasional larger moves, matching real market behavior
+    awk -v p="$price" -v t="$trend" 'BEGIN {
         srand()
-        multiplier = 1.0 + (rand() * 0.02 - 0.01)
+        # Box-Muller transform for normal distribution
+        u1 = rand()
+        u2 = rand()
+        z = sqrt(-2 * log(u1)) * cos(2 * 3.14159265 * u2)
+        # Scale to realistic fluctuation: stddev 0.3%, plus optional trend
+        multiplier = 1.0 + (z * 0.003) + t
         new_price = p * multiplier
         printf "%.2f\n", new_price
     }'
@@ -106,6 +124,28 @@ calculate_sleep() {
         echo "1"
     fi
 }
+
+# Helper: generate or retrieve trend for a symbol
+get_trend() {
+    local symbol=$1
+    if [ "$ENABLE_TRENDS" = false ]; then
+        echo "0"
+        return
+    fi
+    # Trends are generated once per symbol and cached in associative array
+    # If not cached, generate a new one (-0.0015 to +0.0015 per update, ~±0.15% typical drift)
+    if [ -z "${ASSET_TRENDS[$symbol]:-}" ]; then
+        ASSET_TRENDS[$symbol]=$(awk 'BEGIN {
+            srand('$(date +%s)' + 1234567 + index("'$symbol'", "A"))
+            trend = (rand() - 0.5) * 0.003
+            printf "%.6f\n", trend
+        }')
+    fi
+    echo "${ASSET_TRENDS[$symbol]}"
+}
+
+# Declare associative array for per-asset trends
+declare -A ASSET_TRENDS
 
 # Main loop
 iteration=0
@@ -140,8 +180,11 @@ while true; do
             continue
         fi
 
-        # Apply fluctuation
-        new_price=$(apply_fluctuation "$current_price")
+        # Get per-asset trend (0 if trends disabled)
+        trend=$(get_trend "$symbol")
+
+        # Apply fluctuation with trend
+        new_price=$(apply_fluctuation "$current_price" "$trend")
 
         # Call simulate_price command
         if python manage.py simulate_price "$symbol" "$new_price" > /dev/null 2>&1; then

@@ -41,7 +41,7 @@ Set Petrobras (BR market) to 25.50 BRL:
 
 ## Continuous Market Simulator
 
-Run an infinite loop of realistic price fluctuations (±1% per update) across a set of assets. Each symbol sleeps 1–60 seconds between updates depending on total symbol count (feels realistic even for single assets).
+Run an infinite loop of realistic price fluctuations across a set of assets. Price movements use a normal distribution: most updates are small (±0.3% typical), with occasional larger moves up to ±1–2% (realistic tail behavior). Each symbol sleeps 1–60 seconds between updates depending on total symbol count (feels realistic even for single assets). Optionally enable per-asset directional trends with `--trends`.
 
 ### Usage
 
@@ -81,6 +81,20 @@ Linux/Mac:
 Windows:
 ```batch
 simulate_market.bat PETR4 VALE3 WEGE3
+```
+
+**Enable per-asset directional trends (simulate bull/bear markets):**
+
+Linux/Mac:
+```bash
+./simulate_market.sh --trends               # all assets with trends
+./simulate_market.sh --trends BR            # BR market with trends
+./simulate_market.sh --trends PETR4 VALE3   # specific assets with trends
+```
+
+Windows:
+```batch
+simulate_market.bat --trends PETR4 VALE3
 ```
 
 ## What Happens
@@ -140,6 +154,22 @@ Linux/Mac:
 
 Alerts evaluate immediately; portfolio updates; no loop or sleep.
 
+## Features
+
+**Realistic Price Movements**
+
+Price fluctuations use a normal distribution (Box-Muller), not uniform randomness:
+- Most updates: ±0.3% (cents on $250 stocks) — realistic for calm markets
+- Some updates: ±1–2% — occasional larger swings
+
+**Directional Trends (with `--trends`)**
+
+When enabled, each asset gets a persistent small directional bias (±0.15% per update):
+- AAPL might trend upward across iterations
+- MSFT might trend downward
+- Useful for testing alert behavior in trending markets
+- Random assignment at simulator start, consistent for the session
+
 ## Tips
 
 - **Docker required**: Both tools run inside the container. Ensure `docker compose` is running.
@@ -147,6 +177,7 @@ Alerts evaluate immediately; portfolio updates; no loop or sleep.
 - **No price history**: If an asset has no price in cache or database, it's skipped with a warning.
 - **Real-time viewing**: Open the dashboard in your browser (`http://localhost:3000`) while the simulator runs to see live updates.
 - **Multiple terminals**: Run the continuous simulator in one terminal and use `simulate_price.sh` in another for manual spot-checks.
+- **Trends are deterministic**: The same assets with `--trends` will always get the same directional bias (seeded by symbol name), making test results reproducible.
 
 ## Troubleshooting
 

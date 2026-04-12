@@ -23,13 +23,14 @@ pytest                            # run tests (DJANGO_SETTINGS_MODULE=config.set
 # Single price update (manual)
 ./simulate_price.sh SYMBOL PRICE   # e.g., ./simulate_price.sh AAPL 150.00
 
-# Continuous market simulator (random ±1% fluctuations)
+# Continuous market simulator (realistic price movements)
 ./simulate_market.sh               # discover and simulate all seeded assets
 ./simulate_market.sh BR            # discover and simulate assets in BR market only
 ./simulate_market.sh PETR4 VALE3   # simulate specific symbols repeatedly
+./simulate_market.sh --trends AAPL MSFT  # enable per-asset directional trends
 ```
 
-The simulator runs indefinitely (Ctrl+C to stop), applying random price fluctuations and throttling realistically (1–60 sec per symbol based on total count). Use to test price alerts and portfolio updates when markets are closed.
+The simulator runs indefinitely (Ctrl+C to stop). Price fluctuations use a normal distribution (mostly small changes of ±0.3%, occasional larger moves), matching real market behavior. With `--trends`, each asset gets a persistent directional bias to test bull/bear market behavior. Throttles realistically (1–60 sec per symbol based on total count). Use to test price alerts and portfolio updates when markets are closed.
 
 ### Frontend (from `frontend/` dir)
 
