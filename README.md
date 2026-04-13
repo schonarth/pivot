@@ -125,6 +125,7 @@ Connect AI agents to automate trading, analyze portfolios, and execute strategie
 - Make sure Docker is running
 - Run the start script again
 - Wait 30 seconds for services to initialize
+- If you're accessing from a different machine than you're running the Pivot server, replace `localhost` with the server's IP address.
 
 **"Application won't load"**
 - Check that port 3000 isn't in use by another application
