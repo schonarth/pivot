@@ -21,51 +21,43 @@
       <h2 style="margin-bottom: 1rem;">
         Technical Analysis
       </h2>
-      <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
-        <legend style="display: none;">Indicator Selection</legend>
-        <div style="display: flex; gap: 1.5rem; flex-wrap: nowrap; overflow-x: auto;">
-          <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
-            <input
-              v-model="selectedIndicator"
-              type="radio"
-              value="none"
-            >
-            None
-          </label>
-          <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
-            <input
-              v-model="selectedIndicator"
-              type="radio"
-              value="rsi"
-            >
-            RSI (14)
-          </label>
-          <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
-            <input
-              v-model="selectedIndicator"
-              type="radio"
-              value="macd"
-            >
-            MACD
-          </label>
-          <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
-            <input
-              v-model="selectedIndicator"
-              type="radio"
-              value="mas"
-            >
-            Moving Averages
-          </label>
-          <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
-            <input
-              v-model="selectedIndicator"
-              type="radio"
-              value="bb"
-            >
-            Bollinger Bands
-          </label>
-        </div>
-      </fieldset>
+      <div class="indicator-pills" style="margin-bottom: 1rem;">
+        <button
+          class="indicator-pill"
+          :class="{ active: selectedIndicator === 'none' }"
+          @click="selectedIndicator = 'none'"
+        >
+          None
+        </button>
+        <button
+          class="indicator-pill"
+          :class="{ active: selectedIndicator === 'rsi' }"
+          @click="selectedIndicator = 'rsi'"
+        >
+          RSI (14)
+        </button>
+        <button
+          class="indicator-pill"
+          :class="{ active: selectedIndicator === 'macd' }"
+          @click="selectedIndicator = 'macd'"
+        >
+          MACD
+        </button>
+        <button
+          class="indicator-pill"
+          :class="{ active: selectedIndicator === 'mas' }"
+          @click="selectedIndicator = 'mas'"
+        >
+          Moving Averages
+        </button>
+        <button
+          class="indicator-pill"
+          :class="{ active: selectedIndicator === 'bb' }"
+          @click="selectedIndicator = 'bb'"
+        >
+          Bollinger Bands
+        </button>
+      </div>
       <div
         id="candlestick-chart"
         style="height: 400px;"
@@ -434,6 +426,35 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.indicator-pills {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.indicator-pill {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.indicator-pill:hover {
+  border-color: var(--accent);
+}
+
+.indicator-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 :deep(.apexcharts-menu) {
   background-color: var(--surface-secondary, #2a2a2a);
   border-color: var(--border-color, #444);
