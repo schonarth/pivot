@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from exchange_calendars import get_calendar
 
-from .models import Asset, AssetQuote, MarketConfig
+from .models import Asset, AssetQuote, MarketConfig, OHLCV
 
 
 MARKET_CONFIGS = {
@@ -93,3 +93,43 @@ def get_or_create_asset(*, display_symbol: str, market: str, **kwargs) -> Asset:
         defaults=defaults,
     )
     return asset
+
+
+def ingest_ohlcv(asset_id: str, ohlcv_list: list[dict], source: str = "yahoo_finance") -> int:
+    """Ingest OHLCV records, handling duplicates gracefully.
+
+    Args:
+        asset_id: Asset UUID
+        ohlcv_list: List of OHLCV dicts with keys: date, open, high, low, close, volume
+        source: Provider name (default: "yahoo_finance")
+
+    Returns:
+        Number of records ingested (created + updated).
+    """
+    try:
+        asset = Asset.objects.get(id=asset_id)
+    except Asset.DoesNotExist:
+        return 0
+
+    if not ohlcv_list:
+        return 0
+
+    count = 0
+    with transaction.atomic():
+        for ohlcv in ohlcv_list:
+            obj, created = OHLCV.objects.update_or_create(
+                asset=asset,
+                date=ohlcv["date"],
+                defaults={
+                    "open": ohlcv["open"],
+                    "high": ohlcv["high"],
+                    "low": ohlcv["low"],
+                    "close": ohlcv["close"],
+                    "volume": ohlcv["volume"],
+                    "source": source,
+                },
+            )
+            if created:
+                count += 1
+
+    return count

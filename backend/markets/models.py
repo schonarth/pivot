@@ -66,3 +66,57 @@ class AssetQuote(models.Model):
 
     def __str__(self):
         return f"{self.asset.display_symbol} @ {self.price} ({self.as_of})"
+
+
+class OHLCV(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="ohlcv_data")
+    date = models.DateField(db_index=True)
+    open = models.DecimalField(max_digits=20, decimal_places=4)
+    high = models.DecimalField(max_digits=20, decimal_places=4)
+    low = models.DecimalField(max_digits=20, decimal_places=4)
+    close = models.DecimalField(max_digits=20, decimal_places=4)
+    volume = models.BigIntegerField()
+    source = models.CharField(max_length=50, default="yahoo_finance")
+    fetched_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "ohlcv"
+        unique_together = [("asset", "date")]
+        indexes = [
+            models.Index(fields=["asset", "-date"]),
+        ]
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"{self.asset.display_symbol} {self.date} {self.close}"
+
+
+class TechnicalIndicators(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="technical_indicators")
+    date = models.DateField(db_index=True)
+    rsi_14 = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    macd = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    macd_signal = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    macd_histogram = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    ma_20 = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    ma_50 = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    ma_200 = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    bb_upper = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    bb_middle = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    bb_lower = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    volume_20d_avg = models.BigIntegerField(null=True, blank=True)
+    calculated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "technical_indicators"
+        unique_together = [("asset", "date")]
+        indexes = [
+            models.Index(fields=["asset", "-date"]),
+        ]
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"{self.asset.display_symbol} {self.date} indicators"
