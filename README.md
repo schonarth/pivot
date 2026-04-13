@@ -1,4 +1,4 @@
-# Pivot <img src="./frontend/public/pivot-logo.png" alt="Pivot Logo" style="float: left; width: 20px; margin: 0 20px 20px 0;" />
+# <img src="./frontend/public/pivot-logo.png" alt="Pivot Logo" style="float: left; width: 20px; margin: 0 20px 20px 0;" /> Pivot
 
 **A paper trading simulator** for learning investment strategies, testing alerts, and experimenting with portfolio management across global markets without risking real capital.
 
