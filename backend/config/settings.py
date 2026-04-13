@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "alerts",
     "timeline",
     "realtime",
+    "strategies",
     "mcp",
 ]
 
