@@ -1,0 +1,26 @@
+- generic [ref=e3]:
+  - navigation [ref=e17]:
+    - link "Pivot Pivot" [ref=e19] [cursor=pointer]:
+      - /url: /
+      - img "Pivot" [ref=e20]
+      - generic [ref=e21]: Pivot
+    - generic [ref=e22]:
+      - link "Dashboard" [ref=e23] [cursor=pointer]:
+        - /url: /
+      - link "Portfolios" [ref=e24] [cursor=pointer]:
+        - /url: /portfolios
+      - link "Assets" [ref=e25] [cursor=pointer]:
+        - /url: /assets
+      - link "Settings" [ref=e26] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e27]:
+      - generic [ref=e28]: testuser
+      - button "Logout" [ref=e29] [cursor=pointer]
+  - main [ref=e4]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "Dashboard" [level=1] [ref=e32]
+        - link "New Portfolio" [ref=e33] [cursor=pointer]:
+          - /url: /portfolios/new
+      - heading "Portfolios" [level=2] [ref=e34]
+      - paragraph [ref=e36]: No portfolios yet. Create one to get started!
