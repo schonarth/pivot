@@ -104,7 +104,7 @@ The simulator updates prices in real-time—watch your portfolio react on the da
 
 Connect AI agents to automate trading, analyze portfolios, and execute strategies.
 
-**To set up agent access:** Go to Settings, get your UUID, and generate an one-time password (OTP). With these, your agent will be able to manage trades, alerts, and portfolios.
+**To set up agent access:** Go to Settings, get your UUID, and generate a one-time password (OTP). With these, your agent will be able to manage trades, alerts, and portfolios.
 
 ---
 
