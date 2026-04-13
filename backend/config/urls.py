@@ -17,5 +17,6 @@ urlpatterns = [
     path("api/", include("alerts.urls")),
     path("api/", include("timeline.urls")),
     path("api/", include("realtime.urls")),
+    path("api/", include("strategies.urls")),
     path("api/mcp/", include("mcp.urls")),
 ]
