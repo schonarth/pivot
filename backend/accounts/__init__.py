@@ -1,0 +1,1 @@
+# Empty __init__ files for all Django apps
