@@ -314,7 +314,7 @@ class BacktestEngine:
         if not trades:
             return Decimal("0")
 
-        avg_cost = Decimal(str(position.avg_cost))
+        avg_cost = Decimal(str(position.average_cost))
         quantity = Decimal(str(position.quantity))
         pnl = Decimal("0")
 

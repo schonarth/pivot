@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from celery import shared_task
 from django.utils import timezone
 from django.db import transaction
@@ -8,6 +9,17 @@ from .engine import BacktestEngine
 from .executor import StrategyExecutor
 
 logger = logging.getLogger("paper_trader.strategies")
+
+
+def serialize_result(obj):
+    """Convert Decimal objects to float for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: serialize_result(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_result(item) for item in obj]
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    return obj
 
 
 @shared_task
@@ -28,7 +40,7 @@ def run_backtest_async(scenario_id):
         result = engine.run_backtest(scenario.date_from, scenario.date_to)
 
         with transaction.atomic():
-            scenario.result = result
+            scenario.result = serialize_result(result)
             scenario.status = "completed"
             scenario.completed_at = timezone.now()
             scenario.error_message = None

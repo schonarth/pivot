@@ -2,42 +2,90 @@
   <div>
     <div class="page-header">
       <h1>Dashboard</h1>
-      <router-link to="/portfolios/new" class="btn">New Portfolio</router-link>
+      <router-link
+        to="/portfolios/new"
+        class="btn"
+      >
+        New Portfolio
+      </router-link>
     </div>
 
-    <div v-if="loading" style="text-align: center; padding: 2rem;"><span class="spinner"></span></div>
+    <div
+      v-if="loading"
+      style="text-align: center; padding: 2rem;"
+    >
+      <span class="spinner" />
+    </div>
 
     <template v-else>
-      <div v-if="summaries.length" class="grid grid-4" style="margin-bottom: 1.5rem;">
+      <div
+        v-if="summaries.length"
+        class="grid grid-4"
+        style="margin-bottom: 1.5rem;"
+      >
         <div class="card">
-          <div class="text-muted" style="font-size: 0.75rem;">Total Equity</div>
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Total Equity
+          </div>
           <div style="font-size: 1.25rem; font-weight: 600;">
             {{ totalCurrency }} {{ formatNum(totalEquity) }}
           </div>
         </div>
         <div class="card">
-          <div class="text-muted" style="font-size: 0.75rem;">Total Cash</div>
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Total Cash
+          </div>
           <div style="font-size: 1.25rem; font-weight: 600;">
             {{ totalCurrency }} {{ formatNum(totalCash) }}
           </div>
         </div>
         <div class="card">
-          <div class="text-muted" style="font-size: 0.75rem;">Invested</div>
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Invested
+          </div>
           <div style="font-size: 1.25rem; font-weight: 600;">
             {{ totalCurrency }} {{ formatNum(totalInvested) }}
           </div>
         </div>
         <div class="card">
-          <div class="text-muted" style="font-size: 0.75rem;">Trading P&L</div>
-          <div :class="Number(totalPnl) >= 0 ? 'text-success' : 'text-danger'" style="font-size: 1.25rem; font-weight: 600;">
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Trading P&L
+          </div>
+          <div
+            :class="Number(totalPnl) >= 0 ? 'text-success' : 'text-danger'"
+            style="font-size: 1.25rem; font-weight: 600;"
+          >
             {{ totalCurrency }} {{ formatNum(totalPnl) }}
           </div>
         </div>
       </div>
 
-      <h2 style="margin-bottom: 1rem;">Portfolios</h2>
-      <div v-if="validPortfolios.length" class="grid grid-3">
-        <div v-for="p in validPortfolios" :key="p.id" class="card portfolio-card" :style="p.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.05)' } : {}" @click="$router.push(`/portfolios/${p.id}`)">
+      <h2 style="margin-bottom: 1rem;">
+        Portfolios
+      </h2>
+      <div
+        v-if="validPortfolios.length"
+        class="grid grid-3"
+      >
+        <div
+          v-for="p in validPortfolios"
+          :key="p.id"
+          class="card portfolio-card"
+          :style="p.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.05)' } : {}"
+          @click="$router.push(`/portfolios/${p.id}`)"
+        >
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
             <strong>{{ p.name }}</strong>
             <MarketBadge :market="p.market" />
@@ -60,15 +108,33 @@
           </div>
         </div>
       </div>
-      <div v-else class="card">
-        <p class="text-muted">No portfolios yet. Create one to get started!</p>
+      <div
+        v-else
+        class="card"
+      >
+        <p class="text-muted">
+          No portfolios yet. Create one to get started!
+        </p>
       </div>
 
-      <div v-if="summaries.length" style="margin-top: 2rem;">
-        <h2 style="margin-bottom: 1rem;">Market Status</h2>
+      <div
+        v-if="summaries.length"
+        style="margin-top: 2rem;"
+      >
+        <h2 style="margin-bottom: 1rem;">
+          Market Status
+        </h2>
         <div class="grid grid-4">
-          <div v-for="(status, market) in marketStatus" :key="market" class="card">
-            <span class="badge" :class="status.open ? 'badge-success' : 'badge-warning'" style="margin-right: 0.5rem;">
+          <div
+            v-for="(status, market) in marketStatus"
+            :key="market"
+            class="card"
+          >
+            <span
+              class="badge"
+              :class="status.open ? 'badge-success' : 'badge-warning'"
+              style="margin-right: 0.5rem;"
+            >
               {{ status.open ? 'Open' : 'Closed' }}
             </span>
             <strong>{{ market }}</strong>

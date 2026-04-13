@@ -2,54 +2,128 @@
   <div>
     <div class="page-header">
       <h1>New Trade</h1>
-      <router-link :to="`/portfolios/${portfolioId}`" class="btn btn-secondary">Back to Portfolio</router-link>
+      <router-link
+        :to="`/portfolios/${portfolioId}`"
+        class="btn btn-secondary"
+      >
+        Back to Portfolio
+      </router-link>
     </div>
-    <div class="card" style="max-width: 600px;">
-      <div v-if="error" class="alert-danger">{{ error }}</div>
+    <div
+      class="card"
+      style="max-width: 600px;"
+    >
+      <div
+        v-if="error"
+        class="alert-danger"
+      >
+        {{ error }}
+      </div>
       <div class="form-group">
         <label>Action</label>
         <select v-model="action">
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
+          <option value="BUY">
+            BUY
+          </option>
+          <option value="SELL">
+            SELL
+          </option>
         </select>
       </div>
       <div class="form-group">
         <label>Search Asset</label>
-        <input v-model="searchQuery" type="text" placeholder="Type to search assets..." @input="doSearch" />
-        <div v-if="searchResults.length" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
-          <div v-for="a in searchResults" :key="a.id" style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border);" @click="selectAsset(a)">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Type to search assets..."
+          @input="doSearch"
+        >
+        <div
+          v-if="searchResults.length"
+          style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;"
+        >
+          <div
+            v-for="a in searchResults"
+            :key="a.id"
+            style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border);"
+            @click="selectAsset(a)"
+          >
             <strong>{{ a.display_symbol }}</strong> - {{ a.name }}
-            <MarketBadge :market="a.market" style="margin-left: 0.5rem;" />
+            <MarketBadge
+              :market="a.market"
+              style="margin-left: 0.5rem;"
+            />
           </div>
         </div>
       </div>
-      <div v-if="selectedAsset" class="card" style="margin-bottom: 1rem;">
+      <div
+        v-if="selectedAsset"
+        class="card"
+        style="margin-bottom: 1rem;"
+      >
         <div style="display: flex; justify-content: space-between;">
           <strong>{{ selectedAsset.display_symbol }}</strong>
           <span>{{ selectedAsset.name }}</span>
         </div>
-        <div v-if="currentPrice" style="margin-top: 0.5rem;">
+        <div
+          v-if="currentPrice"
+          style="margin-top: 0.5rem;"
+        >
           <span>Current Price: </span>
           <strong>{{ currentPrice.currency }} {{ Number(currentPrice.price).toFixed(4) }}</strong>
-          <span v-if="currentPrice.market_open" class="badge badge-success" style="margin-left: 0.5rem;">Market Open</span>
-          <span v-else class="badge badge-warning" style="margin-left: 0.5rem;">Market Closed</span>
+          <span
+            v-if="currentPrice.market_open"
+            class="badge badge-success"
+            style="margin-left: 0.5rem;"
+          >Market Open</span>
+          <span
+            v-else
+            class="badge badge-warning"
+            style="margin-left: 0.5rem;"
+          >Market Closed</span>
         </div>
       </div>
       <div class="form-group">
         <label>Quantity</label>
-        <input v-model.number="quantity" type="number" min="1" step="1" />
+        <input
+          v-model.number="quantity"
+          type="number"
+          min="1"
+          step="1"
+        >
       </div>
       <div class="form-group">
         <label>Rationale (optional)</label>
-        <input v-model="rationale" type="text" placeholder="Manual operation" />
+        <input
+          v-model="rationale"
+          type="text"
+          placeholder="Manual operation"
+        >
       </div>
-      <div v-if="preview" class="card" style="margin-bottom: 1rem;">
-        <div style="display: flex; justify-content: space-between;"><span>Gross Value:</span><span>{{ preview.gross }}</span></div>
-        <div style="display: flex; justify-content: space-between;"><span>Fees:</span><span>{{ preview.fees }}</span></div>
-        <div style="display: flex; justify-content: space-between;"><span>Net Cash Impact:</span><span>{{ preview.net }}</span></div>
+      <div
+        v-if="preview"
+        class="card"
+        style="margin-bottom: 1rem;"
+      >
+        <div style="display: flex; justify-content: space-between;">
+          <span>Gross Value:</span><span>{{ preview.gross }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Fees:</span><span>{{ preview.fees }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Net Cash Impact:</span><span>{{ preview.net }}</span>
+        </div>
       </div>
-      <button class="btn" :disabled="!selectedAsset || !quantity || loading" @click="handleSubmit">
-        <span v-if="loading" class="spinner"></span>
+      <button
+        class="btn"
+        :disabled="!selectedAsset || !quantity || loading"
+        @click="handleSubmit"
+      >
+        <span
+          v-if="loading"
+          class="spinner"
+        />
         {{ action }} Trade
       </button>
     </div>

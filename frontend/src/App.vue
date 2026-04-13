@@ -1,21 +1,44 @@
 <template>
   <div id="app-layout">
-    <nav v-if="auth.isAuthenticated" class="navbar">
+    <nav
+      v-if="auth.isAuthenticated"
+      class="navbar"
+    >
       <div class="nav-brand">
-        <router-link to="/" class="brand-link">
-          <img :src="pivotLogo" alt="Pivot" class="brand-logo" />
+        <router-link
+          to="/"
+          class="brand-link"
+        >
+          <img
+            :src="pivotLogo"
+            alt="Pivot"
+            class="brand-logo"
+          >
           <span>Pivot</span>
         </router-link>
       </div>
       <div class="nav-links">
-        <router-link to="/">Dashboard</router-link>
-        <router-link to="/portfolios">Portfolios</router-link>
-        <router-link to="/assets">Assets</router-link>
-        <router-link to="/settings">Settings</router-link>
+        <router-link to="/">
+          Dashboard
+        </router-link>
+        <router-link to="/portfolios">
+          Portfolios
+        </router-link>
+        <router-link to="/assets">
+          Assets
+        </router-link>
+        <router-link to="/settings">
+          Settings
+        </router-link>
       </div>
       <div class="nav-user">
         <span v-if="auth.user">{{ auth.user.username }}</span>
-        <button class="btn btn-secondary btn-sm" @click="handleLogout">Logout</button>
+        <button
+          class="btn btn-secondary btn-sm"
+          @click="handleLogout"
+        >
+          Logout
+        </button>
       </div>
     </nav>
     <main class="main-content">

@@ -23,9 +23,13 @@ class StrategyInstanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return StrategyInstance.objects.filter(
+        queryset = StrategyInstance.objects.filter(
             portfolio__user=self.request.user
         )
+        portfolio_id = self.request.query_params.get('portfolio_id')
+        if portfolio_id:
+            queryset = queryset.filter(portfolio_id=portfolio_id)
+        return queryset
 
     def perform_create(self, serializer):
         portfolio_id = self.request.data.get("portfolio_id")
@@ -86,10 +90,8 @@ class StrategyInstanceViewSet(viewsets.ModelViewSet):
         strategy.backtest_approved_at = timezone.now()
         strategy.save()
 
-        return Response(
-            {"status": "Strategy enabled after backtest approval"},
-            status=status.HTTP_200_OK
-        )
+        serializer = StrategyInstanceSerializer(strategy)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
     def disable(self, request, pk=None):
@@ -98,10 +100,8 @@ class StrategyInstanceViewSet(viewsets.ModelViewSet):
         strategy.enabled = False
         strategy.save()
 
-        return Response(
-            {"status": "Strategy disabled"},
-            status=status.HTTP_200_OK
-        )
+        serializer = StrategyInstanceSerializer(strategy)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class BacktestScenarioViewSet(viewsets.ReadOnlyModelViewSet):

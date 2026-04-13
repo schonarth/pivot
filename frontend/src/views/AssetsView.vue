@@ -3,12 +3,26 @@
     <div class="page-header">
       <h1>Assets</h1>
     </div>
-    <div class="card" style="margin-bottom: 1rem; flex-shrink: 0;">
+    <div
+      class="card"
+      style="margin-bottom: 1rem; flex-shrink: 0;"
+    >
       <div style="display: flex; gap: 1rem;">
-        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-          <input v-model="search" type="text" placeholder="Search assets..." @input="debouncedSearch" />
+        <div
+          class="form-group"
+          style="flex: 1; margin-bottom: 0;"
+        >
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Search assets..."
+            @input="debouncedSearch"
+          >
         </div>
-        <div class="market-pills" style="margin-bottom: 0;">
+        <div
+          class="market-pills"
+          style="margin-bottom: 0;"
+        >
           <button
             v-for="m in markets"
             :key="m.code"
@@ -16,16 +30,27 @@
             :class="{ active: marketFilter === m.code }"
             :title="m.label"
             @click="toggleMarket(m.code)"
-          >{{ m.flag }}</button>
+          >
+            {{ m.flag }}
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-if="loading" style="text-align: center; padding: 2rem; flex-shrink: 0;">
-      <span class="spinner"></span>
+    <div
+      v-if="loading"
+      style="text-align: center; padding: 2rem; flex-shrink: 0;"
+    >
+      <span class="spinner" />
     </div>
-    <div v-else-if="!assets.length" class="card" style="flex-shrink: 0;">
-      <p class="text-muted">No assets found. Try a different search.</p>
+    <div
+      v-else-if="!assets.length"
+      class="card"
+      style="flex-shrink: 0;"
+    >
+      <p class="text-muted">
+        No assets found. Try a different search.
+      </p>
     </div>
     <div
       v-else
@@ -36,23 +61,38 @@
     >
       <table style="table-layout: fixed; width: 100%; border-collapse: collapse;">
         <colgroup>
-          <col v-for="(pct, i) in colPcts" :key="i" :style="{ width: pct }" />
+          <col
+            v-for="(pct, i) in colPcts"
+            :key="i"
+            :style="{ width: pct }"
+          >
         </colgroup>
         <thead>
           <tr>
-            <th v-for="col in columns" :key="col.key" class="col-header" @click="setSort(col.key)">
+            <th
+              v-for="col in columns"
+              :key="col.key"
+              class="col-header"
+              @click="setSort(col.key)"
+            >
               <span>{{ col.label }}</span>
               <span class="sort-icon">{{ sortIcon(col.key) }}</span>
               <div
                 class="resize-handle"
                 @mousedown.stop="startResize($event, col.index)"
-              ></div>
+              />
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="paddingTop > 0" :style="{ height: paddingTop + 'px' }">
-            <td colspan="5" style="padding: 0; border: none;"></td>
+          <tr
+            v-if="paddingTop > 0"
+            :style="{ height: paddingTop + 'px' }"
+          >
+            <td
+              colspan="5"
+              style="padding: 0; border: none;"
+            />
           </tr>
           <tr
             v-for="asset in visibleAssets"
@@ -60,14 +100,30 @@
             :style="{ height: ROW_HEIGHT + 'px', cursor: 'pointer' }"
             @click="$router.push(`/assets/${asset.id}`)"
           >
-            <td class="cell"><strong>{{ asset.display_symbol }}</strong></td>
-            <td class="cell">{{ asset.name }}</td>
-            <td class="cell"><MarketBadge :market="asset.market" /></td>
-            <td class="cell">{{ asset.currency }}</td>
-            <td class="cell">{{ asset.sector || '-' }}</td>
+            <td class="cell">
+              <strong>{{ asset.display_symbol }}</strong>
+            </td>
+            <td class="cell">
+              {{ asset.name }}
+            </td>
+            <td class="cell">
+              <MarketBadge :market="asset.market" />
+            </td>
+            <td class="cell">
+              {{ asset.currency }}
+            </td>
+            <td class="cell">
+              {{ asset.sector || '-' }}
+            </td>
           </tr>
-          <tr v-if="paddingBottom > 0" :style="{ height: paddingBottom + 'px' }">
-            <td colspan="5" style="padding: 0; border: none;"></td>
+          <tr
+            v-if="paddingBottom > 0"
+            :style="{ height: paddingBottom + 'px' }"
+          >
+            <td
+              colspan="5"
+              style="padding: 0; border: none;"
+            />
           </tr>
         </tbody>
       </table>

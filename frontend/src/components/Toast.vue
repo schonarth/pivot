@@ -1,7 +1,18 @@
 <template>
-  <div class="toast" :class="`toast-${type}`">
-    <div class="toast-content">{{ message }}</div>
-    <button class="toast-close" @click="emit('close')" aria-label="Close notification">×</button>
+  <div
+    class="toast"
+    :class="`toast-${type}`"
+  >
+    <div class="toast-content">
+      {{ message }}
+    </div>
+    <button
+      class="toast-close"
+      aria-label="Close notification"
+      @click="emit('close')"
+    >
+      ×
+    </button>
   </div>
 </template>
 

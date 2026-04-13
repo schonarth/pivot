@@ -15,10 +15,12 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "apexcharts": "^4.0.0",
     "axios": "^1.7.0",
     "pinia": "^2.2.0",
     "vue": "^3.5.0",
-    "vue-router": "^4.4.0"
+    "vue-router": "^4.4.0",
+    "vue3-apexcharts": "^1.11.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.0",

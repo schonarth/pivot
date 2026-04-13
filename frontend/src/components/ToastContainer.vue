@@ -2,8 +2,8 @@
   <div class="toast-container">
     <Toast
       v-for="toast in toastStore.toasts"
-      :key="toast.id"
       :id="toast.id"
+      :key="toast.id"
       :type="toast.type"
       :message="toast.message"
       :duration="toast.duration"

@@ -27,3 +27,13 @@ export async function getMarketStatus(): Promise<MarketStatus> {
   const { data } = await api.get('/markets/status')
   return data
 }
+
+export async function getAssetOHLCV(id: string, days: number = 90): Promise<any[]> {
+  const { data } = await api.get(`/assets/${id}/ohlcv/`, { params: { days } })
+  return data
+}
+
+export async function getAssetIndicators(id: string, days: number = 90): Promise<any[]> {
+  const { data } = await api.get(`/assets/${id}/indicators/`, { params: { days } })
+  return data
+}

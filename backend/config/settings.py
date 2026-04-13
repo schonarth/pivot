@@ -4,10 +4,13 @@ from pathlib import Path
 from datetime import timedelta
 
 from decouple import Csv, config
+from cryptography.fernet import Fernet
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="dev-secret-key-change-in-production")
+
+AI_ENCRYPTION_KEY = config("AI_ENCRYPTION_KEY", default=Fernet.generate_key().decode())
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
@@ -36,6 +39,7 @@ INSTALLED_APPS = [
     "timeline",
     "realtime",
     "strategies",
+    "ai",
     "mcp",
 ]
 
