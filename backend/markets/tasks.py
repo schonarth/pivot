@@ -128,3 +128,31 @@ def fetch_daily_ohlcv():
                 ingest_ohlcv(str(asset.id), ohlcv_list)
         except Exception:
             logger.exception(f"Failed to fetch daily OHLCV for {asset.display_symbol}")
+
+
+@shared_task
+def fetch_asset_news():
+    """Fetch and store news for all tracked assets."""
+    from .models import Asset
+    from .services import NewsService
+
+    tracked_assets = Asset.objects.filter(
+        id__in=set(
+            list(
+                Asset.objects.filter(
+                    positions__isnull=False
+                ).values_list("id", flat=True)
+            )
+            + list(
+                Asset.objects.filter(
+                    alerts__status="active"
+                ).values_list("id", flat=True)
+            )
+        )
+    )
+
+    for asset in tracked_assets:
+        try:
+            NewsService.fetch_and_store_news(asset)
+        except Exception:
+            logger.exception(f"Failed to fetch news for {asset.display_symbol}")

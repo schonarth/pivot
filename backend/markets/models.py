@@ -120,3 +120,29 @@ class TechnicalIndicators(models.Model):
 
     def __str__(self):
         return f"{self.asset.display_symbol} {self.date} indicators"
+
+
+class NewsItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="news_items")
+    headline = models.CharField(max_length=500)
+    summary = models.TextField(null=True, blank=True)
+    url = models.URLField(max_length=500)
+    source = models.CharField(max_length=100)
+    sentiment_score = models.DecimalField(
+        max_digits=3, decimal_places=2, null=True, blank=True,
+        help_text="Sentiment score from -1.0 (negative) to +1.0 (positive)"
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+    fetched_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "news_items"
+        indexes = [
+            models.Index(fields=["asset", "-published_at"]),
+            models.Index(fields=["asset", "-fetched_at"]),
+        ]
+        ordering = ["-published_at"]
+
+    def __str__(self):
+        return f"{self.asset.display_symbol} - {self.headline[:50]}"

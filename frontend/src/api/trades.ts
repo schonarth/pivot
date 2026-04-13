@@ -1,12 +1,20 @@
 import api from './client'
 import type { Trade } from '@/types'
 
-export async function createTrade(portfolioId: string, assetId: string, action: 'BUY' | 'SELL', quantity: number, rationale?: string) {
+export async function createTrade(
+  portfolioId: string,
+  assetId: string,
+  action: 'BUY' | 'SELL',
+  quantity: number,
+  rationale?: string,
+  bypassGuardrails: boolean = false,
+) {
   const { data } = await api.post(`/portfolios/${portfolioId}/trades/`, {
     asset_id: assetId,
     action,
     quantity,
     rationale: rationale || 'Manual operation',
+    bypass_guardrails: bypassGuardrails,
   })
   return data
 }

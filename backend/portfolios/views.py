@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import CashTransaction, Portfolio, PortfolioSnapshot
+from .models import CashTransaction, Portfolio, PortfolioSnapshot, PortfolioGuardrails
 from .serializers import (
     CashTransactionSerializer,
     CreatePortfolioSerializer,
@@ -14,6 +14,7 @@ from .serializers import (
     PortfolioSerializer,
     PortfolioSnapshotSerializer,
     PortfolioSummarySerializer,
+    PortfolioGuardrailsSerializer,
 )
 from .services import calculate_twr, create_portfolio, deposit, get_portfolio_summary, withdraw
 
@@ -130,6 +131,20 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         from timeline.serializers import TimelineEventSerializer
 
         return Response(TimelineEventSerializer(events, many=True).data)
+
+    @action(detail=True, methods=["get", "put", "patch"])
+    def guardrails(self, request, pk=None):
+        portfolio = self.get_object()
+        guardrails = get_object_or_404(PortfolioGuardrails, portfolio=portfolio)
+
+        if request.method == "GET":
+            serializer = PortfolioGuardrailsSerializer(guardrails)
+            return Response(serializer.data)
+
+        serializer = PortfolioGuardrailsSerializer(guardrails, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class CashTransactionViewSet(viewsets.ReadOnlyModelViewSet):

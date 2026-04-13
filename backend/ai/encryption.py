@@ -23,4 +23,6 @@ class KeyEncryption:
     def decrypt(ciphertext: bytes) -> str:
         """Decrypt an API key."""
         cipher = KeyEncryption._get_cipher()
+        if isinstance(ciphertext, memoryview):
+            ciphertext = ciphertext.tobytes()
         return cipher.decrypt(ciphertext).decode()

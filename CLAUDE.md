@@ -28,6 +28,8 @@ npm run build       # typecheck + production build (same as Docker build runs)
 
 **ESLint 9 note:** `npm run lint` uses `--ext` flag incompatible with ESLint 9. Lint config may need flat config migration.
 
+**Testing the frontend:** don't use the Preview pane, as Docker prevents access. Use Playwright at `http://localhost:3000/`
+
 ### Docker
 
 ```bash

@@ -21,7 +21,7 @@ class AISettingsViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
-    def settings(self, request):
+    def get_settings(self, request):
         """Get current AI settings."""
         ai_auth, created = AIAuth.objects.get_or_create(user=request.user)
         serializer = AIAuthSettingsSerializer(ai_auth)
@@ -29,7 +29,7 @@ class AISettingsViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["post"])
     def update_settings(self, request):
-        """Update AI settings (budget, provider, threshold)."""
+        """Update AI settings (budget, provider, threshold, task models)."""
         ai_auth, created = AIAuth.objects.get_or_create(user=request.user)
 
         if "monthly_budget_usd" in request.data:
@@ -40,6 +40,9 @@ class AISettingsViewSet(viewsets.ViewSet):
 
         if "provider_name" in request.data:
             ai_auth.provider_name = request.data["provider_name"]
+
+        if "task_models" in request.data:
+            ai_auth.task_models = request.data["task_models"]
 
         ai_auth.save()
         serializer = AIAuthSettingsSerializer(ai_auth)
@@ -72,4 +75,36 @@ class AISettingsViewSet(viewsets.ViewSet):
         return Response(
             {"status": "API key removed"},
             status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=["post"])
+    def test_connection(self, request):
+        provider = request.data.get("provider_name")
+        api_key = request.data.get("api_key")
+
+        if not provider:
+            ai_auth = AIAuth.objects.filter(user=request.user).first()
+            provider = ai_auth.provider_name if ai_auth else "openai"
+
+        if not api_key:
+            service = AIService(request.user)
+            api_key = service.get_api_key()
+
+        if not api_key:
+            return Response(
+                {"error": "api_key is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = AIService.test_connection(provider=provider, api_key=api_key)
+        except Exception as exc:
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"status": "ok", **result},
+            status=status.HTTP_200_OK,
         )

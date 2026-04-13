@@ -1,4 +1,5 @@
 from decimal import Decimal, ROUND_HALF_EVEN
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -9,6 +10,49 @@ from portfolios.services import _create_snapshot, get_fee_rate
 
 
 MINIMUM_ORDER_VALUE = Decimal("10")
+
+
+def check_guardrails(portfolio, asset, action: str, quantity: int, price: Decimal) -> dict:
+    """Check if trade violates any guardrails. Returns dict with violations.
+
+    Returns:
+        {"valid": bool, "violations": [list of violation messages]}
+    """
+    try:
+        guardrails = portfolio.guardrails
+    except Exception:
+        return {"valid": True, "violations": []}
+
+    if not guardrails.enabled:
+        return {"valid": True, "violations": []}
+
+    violations = []
+    gross_value = price * Decimal(quantity)
+
+    if gross_value < guardrails.min_order_value:
+        violations.append(f"Order value {gross_value} below minimum {guardrails.min_order_value}")
+
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_trades = Trade.objects.filter(
+        portfolio=portfolio,
+        executed_at__gte=today_start
+    ).count()
+    if today_trades >= guardrails.max_trades_per_day:
+        violations.append(f"Max {guardrails.max_trades_per_day} trades per day exceeded ({today_trades} today)")
+
+    from portfolios.services import get_portfolio_summary
+    summary = get_portfolio_summary(portfolio)
+    total_equity = Decimal(summary.get("total_equity", "0"))
+
+    if total_equity > 0:
+        max_position_value = (total_equity * guardrails.max_position_size_pct) / Decimal("100")
+        if gross_value > max_position_value:
+            violations.append(f"Order size {gross_value} exceeds max position {max_position_value}")
+
+    return {
+        "valid": len(violations) == 0,
+        "violations": violations,
+    }
 
 
 def execute_buy(*, portfolio, asset, quantity: int, rationale: str = "Manual operation", executed_by: str = "manual") -> dict:

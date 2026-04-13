@@ -18,6 +18,96 @@
       class="card"
       style="margin-bottom: 1.5rem;"
     >
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <h2 style="margin-bottom: 0.25rem;">
+            AI Insight
+          </h2>
+          <div
+            v-if="insight"
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            {{ insight.model_used }} · {{ formatDate(insight.generated_at) }}
+          </div>
+        </div>
+        <button
+          class="btn btn-secondary btn-sm"
+          :disabled="loadingInsight"
+          @click="loadInsight"
+        >
+          {{ loadingInsight ? 'Generating...' : (insight ? 'Refresh Insight' : 'Generate Insight') }}
+        </button>
+      </div>
+
+      <div
+        v-if="insightError"
+        class="text-muted"
+      >
+        {{ insightError }}
+      </div>
+
+      <div v-else-if="insight">
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+          <span class="badge" :class="recommendationBadgeClass(insight.recommendation)">
+            {{ insight.recommendation }}
+          </span>
+          <span class="badge badge-secondary">
+            Confidence {{ insight.confidence }}%
+          </span>
+          <span
+            v-if="insight.price_target !== null"
+            class="badge badge-secondary"
+          >
+            Target {{ insight.price_target }}
+          </span>
+        </div>
+
+        <p
+          v-if="insight.technical_summary"
+          style="margin-bottom: 0.75rem; line-height: 1.5;"
+        >
+          {{ insight.technical_summary }}
+        </p>
+
+        <p
+          v-if="insight.news_context"
+          style="margin-bottom: 1rem; line-height: 1.5;"
+        >
+          {{ insight.news_context }}
+        </p>
+
+        <div v-if="insight.news_items.length">
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem; margin-bottom: 0.5rem;"
+          >
+            Headlines used
+          </div>
+          <ul style="margin: 0; padding-left: 1rem;">
+            <li
+              v-for="item in insight.news_items"
+              :key="`${item.source}-${item.headline}`"
+              style="margin-bottom: 0.35rem;"
+            >
+              {{ item.headline }} <span class="text-muted">({{ item.source }})</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div
+        v-else
+        class="text-muted"
+      >
+        Generate an AI view that combines indicators and recent headlines for this asset.
+      </div>
+    </div>
+
+    <div
+      class="card"
+      style="margin-bottom: 1.5rem;"
+    >
       <h2 style="margin-bottom: 1rem;">
         Technical Analysis
       </h2>
@@ -152,8 +242,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import ApexCharts from 'apexcharts'
-import { getAssetOHLCV, getAssetIndicators } from '@/api/assets'
+import { getAssetAIInsight, getAssetOHLCV, getAssetIndicators } from '@/api/assets'
 import { useNotifications } from '@/composables/useNotifications'
+import type { AssetAIInsight } from '@/types'
 
 interface Props {
   assetId: string
@@ -162,8 +253,11 @@ interface Props {
 const props = defineProps<Props>()
 
 const loading = ref(true)
+const loadingInsight = ref(false)
 const ohlcvData = ref<any[]>([])
 const indicatorsData = ref<any[]>([])
+const insight = ref<AssetAIInsight | null>(null)
+const insightError = ref('')
 const selectedIndicator = ref<'none' | 'rsi' | 'macd' | 'mas' | 'bb'>('mas')
 let chart: ApexCharts | null = null
 
@@ -197,6 +291,29 @@ async function loadData() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadInsight() {
+  loadingInsight.value = true
+  insightError.value = ''
+  try {
+    insight.value = await getAssetAIInsight(props.assetId)
+  } catch (error: any) {
+    insight.value = null
+    insightError.value = error?.response?.data?.error?.message || 'AI insight is unavailable right now.'
+  } finally {
+    loadingInsight.value = false
+  }
+}
+
+function recommendationBadgeClass(recommendation: string): string {
+  if (recommendation === 'BUY') return 'badge-success'
+  if (recommendation === 'SELL') return 'badge-danger'
+  return 'badge-warning'
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleString()
 }
 
 function renderChart() {

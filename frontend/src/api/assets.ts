@@ -1,5 +1,5 @@
 import api from './client'
-import type { Asset, AssetQuote, MarketStatus } from '@/types'
+import type { Asset, AssetAIInsight, AssetQuote, MarketStatus } from '@/types'
 
 export async function searchAssets(q: string, market?: string): Promise<Asset[]> {
   const params: Record<string, string> = { q }
@@ -35,5 +35,10 @@ export async function getAssetOHLCV(id: string, days: number = 90): Promise<any[
 
 export async function getAssetIndicators(id: string, days: number = 90): Promise<any[]> {
   const { data } = await api.get(`/assets/${id}/indicators/`, { params: { days } })
+  return data
+}
+
+export async function getAssetAIInsight(id: string): Promise<AssetAIInsight> {
+  const { data } = await api.get(`/assets/${id}/ai-insight/`)
   return data
 }

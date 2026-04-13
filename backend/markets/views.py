@@ -1,10 +1,10 @@
-from django.db.models import Q
+from django.db.models import Q, Avg
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Asset, AssetQuote, MarketConfig, OHLCV, TechnicalIndicators
+from .models import Asset, AssetQuote, MarketConfig, OHLCV, TechnicalIndicators, NewsItem
 from .serializers import (
     AssetQuoteSerializer,
     AssetSerializer,
@@ -12,7 +12,7 @@ from .serializers import (
     OHLCVSerializer,
     TechnicalIndicatorsSerializer,
 )
-from .services import is_market_open, seed_market_configs
+from .services import is_market_open, seed_market_configs, NewsService
 
 
 class MarketConfigViewSet(viewsets.ReadOnlyModelViewSet):
@@ -91,6 +91,38 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = OHLCVSerializer(ohlcv_data, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="news")
+    def news(self, request, pk=None):
+        asset = self.get_object()
+        limit = request.query_params.get("limit", "10")
+        try:
+            limit = int(limit)
+        except ValueError:
+            limit = 10
+
+        NewsService.fetch_and_store_news(asset)
+
+        news_items = NewsItem.objects.filter(asset=asset).order_by("-published_at", "-fetched_at")[:limit]
+        avg_sentiment = news_items.filter(sentiment_score__isnull=False).aggregate(Avg("sentiment_score"))
+
+        return Response({
+            "asset_id": str(asset.id),
+            "symbol": asset.display_symbol,
+            "average_sentiment": float(avg_sentiment["sentiment_score__avg"]) if avg_sentiment["sentiment_score__avg"] else None,
+            "news_items": [
+                {
+                    "headline": item.headline,
+                    "summary": item.summary,
+                    "url": item.url,
+                    "source": item.source,
+                    "sentiment_score": float(item.sentiment_score) if item.sentiment_score else None,
+                    "published_at": item.published_at,
+                    "fetched_at": item.fetched_at,
+                }
+                for item in news_items
+            ],
+        })
 
     @action(detail=True, methods=["get"], url_path="indicators")
     def indicators(self, request, pk=None):
@@ -179,6 +211,33 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": {"code": "calculation_error", "message": "Failed to calculate indicators"}},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=["get"], url_path="ai-insight")
+    def ai_insight(self, request, pk=None):
+        asset = self.get_object()
+
+        from ai.services import AIBudgetError, AIService
+
+        service = AIService(request.user)
+        try:
+            insight = service.analyze_asset(asset)
+        except AIBudgetError as exc:
+            return Response(
+                {"error": {"code": "budget_exceeded", "message": str(exc)}},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+        except ValueError as exc:
+            return Response(
+                {"error": {"code": "ai_unavailable", "message": str(exc)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception:
+            return Response(
+                {"error": {"code": "ai_error", "message": "Failed to generate AI insight"}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(insight)
 
 
 class MarketStatusView(viewsets.ViewSet):

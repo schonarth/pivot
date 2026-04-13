@@ -7,7 +7,31 @@ from django.conf import settings
 PROVIDER_CHOICES = [
     ("openai", "OpenAI"),
     ("anthropic", "Anthropic"),
+    ("google", "Google"),
 ]
+
+TASK_MODELS = {
+    "sentiment_analysis": {
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-opus-4-6",
+        "google": "gemini-2.0-flash",
+    },
+    "asset_filtering": {
+        "openai": "gpt-4o",
+        "anthropic": "claude-opus-4-6",
+        "google": "gemini-2.0-flash",
+    },
+    "indicator_insight": {
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-haiku-4-5-20251001",
+        "google": "gemini-2.0-flash",
+    },
+    "trade_validation": {
+        "openai": "gpt-4o",
+        "anthropic": "claude-opus-4-6",
+        "google": "gemini-2.0-flash",
+    },
+}
 
 
 class AIAuth(models.Model):
@@ -29,6 +53,12 @@ class AIAuth(models.Model):
         help_text="Warn when this % of budget remains (e.g., 10 = warn at 90% consumed)"
     )
 
+    task_models = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Task-specific model overrides: {task_type: model_name}"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -37,6 +67,14 @@ class AIAuth(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.provider_name}"
+
+    def get_model_for_task(self, task_type: str) -> str:
+        """Get the model to use for a specific task type."""
+        if task_type in self.task_models:
+            return self.task_models[task_type]
+        if task_type in TASK_MODELS and self.provider_name in TASK_MODELS[task_type]:
+            return TASK_MODELS[task_type][self.provider_name]
+        return TASK_MODELS.get(task_type, {}).get(self.provider_name, "gpt-4o-mini")
 
 
 class AICost(models.Model):

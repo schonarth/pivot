@@ -1,6 +1,7 @@
 import logging
 from decimal import Decimal
 from datetime import datetime, timedelta
+import json
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -140,3 +141,290 @@ class AIService:
             "at_limit": self.is_at_budget_limit(),
             "should_warn": self.should_warn(),
         }
+
+    @staticmethod
+    def _extract_json_object(text: str) -> dict | None:
+        if not text:
+            return None
+
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.splitlines()
+            if len(lines) >= 3:
+                cleaned = "\n".join(lines[1:-1]).strip()
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start == -1 or end == -1 or end <= start:
+                return None
+            try:
+                return json.loads(cleaned[start:end + 1])
+            except json.JSONDecodeError:
+                return None
+
+    @staticmethod
+    def _estimate_openai_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
+        pricing = {
+            "gpt-4o-mini": (Decimal("0.00000015"), Decimal("0.00000060")),
+            "gpt-4o": (Decimal("0.00000250"), Decimal("0.00001000")),
+        }
+        prompt_rate, completion_rate = pricing.get(
+            model_name,
+            pricing["gpt-4o-mini"],
+        )
+        return (Decimal(prompt_tokens) * prompt_rate) + (Decimal(completion_tokens) * completion_rate)
+
+    @staticmethod
+    def test_connection(provider: str, api_key: str, model: str | None = None) -> dict:
+        """Validate API credentials with a minimal provider call."""
+        if provider == "anthropic":
+            import anthropic
+
+            selected_model = model or "claude-haiku-4-5-20251001"
+            client = anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model=selected_model,
+                max_tokens=5,
+                messages=[{"role": "user", "content": "Reply with OK"}],
+            )
+            text = message.content[0].text if message.content else ""
+            return {"provider": provider, "model": selected_model, "message": text}
+
+        if provider == "openai":
+            import openai
+
+            selected_model = model or "gpt-4o-mini"
+            client = openai.OpenAI(api_key=api_key)
+            response = client.responses.create(
+                model=selected_model,
+                max_output_tokens=16,
+                input="Reply with OK",
+            )
+            text = response.output_text
+            return {"provider": provider, "model": selected_model, "message": text}
+
+        if provider == "google":
+            import google.generativeai as genai
+
+            selected_model = model or "gemini-2.0-flash"
+            genai.configure(api_key=api_key)
+            model_obj = genai.GenerativeModel(selected_model)
+            response = model_obj.generate_content("Reply with OK")
+            return {"provider": provider, "model": selected_model, "message": response.text}
+
+        raise ValueError(f"Unsupported provider: {provider}")
+
+    def analyze_asset(self, asset) -> dict:
+        from markets.models import NewsItem
+        from markets.services import NewsService
+        from trading.technical import IndicatorCalculator
+
+        if not self.ai_auth or not self.get_api_key():
+            raise ValueError("AI is not configured for this user")
+
+        self.check_budget()
+
+        indicators = IndicatorCalculator.calculate_indicators(str(asset.id), asset.display_symbol)
+        if not indicators:
+            raise ValueError("Not enough historical data to generate AI insight")
+
+        NewsService.fetch_and_store_news(asset)
+        news_items = list(
+            NewsItem.objects.filter(asset=asset)
+            .order_by("-published_at", "-fetched_at")[:5]
+            .values("headline", "source", "published_at")
+        )
+
+        provider = self.ai_auth.provider_name
+        model = self.ai_auth.get_model_for_task("indicator_insight")
+        api_key = self.get_api_key()
+
+        prompt = f"""You are analyzing one asset for a paper trading app.
+
+Return ONLY valid JSON with this exact shape:
+{{
+  "recommendation": "BUY" | "HOLD" | "SELL",
+  "confidence": integer from 0 to 100,
+  "technical_summary": "plain-English paragraph about the technical setup",
+  "news_context": "plain-English paragraph about the market or news context, or empty string if there is no meaningful context",
+  "price_target": number or null
+}}
+
+Asset:
+- Symbol: {asset.display_symbol}
+- Name: {asset.name}
+- Market: {asset.market}
+- Currency: {asset.currency}
+
+Technical indicators:
+- RSI 14: {indicators.get("rsi_14")}
+- MACD: {indicators.get("macd")}
+- MACD signal: {indicators.get("macd_signal")}
+- MACD histogram: {indicators.get("macd_histogram")}
+- MA 20: {indicators.get("ma_20")}
+- MA 50: {indicators.get("ma_50")}
+- MA 200: {indicators.get("ma_200")}
+- Bollinger upper: {indicators.get("bb_upper")}
+- Bollinger middle: {indicators.get("bb_middle")}
+- Bollinger lower: {indicators.get("bb_lower")}
+- 20 day average volume: {indicators.get("volume_20d_avg")}
+
+Recent headlines:
+{chr(10).join(f"- {item['headline']} ({item['source']})" for item in news_items) if news_items else "- None"}
+
+Writing rules:
+- Be useful to an everyday investor, not only a technical analyst.
+- First paragraph: explain what the indicators suggest in plain English.
+- Second paragraph: explain what broader news or market context may be influencing the asset right now.
+- If the headlines are weak, generic, or missing, set "news_context" to an empty string.
+- Do not mention every indicator mechanically.
+- No markdown."""
+
+        response_text = ""
+        prompt_tokens = 0
+        completion_tokens = 0
+        cost_usd = Decimal("0")
+
+        if provider == "anthropic":
+            import anthropic
+
+            client = anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model=model,
+                max_tokens=300,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            response_text = message.content[0].text if message.content else ""
+            if getattr(message, "usage", None):
+                prompt_tokens = getattr(message.usage, "input_tokens", 0) or 0
+                completion_tokens = getattr(message.usage, "output_tokens", 0) or 0
+        elif provider == "openai":
+            import openai
+
+            response = openai.OpenAI(api_key=api_key).responses.create(
+                model=model,
+                max_output_tokens=300,
+                input=prompt,
+            )
+            response_text = response.output_text
+            if getattr(response, "usage", None):
+                prompt_tokens = getattr(response.usage, "input_tokens", 0) or 0
+                completion_tokens = getattr(response.usage, "output_tokens", 0) or 0
+                cost_usd = self._estimate_openai_cost(model, prompt_tokens, completion_tokens)
+        elif provider == "google":
+            import google.generativeai as genai
+
+            genai.configure(api_key=api_key)
+            response = genai.GenerativeModel(model).generate_content(prompt)
+            response_text = response.text
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+        parsed = self._extract_json_object(response_text)
+        if not parsed:
+            raise ValueError("AI returned an invalid response")
+
+        self.log_call(
+            model_name=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cost_usd=cost_usd,
+            task_type="indicator_insight",
+        )
+
+        return {
+            "symbol": asset.display_symbol,
+            "market": asset.market,
+            "recommendation": parsed.get("recommendation", "HOLD"),
+            "confidence": int(parsed.get("confidence", 50)),
+            "technical_summary": parsed.get("technical_summary", ""),
+            "news_context": parsed.get("news_context", ""),
+            "reasoning": "\n\n".join(
+                part for part in [
+                    parsed.get("technical_summary", ""),
+                    parsed.get("news_context", ""),
+                ] if part
+            ),
+            "price_target": parsed.get("price_target"),
+            "model_used": model,
+            "generated_at": timezone.now().isoformat(),
+            "news_items": [
+                {
+                    "headline": item["headline"],
+                    "source": item["source"],
+                    "published_at": item["published_at"].isoformat() if item["published_at"] else None,
+                }
+                for item in news_items
+            ],
+        }
+
+    @staticmethod
+    def analyze_news_sentiment(headlines: list[str], user=None) -> dict[str, Decimal]:
+        """Analyze sentiment for news headlines using configured AI provider.
+
+        Returns dict mapping headline to sentiment score (-1.0 to 1.0).
+        If API call fails, returns empty dict.
+        """
+        if not headlines:
+            return {}
+
+        if user:
+            service = AIService(user)
+            api_key = service.get_api_key()
+            provider = service.ai_auth.provider_name if service.ai_auth else "anthropic"
+            model = service.ai_auth.get_model_for_task("sentiment_analysis") if service.ai_auth else "claude-opus-4-6"
+        else:
+            from django.conf import settings
+            api_key = getattr(settings, "ANTHROPIC_API_KEY", None)
+            provider = "anthropic"
+            model = "claude-opus-4-6"
+
+        if not api_key:
+            logger.warning("No API key available for sentiment analysis")
+            return {}
+
+        prompt = f"""Analyze the sentiment of each headline and return a JSON object mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
+
+Headlines:
+{chr(10).join(f'- {h}' for h in headlines)}
+
+Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
+
+        import json
+        try:
+            if provider == "anthropic":
+                import anthropic
+                client = anthropic.Anthropic(api_key=api_key)
+                message = client.messages.create(
+                    model=model,
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                response_text = message.content[0].text
+            elif provider == "openai":
+                import openai
+                client = openai.OpenAI(api_key=api_key)
+                response = client.responses.create(
+                    model=model,
+                    max_output_tokens=500,
+                    input=prompt,
+                )
+                response_text = response.output_text
+            elif provider == "google":
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                model_obj = genai.GenerativeModel(model)
+                response = model_obj.generate_content(prompt)
+                response_text = response.text
+            else:
+                logger.warning(f"Unsupported provider: {provider}")
+                return {}
+
+            sentiments = json.loads(response_text)
+            return {h: Decimal(str(s)) for h, s in sentiments.items() if h in headlines}
+        except Exception as e:
+            logger.exception(f"Failed to analyze news sentiment: {e}")
+            return {}

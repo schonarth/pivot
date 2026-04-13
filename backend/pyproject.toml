@@ -28,6 +28,11 @@ dependencies = [
     "alpha-vantage>=2.3,<3",
     "beautifulsoup4>=4.11,<5",
     "cryptography>=42,<43",
+    "feedparser>=6.0,<7",
+    "requests>=2.31,<3",
+    "anthropic>=0.25,<1",
+    "openai>=1.0,<2",
+    "google-generativeai>=0.8,<1",
 ]
 
 [project.optional-dependencies]

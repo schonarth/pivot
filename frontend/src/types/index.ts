@@ -98,6 +98,26 @@ export interface AssetQuote {
   stale?: boolean
 }
 
+export interface AssetAIInsightNewsItem {
+  headline: string
+  source: string
+  published_at: string | null
+}
+
+export interface AssetAIInsight {
+  symbol: string
+  market: string
+  recommendation: 'BUY' | 'HOLD' | 'SELL'
+  confidence: number
+  technical_summary: string
+  news_context: string
+  reasoning: string
+  price_target: number | null
+  model_used: string
+  generated_at: string
+  news_items: AssetAIInsightNewsItem[]
+}
+
 export interface AlertTriggerTrade {
   action: 'BUY' | 'SELL'
   quantity: number

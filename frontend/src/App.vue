@@ -32,6 +32,19 @@
         </router-link>
       </div>
       <div class="nav-user">
+        <div
+          v-if="auth.isAuthenticated && aiBudget.enabled"
+          class="ai-budget"
+          :title="`AI: $${aiBudget.usage_usd} / $${aiBudget.monthly_budget_usd}`"
+        >
+          <span class="ai-budget-label">AI</span>
+          <div class="ai-budget-track">
+            <div
+              class="ai-budget-fill"
+              :style="{ width: `${Math.min(Number(aiBudget.percentage_used || 0), 100)}%`, background: aiBudgetColor }"
+            />
+          </div>
+        </div>
         <span v-if="auth.user">{{ auth.user.username }}</span>
         <button
           class="btn btn-secondary btn-sm"
@@ -49,11 +62,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useNotifications } from '@/composables/useNotifications'
+import { getBudget, type AIBudget } from '@/api/ai'
 import ToastContainer from '@/components/ToastContainer.vue'
 
 const auth = useAuthStore()
@@ -61,13 +75,72 @@ useWebSocketStore()
 const { requestPermission } = useNotifications()
 const router = useRouter()
 const pivotLogo = '/pivot-logo.png'
-
-onMounted(() => {
-  if (auth.isAuthenticated) {
-    auth.fetchUser()
-    requestPermission()
-  }
+const aiBudget = reactive<AIBudget>({
+  enabled: false,
+  monthly_budget_usd: '0.00',
+  usage_usd: '0.00',
+  remaining_usd: '0.00',
+  percentage_used: '0',
+  at_limit: false,
+  should_warn: false,
 })
+
+const aiBudgetColor = computed(() => {
+  const used = Number(aiBudget.percentage_used || 0)
+  if (used >= 100) return '#dc2626'
+  if (used >= 90) return '#f97316'
+  if (used >= 50) return '#eab308'
+  return '#22c55e'
+})
+
+onMounted(async () => {
+  if (auth.isAuthenticated) {
+    await auth.fetchUser()
+    requestPermission()
+    await refreshBudget()
+  }
+  window.addEventListener('ai-budget-changed', refreshBudget)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('ai-budget-changed', refreshBudget)
+})
+
+async function refreshBudget() {
+  try {
+    Object.assign(aiBudget, await getBudget())
+  } catch {
+    Object.assign(aiBudget, {
+      enabled: false,
+      monthly_budget_usd: '0.00',
+      usage_usd: '0.00',
+      remaining_usd: '0.00',
+      percentage_used: '0',
+      at_limit: false,
+      should_warn: false,
+    })
+  }
+}
+
+watch(
+  () => auth.isAuthenticated,
+  async (isAuthenticated) => {
+    if (isAuthenticated) {
+      await refreshBudget()
+      return
+    }
+
+    Object.assign(aiBudget, {
+      enabled: false,
+      monthly_budget_usd: '0.00',
+      usage_usd: '0.00',
+      remaining_usd: '0.00',
+      percentage_used: '0',
+      at_limit: false,
+      should_warn: false,
+    })
+  },
+)
 
 function handleLogout() {
   auth.logout()
@@ -120,6 +193,31 @@ function handleLogout() {
   align-items: center;
   gap: 0.75rem;
   font-size: 0.875rem;
+}
+
+.ai-budget {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 8rem;
+}
+
+.ai-budget-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.ai-budget-track {
+  width: 6.25rem;
+  height: 0.25rem;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ai-budget-fill {
+  height: 100%;
+  border-radius: 999px;
 }
 
 .main-content {

@@ -18,6 +18,17 @@
         class="alert-danger"
       >
         {{ error }}
+        <ul
+          v-if="guardrailViolations.length"
+          style="margin: 0.5rem 0 0 1rem;"
+        >
+          <li
+            v-for="violation in guardrailViolations"
+            :key="violation"
+          >
+            {{ violation }}
+          </li>
+        </ul>
       </div>
       <div class="form-group">
         <label>Action</label>
@@ -118,13 +129,22 @@
       <button
         class="btn"
         :disabled="!selectedAsset || !quantity || loading"
-        @click="handleSubmit"
+        @click="handleSubmit()"
       >
         <span
           v-if="loading"
           class="spinner"
         />
         {{ action }} Trade
+      </button>
+      <button
+        v-if="canBypassGuardrails"
+        class="btn btn-secondary"
+        style="margin-left: 0.75rem;"
+        :disabled="loading"
+        @click="handleSubmit(true)"
+      >
+        Proceed Anyway
       </button>
     </div>
   </div>
@@ -158,6 +178,8 @@ const currentPrice = ref<AssetQuote | null>(null)
 const quantity = ref<number | null>(null)
 const rationale = ref('')
 const error = ref('')
+const guardrailViolations = ref<string[]>([])
+const canBypassGuardrails = ref(false)
 const loading = ref(false)
 const feeRate = ref<number>(0)
 
@@ -220,16 +242,27 @@ async function selectAsset(asset: Asset) {
   }
 }
 
-async function handleSubmit() {
+async function handleSubmit(bypassGuardrails: boolean = false) {
   if (!portfolioId) return
   if (!selectedAsset.value || !quantity.value) return
   error.value = ''
+  guardrailViolations.value = []
+  canBypassGuardrails.value = false
   loading.value = true
   try {
-    await createTrade(portfolioId, selectedAsset.value.id, action.value, quantity.value, rationale.value || undefined)
+    await createTrade(
+      portfolioId,
+      selectedAsset.value.id,
+      action.value,
+      quantity.value,
+      rationale.value || undefined,
+      bypassGuardrails,
+    )
     router.push(`/portfolios/${portfolioId}`)
   } catch (e: any) {
     error.value = e.response?.data?.error?.message || 'Trade failed'
+    guardrailViolations.value = e.response?.data?.error?.violations || []
+    canBypassGuardrails.value = Boolean(e.response?.data?.error?.allow_bypass)
   } finally {
     loading.value = false
   }

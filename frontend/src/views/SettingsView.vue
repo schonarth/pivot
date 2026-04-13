@@ -100,6 +100,7 @@
         </div>
       </div>
       <div class="settings-right">
+        <AISettings />
         <MCPSettings />
       </div>
     </div>
@@ -111,6 +112,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/composables/useToast'
 import { useNotifications } from '@/composables/useNotifications'
 import MCPSettings from '@/components/MCPSettings.vue'
+import AISettings from '@/components/AISettings.vue'
 
 const settings = useSettingsStore()
 const toast = useToast()

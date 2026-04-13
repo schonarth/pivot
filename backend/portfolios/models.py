@@ -67,3 +67,34 @@ class PortfolioSnapshot(models.Model):
     class Meta:
         db_table = "portfolio_snapshots"
         ordering = ["-captured_at"]
+
+
+class PortfolioGuardrails(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    portfolio = models.OneToOneField(Portfolio, on_delete=models.CASCADE, related_name="guardrails")
+    max_trades_per_day = models.IntegerField(default=10, help_text="Maximum trades allowed per day")
+    max_position_size_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("20"),
+        help_text="Max position size as % of portfolio"
+    )
+    stop_loss_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("-5"),
+        help_text="Stop loss threshold as % change from entry"
+    )
+    take_profit_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("10"),
+        help_text="Take profit threshold as % change from entry"
+    )
+    min_order_value = models.DecimalField(
+        max_digits=20, decimal_places=2, default=Decimal("10"),
+        help_text="Minimum order value in portfolio currency"
+    )
+    enabled = models.BooleanField(default=False, help_text="Enable guardrails enforcement")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "portfolio_guardrails"
+
+    def __str__(self):
+        return f"Guardrails for {self.portfolio.name}"

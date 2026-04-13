@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import os
 from pathlib import Path
 
@@ -10,7 +12,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="dev-secret-key-change-in-production")
 
-AI_ENCRYPTION_KEY = config("AI_ENCRYPTION_KEY", default=Fernet.generate_key().decode())
+
+def _default_ai_encryption_key() -> str:
+    return base64.urlsafe_b64encode(hashlib.sha256(SECRET_KEY.encode()).digest()).decode()
+
+
+AI_ENCRYPTION_KEY = config("AI_ENCRYPTION_KEY", default=_default_ai_encryption_key())
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
