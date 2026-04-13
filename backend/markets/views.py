@@ -103,8 +103,9 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
 
         NewsService.fetch_and_store_news(asset)
 
-        news_items = NewsItem.objects.filter(asset=asset).order_by("-published_at", "-fetched_at")[:limit]
-        avg_sentiment = news_items.filter(sentiment_score__isnull=False).aggregate(Avg("sentiment_score"))
+        news_queryset = NewsItem.objects.filter(asset=asset).order_by("-published_at", "-fetched_at")
+        news_items = news_queryset[:limit]
+        avg_sentiment = news_queryset.filter(sentiment_score__isnull=False).aggregate(Avg("sentiment_score"))
 
         return Response({
             "asset_id": str(asset.id),
@@ -185,22 +186,34 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
 
             # Filter to requested date range and build result
             result = []
+            def series_value(series, index):
+                if series is None:
+                    return None
+                value = series.iloc[index]
+                return float(value) if pd.notna(value) else None
+
+            def frame_value(frame, row_index, col_index):
+                if frame is None:
+                    return None
+                value = frame.iloc[row_index, col_index]
+                return float(value) if pd.notna(value) else None
+
             for idx_pos in range(len(df)):
                 idx = df.index[idx_pos]
                 if idx.date() < start_date:
                     continue
                 result.append({
                     "date": idx.date(),
-                    "rsi_14": float(rsi.iloc[idx_pos]) if pd.notna(rsi.iloc[idx_pos]) else None,
-                    "macd": float(macd_result.iloc[idx_pos, 0]) if pd.notna(macd_result.iloc[idx_pos, 0]) else None,
-                    "macd_signal": float(macd_result.iloc[idx_pos, 1]) if pd.notna(macd_result.iloc[idx_pos, 1]) else None,
-                    "macd_histogram": float(macd_result.iloc[idx_pos, 2]) if pd.notna(macd_result.iloc[idx_pos, 2]) else None,
-                    "ma_20": float(ma_20.iloc[idx_pos]) if pd.notna(ma_20.iloc[idx_pos]) else None,
-                    "ma_50": float(ma_50.iloc[idx_pos]) if pd.notna(ma_50.iloc[idx_pos]) else None,
-                    "ma_200": float(ma_200.iloc[idx_pos]) if pd.notna(ma_200.iloc[idx_pos]) else None,
-                    "bb_upper": float(bb.iloc[idx_pos, 0]) if pd.notna(bb.iloc[idx_pos, 0]) else None,
-                    "bb_middle": float(bb.iloc[idx_pos, 1]) if pd.notna(bb.iloc[idx_pos, 1]) else None,
-                    "bb_lower": float(bb.iloc[idx_pos, 2]) if pd.notna(bb.iloc[idx_pos, 2]) else None,
+                    "rsi_14": series_value(rsi, idx_pos),
+                    "macd": frame_value(macd_result, idx_pos, 0),
+                    "macd_signal": frame_value(macd_result, idx_pos, 1),
+                    "macd_histogram": frame_value(macd_result, idx_pos, 2),
+                    "ma_20": series_value(ma_20, idx_pos),
+                    "ma_50": series_value(ma_50, idx_pos),
+                    "ma_200": series_value(ma_200, idx_pos),
+                    "bb_upper": frame_value(bb, idx_pos, 0),
+                    "bb_middle": frame_value(bb, idx_pos, 1),
+                    "bb_lower": frame_value(bb, idx_pos, 2),
                     "volume_20d_avg": int(volume_20d_avg.iloc[idx_pos]) if pd.notna(volume_20d_avg.iloc[idx_pos]) else None,
                 })
 
