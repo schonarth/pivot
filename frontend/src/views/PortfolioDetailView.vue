@@ -53,6 +53,7 @@
         Alerts
         <span v-if="activeAlerts.length" class="badge badge-info" style="margin-left: 0.4rem; font-size: 0.7rem;">{{ activeAlerts.length }}</span>
       </button>
+      <button class="tab-btn" :class="{ active: activeTab === 'strategies' }" @click="activeTab = 'strategies'">Strategies</button>
     </div>
 
     <div v-if="activeTab === 'positions'">
@@ -247,6 +248,10 @@
       <div v-if="!alerts.length" class="card"><p class="text-muted">No alerts yet.</p></div>
     </div>
 
+    <div v-if="activeTab === 'strategies'">
+      <StrategiesView :id="portfolioId" />
+    </div>
+
     <h2 style="margin-top: 2rem; margin-bottom: 1rem;">Recent Activity</h2>
     <div v-if="timeline.length" class="card">
       <div v-for="event in timeline.slice(0, 10)" :key="event.id" style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
@@ -292,6 +297,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
+import StrategiesView from '@/views/StrategiesView.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw, updatePortfolio } from '@/api/portfolios'
 import { getAlerts, createAlert, deleteAlert, pauseAlert, resumeAlert } from '@/api/alerts'
@@ -329,7 +335,7 @@ const withdrawWarning = ref('')
 const depositInput = ref<HTMLInputElement | null>(null)
 const withdrawInput = ref<HTMLInputElement | null>(null)
 
-const activeTab = ref<'positions' | 'alerts'>('positions')
+const activeTab = ref<'positions' | 'alerts' | 'strategies'>('positions')
 
 const alerts = ref<Alert[]>([])
 const alertPrices = ref<Record<string, string>>({})
