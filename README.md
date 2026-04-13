@@ -2,6 +2,8 @@
 
 **A paper trading simulator** for learning investment strategies, testing alerts, and experimenting with portfolio management across global markets without risking real capital.
 
+*With MCP server* — Use your AI agents to automate trading, analyze portfolios, and manage alerts!
+
 ---
 
 ## What You Can Do
@@ -95,6 +97,14 @@ Test your strategies when markets are closed:
 ```
 
 The simulator updates prices in real-time—watch your portfolio react on the dashboard.
+
+---
+
+## AI Agents (MCP Server)
+
+Connect AI agents to automate trading, analyze portfolios, and execute strategies.
+
+**To set up agent access:** Go to Settings, get your UUID, and generate an one-time password (OTP). With these, your agent will be able to manage trades, alerts, and portfolios.
 
 ---
 
