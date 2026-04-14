@@ -1,26 +1,65 @@
 <template>
   <div class="auth-container">
-    <div class="card" style="max-width: 400px; margin: 4rem auto;">
-      <h2 style="margin-bottom: 1.5rem;">Register</h2>
-      <div v-if="error" class="alert-danger">{{ error }}</div>
+    <div
+      class="card"
+      style="max-width: 400px; margin: 4rem auto;"
+    >
+      <h2 style="margin-bottom: 1.5rem;">
+        Register
+      </h2>
+      <div
+        v-if="error"
+        class="alert-danger"
+      >
+        {{ error }}
+      </div>
       <div class="form-group">
         <label for="username">Username</label>
-        <input id="username" v-model="username" type="text" autocomplete="username" required />
+        <input
+          id="username"
+          v-model="username"
+          type="text"
+          autocomplete="username"
+          required
+        >
       </div>
       <div class="form-group">
         <label for="email">Email</label>
-        <input id="email" v-model="email" type="email" autocomplete="email" required />
+        <input
+          id="email"
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          required
+        >
       </div>
       <div class="form-group">
         <label for="password">Password</label>
-        <input id="password" v-model="password" type="password" autocomplete="new-password" required minlength="8" />
+        <input
+          id="password"
+          v-model="password"
+          type="password"
+          autocomplete="new-password"
+          required
+          minlength="8"
+        >
       </div>
-      <button class="btn" style="width: 100%;" :disabled="loading" @click="handleRegister">
-        <span v-if="loading" class="spinner"></span>
+      <button
+        class="btn"
+        style="width: 100%;"
+        :disabled="loading"
+        @click="handleRegister"
+      >
+        <span
+          v-if="loading"
+          class="spinner"
+        />
         Register
       </button>
       <p style="margin-top: 1rem; text-align: center; font-size: 0.875rem;">
-        Already have an account? <router-link to="/login">Login</router-link>
+        Already have an account? <router-link to="/login">
+          Login
+        </router-link>
       </p>
     </div>
   </div>

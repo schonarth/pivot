@@ -135,8 +135,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: build
-    command: npm run dev -- --host 0.0.0.0
+      target: dev
     ports:
       - "3000:3000"
     environment:

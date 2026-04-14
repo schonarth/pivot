@@ -1,13 +1,19 @@
 <template>
-  <span class="badge badge-info" v-if="preferredBadge === 'both'">
-    {{props.market}}
+  <span
+    v-if="preferredBadge === 'both'"
+    class="badge badge-info"
+  >
+    {{ props.market }}
     <div class="market-flag">{{ marketFlag }}</div>
   </span>
   <span v-else-if="preferredBadge === 'flag'">
     <div class="market-flag">{{ marketFlag }}</div>
   </span>
-  <span class="badge badge-info" v-else>
-    {{props.market}}
+  <span
+    v-else
+    class="badge badge-info"
+  >
+    {{ props.market }}
   </span>
 </template>
 

@@ -2,7 +2,12 @@
   <div v-if="asset">
     <div class="page-header">
       <h1>{{ asset.display_symbol }}</h1>
-      <router-link to="/assets" class="btn btn-secondary">Back to Assets</router-link>
+      <router-link
+        to="/assets"
+        class="btn btn-secondary"
+      >
+        Back to Assets
+      </router-link>
     </div>
     <div class="card">
       <div class="grid grid-3">
@@ -14,42 +19,107 @@
         <div><span class="text-muted">Industry:</span> {{ asset.industry || '-' }}</div>
       </div>
     </div>
-    <div class="card" v-if="quote">
-      <h2 style="margin-bottom: 0.75rem;">Current Price</h2>
+    <div
+      v-if="quote"
+      class="card"
+    >
+      <h2 style="margin-bottom: 0.75rem;">
+        Current Price
+      </h2>
       <div class="grid grid-3">
         <div>
-          <div class="text-muted" style="font-size: 0.75rem;">Price</div>
-          <div style="font-size: 1.5rem; font-weight: 600;">{{ quote.currency }} {{ Number(quote.price).toFixed(4) }}</div>
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Price
+          </div>
+          <div style="font-size: 1.5rem; font-weight: 600;">
+            {{ quote.currency }} {{ Number(quote.price).toFixed(4) }}
+          </div>
         </div>
         <div>
-          <div class="text-muted" style="font-size: 0.75rem;">Quote Time</div>
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Quote Time
+          </div>
           <div>{{ formatDate(quote.as_of) }}</div>
         </div>
         <div>
-          <div class="text-muted" style="font-size: 0.75rem;">Status</div>
-          <span v-if="quote.market_open" class="badge badge-success">Market Open</span>
-          <span v-else class="badge badge-warning">Market Closed</span>
-          <span v-if="quote.stale" class="badge badge-danger" style="margin-left: 0.5rem;">Stale</span>
+          <div
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Status
+          </div>
+          <span
+            v-if="quote.market_open"
+            class="badge badge-success"
+          >Market Open</span>
+          <span
+            v-else
+            class="badge badge-warning"
+          >Market Closed</span>
+          <span
+            v-if="quote.stale"
+            class="badge badge-danger"
+            style="margin-left: 0.5rem;"
+          >Stale</span>
         </div>
       </div>
       <div style="margin-top: 1rem;">
-        <button class="btn btn-secondary btn-sm" @click="handleRefresh" :disabled="refreshing">
+        <button
+          class="btn btn-secondary btn-sm"
+          :disabled="refreshing"
+          @click="handleRefresh"
+        >
           {{ refreshing ? 'Refreshing...' : 'Refresh Price' }}
         </button>
       </div>
     </div>
-    <div v-else class="card">
-      <p class="text-muted">No price data available.</p>
-      <button class="btn btn-secondary btn-sm" @click="handleRefresh" :disabled="refreshing">{{ refreshing ? 'Fetching...' : 'Fetch Price' }}</button>
+    <div
+      v-else
+      class="card"
+    >
+      <p class="text-muted">
+        No price data available.
+      </p>
+      <button
+        class="btn btn-secondary btn-sm"
+        :disabled="refreshing"
+        @click="handleRefresh"
+      >
+        {{ refreshing ? 'Fetching...' : 'Fetch Price' }}
+      </button>
     </div>
-    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
       <template v-if="matchingPortfolios.length === 1">
-        <router-link :to="`/portfolios/${matchingPortfolios[0].id}/trades/new?asset=${asset.id}`" class="btn">Trade</router-link>
+        <router-link
+          :to="`/portfolios/${matchingPortfolios[0].id}/trades/new?asset=${asset.id}`"
+          class="btn"
+        >
+          Trade
+        </router-link>
       </template>
       <template v-else-if="matchingPortfolios.length > 1">
-        <select class="btn" style="cursor: pointer;" @change="navigateToTrade">
-          <option value="">Trade in…</option>
-          <option v-for="p in matchingPortfolios" :key="p.id" :value="p.id">{{ p.name }}</option>
+        <select
+          class="btn"
+          style="cursor: pointer;"
+          @change="navigateToTrade"
+        >
+          <option value="">
+            Trade in…
+          </option>
+          <option
+            v-for="p in matchingPortfolios"
+            :key="p.id"
+            :value="p.id"
+          >
+            {{ p.name }}
+          </option>
         </select>
       </template>
       <template v-else>
@@ -61,12 +131,29 @@
       </template>
 
       <template v-if="matchingPortfolios.length === 1">
-        <router-link :to="`/portfolios/${matchingPortfolios[0].id}/alerts?asset=${asset.id}`" class="btn btn-secondary">Create Alert</router-link>
+        <router-link
+          :to="`/portfolios/${matchingPortfolios[0].id}/alerts?asset=${asset.id}`"
+          class="btn btn-secondary"
+        >
+          Create Alert
+        </router-link>
       </template>
       <template v-else-if="matchingPortfolios.length > 1">
-        <select class="btn btn-secondary" style="cursor: pointer;" @change="navigateToAlerts">
-          <option value="">Create Alert in…</option>
-          <option v-for="p in matchingPortfolios" :key="p.id" :value="p.id">{{ p.name }}</option>
+        <select
+          class="btn btn-secondary"
+          style="cursor: pointer;"
+          @change="navigateToAlerts"
+        >
+          <option value="">
+            Create Alert in…
+          </option>
+          <option
+            v-for="p in matchingPortfolios"
+            :key="p.id"
+            :value="p.id"
+          >
+            {{ p.name }}
+          </option>
         </select>
       </template>
       <template v-else>
@@ -77,6 +164,11 @@
         >Create Alert</span>
       </template>
     </div>
+
+    <div class="card">
+      <h2 style="margin-bottom: 1rem;">Technical Analysis</h2>
+      <AssetAnalysisTab :asset-id="asset.id" />
+    </div>
   </div>
 </template>
 
@@ -84,6 +176,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MarketBadge from '@/components/MarketBadge.vue'
+import AssetAnalysisTab from '@/components/AssetAnalysisTab.vue'
 import { getAsset, getAssetPrice, refreshAssetPrice } from '@/api/assets'
 import { getPortfolios } from '@/api/portfolios'
 import type { Asset, AssetQuote, Portfolio } from '@/types'

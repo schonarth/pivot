@@ -1,6 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import PositionViewSet, TradeDetailView, TradeViewSet
+from .views import PositionViewSet, TradeDetailView, TradeViewSet, agent_execute_trade, agent_portfolio_state
 
 router = DefaultRouter()
 
@@ -9,4 +9,6 @@ urlpatterns = [
     path("portfolios/<uuid:portfolio_pk>/positions/<uuid:asset_id>/", PositionViewSet.as_view({"get": "retrieve"}), name="position-detail"),
     path("portfolios/<uuid:portfolio_pk>/trades/", TradeViewSet.as_view({"get": "list", "post": "create"}), name="trade-list"),
     path("trades/<uuid:pk>/", TradeDetailView.as_view({"get": "retrieve"}), name="trade-detail"),
+    path("agents/execute-trade/", agent_execute_trade, name="agent-execute-trade"),
+    path("agents/portfolio-state/", agent_portfolio_state, name="agent-portfolio-state"),
 ]

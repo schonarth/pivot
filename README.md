@@ -1,20 +1,22 @@
-# <img src="./frontend/public/pivot-logo.png" alt="Pivot Logo" style="float: left; width: 20px; margin: 0 20px 20px 0;" /> Pivot
+# ![Pivot logo](./frontend/public/pivot-logo.png) Pivot
 
-**A paper trading simulator** for learning investment strategies, testing alerts, and experimenting with portfolio management across global markets without risking real capital.
 
-*With MCP server* — Use your AI agents to automate trading, analyze portfolios, and manage alerts!
+**An AI-powered paper trading simulator** for developing and testing investment strategies across global markets without risking real capital. Build strategies, get AI-generated insights, backtest with real market data, and execute trades, all risk-free — or let your AI agent do it for you with MCP support!
 
 ---
 
 ## What You Can Do
 
+- **Develop strategies** with technical indicators and backtesting engine
+- **Get AI insights** — Technical analysis powered by your choice of AI providers
+- **Backtest strategies** against historical OHLCV data
 - **Paper trade** across 4 global markets: Brazil, US, UK, and Europe
-- **Set price alerts** that notify you or automatically execute trades
-- **Simulate market prices** to test your strategies when markets are closed
-- **Track portfolio performance** with real-time updates
-- **Manage multiple portfolios** for different investment goals
+- **Set smart alerts** that trigger trades automatically when conditions are met
+- **Simulate market prices** to test strategies when markets are closed
+- **Manage multiple portfolios** for different investment goals and risk profiles
+- **Bring your AI agent** to trade with you with our simple to setup MCP server
 
-Perfect for developing trading strategies, testing alert logic, and learning portfolio management in a risk-free environment.
+Perfect for developing trading strategies, testing alert logic, learning portfolio management, and experimenting with automated trading — all without risking real capital.
 
 ---
 
@@ -25,7 +27,7 @@ Perfect for developing trading strategies, testing alert logic, and learning por
 You only need **Docker**. That's it.
 
 **Don't have Docker?**
-- [Download Docker Desktop](https://www.docker.com/products/docker-desktop) (includes Docker Compose)
+- [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
 - Install and run it
 
 ### Start the Application
@@ -55,6 +57,16 @@ The application will be ready at `http://localhost:3000` in about 30 seconds.
 ---
 
 ## Features
+
+### Strategy Development
+- **Build strategies** with technical indicators (moving averages, RSI, MACD, Bollinger Bands, and more)
+- **Backtest** strategies against historical OHLCV data
+- **Monitor execution** — Track autonomous trades triggered by your strategies
+- **Test and iterate** — Refine rules before deploying to live trading
+
+### AI-Powered Insights
+- **Generate technical analysis** — Claude, GPT, and Gemini supported now for market insights
+- **Budget tracking** — Monitor AI provider costs and set spending limits (API key required — sorry, no flat rate support 😅)
 
 ### Portfolios
 - Create separate portfolios for different markets
@@ -86,25 +98,42 @@ Test your strategies when markets are closed:
 ./simulate_market.sh
 ```
 
+**Simulate with directional trends:**
+```bash
+./simulate_market.sh --trends AAPL MSFT
+```
+
 **Simulate specific market:**
 ```bash
 ./simulate_market.sh BR
 ```
 
-**Simulate specific assets:**
-```bash
-./simulate_market.sh AAPL MSFT
-```
+The simulator updates prices in real-time—watch your portfolio and strategies react on the dashboard.
 
-The simulator updates prices in real-time—watch your portfolio react on the dashboard.
+> [!IMPORTANT]
+> To enable alerts for simaulated market, you must turn on the **simulation toggle** on your portfolios.
+
+> [!TIP]
+> Use different portfolios to run simulations and for actual market tracking, to prevent distortions.
 
 ---
 
-## AI Agents (MCP Server)
+## AI-Powered Automation (MCP Server)
 
-Connect AI agents to automate trading, analyze portfolios, and execute strategies.
+Use AI agents to automate trading, backtest strategies, generate insights, and manage your portfolio.
 
-**To set up agent access:** Go to Settings, get your UUID, and generate a one-time password (OTP). With these, your agent will be able to manage trades, alerts, and portfolios.
+**Agent capabilities:**
+- Manage trades, alerts, and portfolios
+- Backtest trading strategies against historical data
+- Generate technical analysis and trading insights
+- Monitor strategy execution and autonomous trades
+- Manage AI provider settings and cost budgets
+
+**To set up agent access:**
+1. Go to Settings
+2. Get your User UUID
+3. Generate a one-time password (OTP)
+4. Your agent will have full access to manage trading, backtesting, and insights
 
 ---
 

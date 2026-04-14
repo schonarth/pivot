@@ -1,22 +1,54 @@
 <template>
   <div class="auth-container">
-    <div class="card" style="max-width: 400px; margin: 4rem auto;">
-      <h2 style="margin-bottom: 1.5rem;">Login</h2>
-      <div v-if="error" class="alert-danger">{{ error }}</div>
+    <div
+      class="card"
+      style="max-width: 400px; margin: 4rem auto;"
+    >
+      <h2 style="margin-bottom: 1.5rem;">
+        Login
+      </h2>
+      <div
+        v-if="error"
+        class="alert-danger"
+      >
+        {{ error }}
+      </div>
       <div class="form-group">
         <label for="username">Username</label>
-        <input id="username" v-model="username" type="text" autocomplete="username" required />
+        <input
+          id="username"
+          v-model="username"
+          type="text"
+          autocomplete="username"
+          required
+        >
       </div>
       <div class="form-group">
         <label for="password">Password</label>
-        <input id="password" v-model="password" type="password" autocomplete="current-password" required />
+        <input
+          id="password"
+          v-model="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
       </div>
-      <button class="btn" style="width: 100%;" :disabled="loading" @click="handleLogin">
-        <span v-if="loading" class="spinner"></span>
+      <button
+        class="btn"
+        style="width: 100%;"
+        :disabled="loading"
+        @click="handleLogin"
+      >
+        <span
+          v-if="loading"
+          class="spinner"
+        />
         Login
       </button>
       <p style="margin-top: 1rem; text-align: center; font-size: 0.875rem;">
-        Don't have an account? <router-link to="/register">Register</router-link>
+        Don't have an account? <router-link to="/register">
+          Register
+        </router-link>
       </p>
     </div>
   </div>

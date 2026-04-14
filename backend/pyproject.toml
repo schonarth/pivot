@@ -23,6 +23,16 @@ dependencies = [
     "daphne>=4.1,<5",
     "sentry-sdk>=2.0,<3",
     "django-cors-headers>=4.4,<5",
+    "pandas>=2.0,<3",
+    "pandas-ta>=0.4.67b0",
+    "alpha-vantage>=2.3,<3",
+    "beautifulsoup4>=4.11,<5",
+    "cryptography>=42,<43",
+    "feedparser>=6.0,<7",
+    "requests>=2.31,<3",
+    "anthropic>=0.25,<1",
+    "openai>=1.0,<2",
+    "google-generativeai>=0.8,<1",
 ]
 
 [project.optional-dependencies]

@@ -3,27 +3,66 @@
     <div class="page-header">
       <h1>New Portfolio</h1>
     </div>
-    <div class="card" style="max-width: 500px;">
-      <div v-if="error" class="alert-danger">{{ error }}</div>
+    <div
+      class="card"
+      style="max-width: 500px;"
+    >
+      <div
+        v-if="error"
+        class="alert-danger"
+      >
+        {{ error }}
+      </div>
       <div class="form-group">
         <label for="name">Name</label>
-        <input id="name" v-model="name" type="text" placeholder="My BR Portfolio" required />
+        <input
+          id="name"
+          v-model="name"
+          type="text"
+          placeholder="My BR Portfolio"
+          required
+        >
       </div>
       <div class="form-group">
         <label for="market">Market</label>
-        <select id="market" v-model="market">
-          <option value="BR">Brazil (BRL)</option>
-          <option value="US">United States (USD)</option>
-          <option value="UK">United Kingdom (GBP)</option>
-          <option value="EU">European Union (EUR)</option>
+        <select
+          id="market"
+          v-model="market"
+        >
+          <option value="BR">
+            Brazil (BRL)
+          </option>
+          <option value="US">
+            United States (USD)
+          </option>
+          <option value="UK">
+            United Kingdom (GBP)
+          </option>
+          <option value="EU">
+            European Union (EUR)
+          </option>
         </select>
       </div>
       <div class="form-group">
         <label for="capital">Initial Capital</label>
-        <input id="capital" v-model="initialCapital" type="text" inputmode="decimal" placeholder="10000.00 or 10.000,00" required />
+        <input
+          id="capital"
+          v-model="initialCapital"
+          type="text"
+          inputmode="decimal"
+          placeholder="10000.00 or 10.000,00"
+          required
+        >
       </div>
-      <button class="btn" :disabled="loading" @click="handleCreate">
-        <span v-if="loading" class="spinner"></span>
+      <button
+        class="btn"
+        :disabled="loading"
+        @click="handleCreate"
+      >
+        <span
+          v-if="loading"
+          class="spinner"
+        />
         Create Portfolio
       </button>
     </div>

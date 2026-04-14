@@ -1,62 +1,165 @@
 <template>
-  <div v-if="summary" :style="summary.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.03)', minHeight: '100vh' } : {}">
+  <div
+    v-if="summary"
+    :style="summary.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.03)', minHeight: '100vh' } : {}"
+  >
     <div class="page-header">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <h1>{{ summary.name }}</h1>
-        <span v-if="summary.is_simulating" class="badge badge-warning" title="Alerts will fire on simulated prices">Simulating</span>
+        <span
+          v-if="summary.is_simulating"
+          class="badge badge-warning"
+          title="Alerts will fire on simulated prices"
+        >Simulating</span>
       </div>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <button class="btn btn-secondary btn-sm" @click="handleRefresh" :disabled="refreshing">Refresh Prices</button>
-        <button class="btn btn-secondary btn-sm" @click="showDeposit = true">Deposit</button>
-        <button class="btn btn-secondary btn-sm" @click="showWithdraw = true">Withdraw</button>
-        <router-link :to="`/portfolios/${portfolioId}/trades/new`" class="btn btn-sm">New Trade</router-link>
+        <button
+          class="btn btn-secondary btn-sm"
+          :disabled="refreshing"
+          @click="handleRefresh"
+        >
+          Refresh Prices
+        </button>
+        <button
+          class="btn btn-secondary btn-sm"
+          @click="showDeposit = true"
+        >
+          Deposit
+        </button>
+        <button
+          class="btn btn-secondary btn-sm"
+          @click="showWithdraw = true"
+        >
+          Withdraw
+        </button>
+        <router-link
+          :to="`/portfolios/${portfolioId}/trades/new`"
+          class="btn btn-sm"
+        >
+          New Trade
+        </router-link>
         <label class="toggle-switch">
-          <input type="checkbox" :checked="summary.is_simulating" @change="handleToggleSimulating" />
+          <input
+            type="checkbox"
+            :checked="summary.is_simulating"
+            @change="handleToggleSimulating"
+          >
           <span class="toggle-label">{{ summary.is_simulating ? 'Simulating' : 'Real' }}</span>
         </label>
       </div>
     </div>
     <div class="grid grid-4">
       <div class="card">
-        <div class="text-muted" style="font-size: 0.75rem;">Total Equity</div>
-        <div style="font-size: 1.25rem; font-weight: 600;">{{ summary.base_currency }} {{ formatNum(summary.total_equity) }}</div>
+        <div
+          class="text-muted"
+          style="font-size: 0.75rem;"
+        >
+          Total Equity
+        </div>
+        <div style="font-size: 1.25rem; font-weight: 600;">
+          {{ summary.base_currency }} {{ formatNum(summary.total_equity) }}
+        </div>
       </div>
       <div class="card">
-        <div class="text-muted" style="font-size: 0.75rem;">Cash</div>
-        <div style="font-size: 1.25rem; font-weight: 600;">{{ summary.base_currency }} {{ formatNum(summary.current_cash) }}</div>
+        <div
+          class="text-muted"
+          style="font-size: 0.75rem;"
+        >
+          Cash
+        </div>
+        <div style="font-size: 1.25rem; font-weight: 600;">
+          {{ summary.base_currency }} {{ formatNum(summary.current_cash) }}
+        </div>
       </div>
       <div class="card">
-        <div class="text-muted" style="font-size: 0.75rem;">Invested</div>
-        <div style="font-size: 1.25rem; font-weight: 600;">{{ summary.base_currency }} {{ formatNum(summary.positions_value) }}</div>
+        <div
+          class="text-muted"
+          style="font-size: 0.75rem;"
+        >
+          Invested
+        </div>
+        <div style="font-size: 1.25rem; font-weight: 600;">
+          {{ summary.base_currency }} {{ formatNum(summary.positions_value) }}
+        </div>
       </div>
       <div class="card">
-        <div class="text-muted" style="font-size: 0.75rem;">Trading P&L</div>
-        <div :class="Number(summary.trading_pnl) >= 0 ? 'text-success' : 'text-danger'" style="font-size: 1.25rem; font-weight: 600;">
+        <div
+          class="text-muted"
+          style="font-size: 0.75rem;"
+        >
+          Trading P&L
+        </div>
+        <div
+          :class="Number(summary.trading_pnl) >= 0 ? 'text-success' : 'text-danger'"
+          style="font-size: 1.25rem; font-weight: 600;"
+        >
           {{ summary.base_currency }} {{ formatNum(summary.trading_pnl) }}
         </div>
       </div>
     </div>
-    <div class="grid grid-2" style="margin-top: 1rem;">
+    <div
+      class="grid grid-2"
+      style="margin-top: 1rem;"
+    >
       <div class="card">
-        <div class="text-muted" style="font-size: 0.75rem;">Net Deposits/Withdrawals</div>
-        <div style="font-size: 1rem;">{{ summary.base_currency }} {{ formatNum(summary.net_external_cash_flows) }}</div>
+        <div
+          class="text-muted"
+          style="font-size: 0.75rem;"
+        >
+          Net Deposits/Withdrawals
+        </div>
+        <div style="font-size: 1rem;">
+          {{ summary.base_currency }} {{ formatNum(summary.net_external_cash_flows) }}
+        </div>
       </div>
       <div class="card">
-        <div class="text-muted" style="font-size: 0.75rem;">Market</div>
+        <div
+          class="text-muted"
+          style="font-size: 0.75rem;"
+        >
+          Market
+        </div>
         <MarketBadge :market="summary.market" />
       </div>
     </div>
 
-    <div class="tabs" style="margin-top: 2rem;">
-      <button class="tab-btn" :class="{ active: activeTab === 'positions' }" @click="activeTab = 'positions'">Positions</button>
-      <button class="tab-btn" :class="{ active: activeTab === 'alerts' }" @click="activeTab = 'alerts'">
+    <div
+      class="tabs"
+      style="margin-top: 2rem;"
+    >
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'positions' }"
+        @click="activeTab = 'positions'"
+      >
+        Positions
+      </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'alerts' }"
+        @click="activeTab = 'alerts'"
+      >
         Alerts
-        <span v-if="activeAlerts.length" class="badge badge-info" style="margin-left: 0.4rem; font-size: 0.7rem;">{{ activeAlerts.length }}</span>
+        <span
+          v-if="activeAlerts.length"
+          class="badge badge-info"
+          style="margin-left: 0.4rem; font-size: 0.7rem;"
+        >{{ activeAlerts.length }}</span>
+      </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'strategies' }"
+        @click="activeTab = 'strategies'"
+      >
+        Strategies
       </button>
     </div>
 
     <div v-if="activeTab === 'positions'">
-      <div class="card" v-if="summary.positions.length">
+      <div
+        v-if="summary.positions.length"
+        class="card"
+      >
         <table>
           <thead>
             <tr>
@@ -66,12 +169,19 @@
               <th>Current Price</th>
               <th>Market Value</th>
               <th>Unrealized P&L</th>
-              <th></th>
+              <th />
             </tr>
           </thead>
           <tbody>
-            <tr v-for="pos in summary.positions" :key="pos.asset_id">
-              <td><router-link :to="`/assets/${pos.asset_id}`">{{ pos.symbol }}</router-link></td>
+            <tr
+              v-for="pos in summary.positions"
+              :key="pos.asset_id"
+            >
+              <td>
+                <router-link :to="`/assets/${pos.asset_id}`">
+                  {{ pos.symbol }}
+                </router-link>
+              </td>
               <td>{{ pos.quantity }}</td>
               <td>{{ formatNum(pos.average_cost) }}</td>
               <td>{{ formatNum(pos.current_price) }}</td>
@@ -80,136 +190,305 @@
                 {{ formatNum(pos.unrealized_pnl) }}
               </td>
               <td style="text-align: center;">
-                <span v-if="assetsWithAlerts.has(pos.asset_id)" class="alert-indicator" title="Active alerts for this asset">!</span>
+                <span
+                  v-if="assetsWithAlerts.has(pos.asset_id)"
+                  class="alert-indicator"
+                  title="Active alerts for this asset"
+                >!</span>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-else class="card">
-        <p class="text-muted">No positions yet. Start by making a trade!</p>
+      <div
+        v-else
+        class="card"
+      >
+        <p class="text-muted">
+          No positions yet. Start by making a trade!
+        </p>
       </div>
     </div>
 
     <div v-if="activeTab === 'alerts'">
       <div style="display: flex; justify-content: flex-end; margin-bottom: 0.75rem;">
-        <button class="btn btn-sm" @click="showCreate = true">New Alert</button>
+        <button
+          class="btn btn-sm"
+          @click="showCreate = true"
+        >
+          New Alert
+        </button>
       </div>
 
-      <div v-if="showCreate" class="card" style="margin-bottom: 1rem;">
-        <h3 style="margin-bottom: 1rem;">Create Alert</h3>
-        <div v-if="createError" class="alert-error">{{ createError }}</div>
+      <div
+        v-if="showCreate"
+        class="card"
+        style="margin-bottom: 1rem;"
+      >
+        <h3 style="margin-bottom: 1rem;">
+          Create Alert
+        </h3>
+        <div
+          v-if="createError"
+          class="alert-error"
+        >
+          {{ createError }}
+        </div>
         <div class="form-group">
           <label>Asset</label>
           <template v-if="newAsset && presetAsset">
             <div>{{ newAsset.display_symbol }} — {{ newAsset.name }}</div>
           </template>
           <template v-else>
-            <input v-model="assetSearch" type="text" placeholder="Search asset..." @input="searchAssetsDebounced" />
-            <div v-if="assetResults.length" style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
-              <div v-for="a in assetResults" :key="a.id" style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);" @click="selectNewAsset(a)">
+            <input
+              v-model="assetSearch"
+              type="text"
+              placeholder="Search asset..."
+              @input="searchAssetsDebounced"
+            >
+            <div
+              v-if="assetResults.length"
+              style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;"
+            >
+              <div
+                v-for="a in assetResults"
+                :key="a.id"
+                style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);"
+                @click="selectNewAsset(a)"
+              >
                 {{ a.display_symbol }} - {{ a.name }}
               </div>
             </div>
-            <div v-if="newAsset" style="margin-top: 0.5rem;" class="text-muted">Selected: {{ newAsset.display_symbol }}</div>
+            <div
+              v-if="newAsset"
+              style="margin-top: 0.5rem;"
+              class="text-muted"
+            >
+              Selected: {{ newAsset.display_symbol }}
+            </div>
           </template>
         </div>
         <div class="form-group">
           <label>Condition</label>
           <select v-model="newAlertForm.condition_type">
-            <option value="price_above">Price Above</option>
-            <option value="price_below">Price Below</option>
+            <option value="price_above">
+              Price Above
+            </option>
+            <option value="price_below">
+              Price Below
+            </option>
           </select>
         </div>
         <div class="form-group">
           <label>
             Threshold
-            <span v-if="selectedAssetPrice" class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">
+            <span
+              v-if="selectedAssetPrice"
+              class="text-muted"
+              style="font-size: 0.8rem; margin-left: 0.5rem;"
+            >
               Current: {{ selectedAssetPrice }}
             </span>
           </label>
-          <input v-model="newAlertForm.threshold" type="text" inputmode="decimal" placeholder="0.00" />
+          <input
+            v-model="newAlertForm.threshold"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.00"
+          >
         </div>
         <div class="form-group">
-          <label><input type="checkbox" v-model="newAlertForm.notify_enabled" /> Notify me</label>
+          <label><input
+            v-model="newAlertForm.notify_enabled"
+            type="checkbox"
+          > Notify me</label>
         </div>
         <div class="form-group">
-          <label><input type="checkbox" v-model="newAlertForm.auto_trade_enabled" /> Auto-trade</label>
+          <label><input
+            v-model="newAlertForm.auto_trade_enabled"
+            type="checkbox"
+          > Auto-trade</label>
         </div>
-        <div v-if="newAlertForm.auto_trade_enabled" class="form-group">
+        <div
+          v-if="newAlertForm.auto_trade_enabled"
+          class="form-group"
+        >
           <label>Side</label>
           <select v-model="newAlertForm.auto_trade_side">
-            <option value="BUY">BUY</option>
-            <option value="SELL">SELL</option>
+            <option value="BUY">
+              BUY
+            </option>
+            <option value="SELL">
+              SELL
+            </option>
           </select>
         </div>
-        <div v-if="newAlertForm.auto_trade_enabled" class="form-group">
+        <div
+          v-if="newAlertForm.auto_trade_enabled"
+          class="form-group"
+        >
           <label>
-            <input type="radio" name="sizing" value="quantity" v-model="sizingType" />
+            <input
+              v-model="sizingType"
+              type="radio"
+              name="sizing"
+              value="quantity"
+            >
             Fixed Quantity
-            <input type="radio" name="sizing" value="pct" v-model="sizingType" style="margin-left: 0.75rem;" />
+            <input
+              v-model="sizingType"
+              type="radio"
+              name="sizing"
+              value="pct"
+              style="margin-left: 0.75rem;"
+            >
             Percentage
           </label>
         </div>
-        <div v-if="newAlertForm.auto_trade_enabled && sizingType === 'quantity'" class="form-group">
+        <div
+          v-if="newAlertForm.auto_trade_enabled && sizingType === 'quantity'"
+          class="form-group"
+        >
           <label>Quantity</label>
-          <input v-model.number="newAlertForm.auto_trade_quantity" type="number" min="1" />
+          <input
+            v-model.number="newAlertForm.auto_trade_quantity"
+            type="number"
+            min="1"
+          >
         </div>
-        <div v-if="newAlertForm.auto_trade_enabled && sizingType === 'pct'" class="form-group">
+        <div
+          v-if="newAlertForm.auto_trade_enabled && sizingType === 'pct'"
+          class="form-group"
+        >
           <label>Percentage (0-100)</label>
-          <input v-model="newAlertForm.auto_trade_pct" type="text" inputmode="decimal" placeholder="0.00" />
+          <input
+            v-model="newAlertForm.auto_trade_pct"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.00"
+          >
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <button class="btn" @click="handleCreateAlert" :disabled="!newAsset || !newAlertForm.threshold">Create</button>
-          <button class="btn btn-secondary" @click="cancelCreate">Cancel</button>
+          <button
+            class="btn"
+            :disabled="!newAsset || !newAlertForm.threshold"
+            @click="handleCreateAlert"
+          >
+            Create
+          </button>
+          <button
+            class="btn btn-secondary"
+            @click="cancelCreate"
+          >
+            Cancel
+          </button>
         </div>
       </div>
 
-      <div v-if="activeAlerts.length" class="card" style="margin-bottom: 1rem;">
-        <h3 style="margin-bottom: 0.75rem;">Active</h3>
-        <div v-for="a in activeAlerts" :key="a.id" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+      <div
+        v-if="activeAlerts.length"
+        class="card"
+        style="margin-bottom: 1rem;"
+      >
+        <h3 style="margin-bottom: 0.75rem;">
+          Active
+        </h3>
+        <div
+          v-for="a in activeAlerts"
+          :key="a.id"
+          style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);"
+        >
           <div>
             <strong>{{ a.asset_display_symbol }}</strong>
-            <span class="badge" :class="a.condition_type === 'price_above' ? 'badge-success' : 'badge-danger'" style="margin-left: 0.5rem;">
+            <span
+              class="badge"
+              :class="a.condition_type === 'price_above' ? 'badge-success' : 'badge-danger'"
+              style="margin-left: 0.5rem;"
+            >
               {{ a.condition_type === 'price_above' ? 'Above' : 'Below' }} {{ a.threshold }}
             </span>
-            <span v-if="alertPrices[a.asset]" class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">
+            <span
+              v-if="alertPrices[a.asset]"
+              class="text-muted"
+              style="font-size: 0.8rem; margin-left: 0.5rem;"
+            >
               now {{ alertPrices[a.asset] }}
             </span>
-            <span v-if="a.auto_trade_enabled" class="badge badge-info" style="margin-left: 0.5rem;">
+            <span
+              v-if="a.auto_trade_enabled"
+              class="badge badge-info"
+              style="margin-left: 0.5rem;"
+            >
               Auto {{ a.auto_trade_side }}
               <template v-if="a.auto_trade_quantity"> {{ a.auto_trade_quantity }} shares</template>
               <template v-else-if="a.auto_trade_pct"> {{ a.auto_trade_pct }}%</template>
             </span>
           </div>
           <div style="display: flex; gap: 0.25rem;">
-            <button class="btn btn-secondary btn-sm" @click="handlePauseAlert(a.id)">Pause</button>
-            <button class="btn btn-danger btn-sm" @click="handleDeleteAlert(a.id)">Delete</button>
+            <button
+              class="btn btn-secondary btn-sm"
+              @click="handlePauseAlert(a.id)"
+            >
+              Pause
+            </button>
+            <button
+              class="btn btn-danger btn-sm"
+              @click="handleDeleteAlert(a.id)"
+            >
+              Delete
+            </button>
           </div>
         </div>
       </div>
 
-      <div v-if="triggeredAlerts.length" class="card" style="margin-bottom: 1rem;">
-        <h3 style="margin-bottom: 0.75rem;">Triggered</h3>
-        <div v-for="a in triggeredAlerts" :key="a.id" style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+      <div
+        v-if="triggeredAlerts.length"
+        class="card"
+        style="margin-bottom: 1rem;"
+      >
+        <h3 style="margin-bottom: 0.75rem;">
+          Triggered
+        </h3>
+        <div
+          v-for="a in triggeredAlerts"
+          :key="a.id"
+          style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);"
+        >
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
               <strong>{{ a.asset_display_symbol }}</strong>
-              <span class="badge" :class="a.condition_type === 'price_above' ? 'badge-success' : 'badge-danger'" style="margin-left: 0.5rem;">
+              <span
+                class="badge"
+                :class="a.condition_type === 'price_above' ? 'badge-success' : 'badge-danger'"
+                style="margin-left: 0.5rem;"
+              >
                 {{ a.condition_type === 'price_above' ? 'Above' : 'Below' }} {{ a.threshold }}
               </span>
-              <span v-if="a.latest_trigger" style="margin-left: 0.5rem; font-size: 0.8rem;" class="text-muted">
+              <span
+                v-if="a.latest_trigger"
+                style="margin-left: 0.5rem; font-size: 0.8rem;"
+                class="text-muted"
+              >
                 @ {{ a.latest_trigger.triggered_price }}
               </span>
             </div>
-            <span class="text-muted" style="font-size: 0.75rem; white-space: nowrap; margin-left: 1rem;">
+            <span
+              class="text-muted"
+              style="font-size: 0.75rem; white-space: nowrap; margin-left: 1rem;"
+            >
               {{ a.triggered_at ? formatDate(a.triggered_at) : 'N/A' }}
             </span>
           </div>
-          <div v-if="a.latest_trigger" style="margin-top: 0.4rem; font-size: 0.82rem;">
+          <div
+            v-if="a.latest_trigger"
+            style="margin-top: 0.4rem; font-size: 0.82rem;"
+          >
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
               <template v-if="a.latest_trigger.trade">
-                <span class="badge" :class="a.latest_trigger.trade.action === 'BUY' ? 'badge-success' : 'badge-danger'">
+                <span
+                  class="badge"
+                  :class="a.latest_trigger.trade.action === 'BUY' ? 'badge-success' : 'badge-danger'"
+                >
                   {{ a.latest_trigger.trade.action }}
                 </span>
                 <span style="margin-left: 0.4rem;">
@@ -221,68 +500,171 @@
                 <span class="text-muted">{{ outcomeLabel(a.latest_trigger.outcome) }}</span>
               </template>
             </div>
-            <div v-if="a.latest_trigger.price_was_override" style="font-size: 0.75rem; color: #ff9800;">
+            <div
+              v-if="a.latest_trigger.price_was_override"
+              style="font-size: 0.75rem; color: #ff9800;"
+            >
               Triggered by simulated price
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="pausedAlerts.length" class="card" style="margin-bottom: 1rem;">
-        <h3 style="margin-bottom: 0.75rem;">Paused</h3>
-        <div v-for="a in pausedAlerts" :key="a.id" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+      <div
+        v-if="pausedAlerts.length"
+        class="card"
+        style="margin-bottom: 1rem;"
+      >
+        <h3 style="margin-bottom: 0.75rem;">
+          Paused
+        </h3>
+        <div
+          v-for="a in pausedAlerts"
+          :key="a.id"
+          style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);"
+        >
           <div>
             <strong>{{ a.asset_display_symbol }}</strong>
-            <span class="badge badge-warning" style="margin-left: 0.5rem;">
+            <span
+              class="badge badge-warning"
+              style="margin-left: 0.5rem;"
+            >
               {{ a.condition_type === 'price_above' ? 'Above' : 'Below' }} {{ a.threshold }}
             </span>
           </div>
           <div style="display: flex; gap: 0.25rem;">
-            <button class="btn btn-secondary btn-sm" @click="handleResumeAlert(a.id)">Resume</button>
-            <button class="btn btn-danger btn-sm" @click="handleDeleteAlert(a.id)">Delete</button>
+            <button
+              class="btn btn-secondary btn-sm"
+              @click="handleResumeAlert(a.id)"
+            >
+              Resume
+            </button>
+            <button
+              class="btn btn-danger btn-sm"
+              @click="handleDeleteAlert(a.id)"
+            >
+              Delete
+            </button>
           </div>
         </div>
       </div>
 
-      <div v-if="!alerts.length" class="card"><p class="text-muted">No alerts yet.</p></div>
+      <div
+        v-if="!alerts.length"
+        class="card"
+      >
+        <p class="text-muted">
+          No alerts yet.
+        </p>
+      </div>
     </div>
 
-    <h2 style="margin-top: 2rem; margin-bottom: 1rem;">Recent Activity</h2>
-    <div v-if="timeline.length" class="card">
-      <div v-for="event in timeline.slice(0, 10)" :key="event.id" style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+    <div v-if="activeTab === 'strategies'">
+      <StrategiesView :id="portfolioId" />
+    </div>
+
+    <h2 style="margin-top: 2rem; margin-bottom: 1rem;">
+      Recent Activity
+    </h2>
+    <div
+      v-if="timeline.length"
+      class="card"
+    >
+      <div
+        v-for="event in timeline.slice(0, 10)"
+        :key="event.id"
+        style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);"
+      >
         <div style="display: flex; justify-content: space-between;">
           <span>{{ event.description }}</span>
-          <span class="text-muted" style="font-size: 0.75rem;">{{ formatDate(event.created_at) }}</span>
+          <span
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >{{ formatDate(event.created_at) }}</span>
         </div>
       </div>
     </div>
-    <div v-else class="card"><p class="text-muted">No activity yet.</p></div>
+    <div
+      v-else
+      class="card"
+    >
+      <p class="text-muted">
+        No activity yet.
+      </p>
+    </div>
 
-    <div v-if="showDeposit" class="modal-overlay" @click.self="showDeposit = false">
+    <div
+      v-if="showDeposit"
+      class="modal-overlay"
+      @click.self="showDeposit = false"
+    >
       <div class="card modal-content">
         <h3>Deposit</h3>
         <div class="form-group">
           <label>Amount</label>
-          <input ref="depositInput" v-model="depositAmount" type="text" inputmode="decimal" placeholder="0.00" @keyup.enter="handleDeposit" />
+          <input
+            ref="depositInput"
+            v-model="depositAmount"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.00"
+            @keyup.enter="handleDeposit"
+          >
         </div>
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-          <button class="btn btn-secondary" @click="showDeposit = false">Cancel</button>
-          <button class="btn btn-success" @click="handleDeposit">Deposit</button>
+          <button
+            class="btn btn-secondary"
+            @click="showDeposit = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-success"
+            @click="handleDeposit"
+          >
+            Deposit
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-if="showWithdraw" class="modal-overlay" @click.self="showWithdraw = false">
+    <div
+      v-if="showWithdraw"
+      class="modal-overlay"
+      @click.self="showWithdraw = false"
+    >
       <div class="card modal-content">
         <h3>Withdraw</h3>
-        <div v-if="withdrawWarning" class="alert-error">{{ withdrawWarning }}</div>
+        <div
+          v-if="withdrawWarning"
+          class="alert-error"
+        >
+          {{ withdrawWarning }}
+        </div>
         <div class="form-group">
           <label>Amount</label>
-          <input ref="withdrawInput" v-model="withdrawAmount" type="text" inputmode="decimal" placeholder="0.00" @keyup.enter="handleWithdraw" />
+          <input
+            ref="withdrawInput"
+            v-model="withdrawAmount"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.00"
+            @keyup.enter="handleWithdraw"
+          >
         </div>
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-          <button class="btn btn-secondary" @click="showWithdraw = false">Cancel</button>
-          <button class="btn btn-danger" @click="handleWithdraw">Withdraw</button>
+          <button
+            class="btn btn-secondary"
+            @click="showWithdraw = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-danger"
+            @click="handleWithdraw"
+          >
+            Withdraw
+          </button>
         </div>
       </div>
     </div>
@@ -292,6 +674,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
+import StrategiesView from '@/views/StrategiesView.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw, updatePortfolio } from '@/api/portfolios'
 import { getAlerts, createAlert, deleteAlert, pauseAlert, resumeAlert } from '@/api/alerts'
@@ -329,7 +712,7 @@ const withdrawWarning = ref('')
 const depositInput = ref<HTMLInputElement | null>(null)
 const withdrawInput = ref<HTMLInputElement | null>(null)
 
-const activeTab = ref<'positions' | 'alerts'>('positions')
+const activeTab = ref<'positions' | 'alerts' | 'strategies'>('positions')
 
 const alerts = ref<Alert[]>([])
 const alertPrices = ref<Record<string, string>>({})

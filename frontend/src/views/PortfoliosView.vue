@@ -2,11 +2,30 @@
   <div>
     <div class="page-header">
       <h1>My Portfolios</h1>
-      <router-link to="/portfolios/new" class="btn">New Portfolio</router-link>
+      <router-link
+        to="/portfolios/new"
+        class="btn"
+      >
+        New Portfolio
+      </router-link>
     </div>
-    <div v-if="loading" style="text-align: center; padding: 2rem;"><span class="spinner"></span></div>
-    <div v-else-if="validPortfolios.length" class="grid grid-3">
-      <div v-for="p in validPortfolios" :key="p.id" class="card portfolio-card" :style="p.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.05)' } : {}" @click="$router.push(`/portfolios/${p.id}`)">
+    <div
+      v-if="loading"
+      style="text-align: center; padding: 2rem;"
+    >
+      <span class="spinner" />
+    </div>
+    <div
+      v-else-if="validPortfolios.length"
+      class="grid grid-3"
+    >
+      <div
+        v-for="p in validPortfolios"
+        :key="p.id"
+        class="card portfolio-card"
+        :style="p.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.05)' } : {}"
+        @click="$router.push(`/portfolios/${p.id}`)"
+      >
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <strong>{{ p.name }}</strong>
           <MarketBadge :market="p.market" />
@@ -33,8 +52,15 @@
         </div>
       </div>
     </div>
-    <div v-else class="card">
-      <p class="text-muted">No portfolios yet. <router-link to="/portfolios/new">Create one</router-link> to get started!</p>
+    <div
+      v-else
+      class="card"
+    >
+      <p class="text-muted">
+        No portfolios yet. <router-link to="/portfolios/new">
+          Create one
+        </router-link> to get started!
+      </p>
     </div>
   </div>
 </template>

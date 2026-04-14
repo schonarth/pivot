@@ -1,13 +1,23 @@
+import base64
+import hashlib
 import os
 from pathlib import Path
 
 from datetime import timedelta
 
 from decouple import Csv, config
+from cryptography.fernet import Fernet
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="dev-secret-key-change-in-production")
+
+
+def _default_ai_encryption_key() -> str:
+    return base64.urlsafe_b64encode(hashlib.sha256(SECRET_KEY.encode()).digest()).decode()
+
+
+AI_ENCRYPTION_KEY = config("AI_ENCRYPTION_KEY", default=_default_ai_encryption_key())
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
@@ -35,6 +45,8 @@ INSTALLED_APPS = [
     "alerts",
     "timeline",
     "realtime",
+    "strategies",
+    "ai",
     "mcp",
 ]
 
