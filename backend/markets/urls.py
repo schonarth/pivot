@@ -7,6 +7,6 @@ router.register(r"assets", AssetViewSet, basename="asset")
 router.register(r"markets", MarketConfigViewSet, basename="market-config")
 
 urlpatterns = [
+    path("markets/status/", MarketStatusView.as_view({"get": "list"}), name="market-status"),
     path("", include(router.urls)),
-    path("markets/status", MarketStatusView.as_view({"get": "list"}), name="market-status"),
 ]

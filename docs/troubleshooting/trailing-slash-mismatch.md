@@ -131,11 +131,34 @@ Maintain a list of all endpoints with trailing slash status:
 /api/assets/                     ✓
 ```
 
+## Related Issue: URL Pattern Ordering
+
+When using `DefaultRouter` with `include(router.urls)`, be aware that routers create greedy patterns like `/markets/{pk}/` that will match any path under that prefix.
+
+**Problem**: `/api/markets/status/` matches router pattern as `markets/{pk='status'}` instead of explicit `markets/status/` path.
+
+**Solution**: Always put explicit paths BEFORE router includes:
+```python
+# ✅ Correct
+urlpatterns = [
+    path("markets/status/", SpecialView.as_view(...)),  # specific first
+    path("", include(router.urls)),                      # generic last
+]
+
+# ❌ Wrong
+urlpatterns = [
+    path("", include(router.urls)),                      # generic first
+    path("markets/status/", SpecialView.as_view(...)),  # never reached
+]
+```
+
+Django's URL router matches the first pattern that fits—specific patterns must come first.
+
 ## Recent Incidents
 
 | Date | Endpoint | Issue | Fix |
 |------|----------|-------|-----|
-| 2026-04-14 | `/api/markets/status` | Missing trailing slash, returned empty error | Added `/` |
+| 2026-04-14 | `/api/markets/status/` | Trailing slash + router collision | Added `/`, reordered urlpatterns |
 | 2026-04-14 | `/api/mcp/portfolios/` | No endpoint | Added 307 redirect to `/api/portfolios/` |
 
 ## Testing Command

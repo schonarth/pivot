@@ -264,14 +264,47 @@ All endpoints use `application/json` for request/response. All monetary values a
 | POST | `/api/alerts/{id}/resume/` | JWT | Resume alert (start checking again). |
 | GET | `/api/alert-triggers/` | JWT | List all alert triggers (execution history) across all portfolios. |
 
-### MCP (Agent Authentication) (`/api/mcp/`)
+### MCP (Agent Authentication & Data Access) (`/api/mcp/`)
+
+**Agent Token Authentication:** Agents authenticate via OTP-based token exchange. All agent-facing endpoints require `agent_token` parameter (passed in body or query params).
+
+**Agent Management:**
 
 | Method | Endpoint | Auth | Purpose |
 |--------|----------|------|---------|
 | POST | `/api/mcp/otp/generate/` | JWT | Generate 60-second OTP for agent auth. Returns `{code, expires_at}`. |
 | POST | `/api/mcp/token/exchange/` | OTP | Exchange OTP for agent token. Body: `{user_id (api_uuid), otp, name?, origin?}`. Returns `{token}`. |
-| GET | `/api/mcp/agents/` | JWT | List authenticated agents. |
+| GET | `/api/mcp/agents/` | JWT | List authenticated agents for current user. |
 | DELETE | `/api/mcp/agents/{agent_id}/` | JWT | Revoke agent token. |
+
+**AI & Insights:**
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/mcp/asset-insight/` | Agent | Get AI-powered insight for asset. Body: `{agent_token, asset_id}`. Returns `{summary, technical_analysis, sentiment, recommendation}`. Cached 24h. |
+| GET | `/api/mcp/ai-settings/` | Agent | Get AI budget info (read-only). Query: `?agent_token=...`. Returns `{monthly_budget_usd, usage_percent, remaining_budget_usd, ...}`. No API key exposed. |
+
+**Strategy & Backtesting:**
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/mcp/strategy-rules/` | Agent | List available strategy rules. Query: `?agent_token=...`. |
+| GET | `/api/mcp/strategy-instances/` | Agent | List user's strategy instances. Query: `?agent_token=...`. |
+| GET | `/api/mcp/strategy-trades/` | Agent | List trades executed by strategies. Query: `?agent_token=...`. |
+| POST | `/api/mcp/backtest/create/` | Agent | Create backtest scenario. Body: `{agent_token, strategy_instance_id, date_from, date_to}`. Returns backtest object. |
+| GET | `/api/mcp/backtest/{id}/results/` | Agent | Get backtest results. Query: `?agent_token=...`. |
+
+**Agent-Executed Trades:**
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/mcp/agent-trades/` | Agent | List trades executed by agents. Query: `?agent_token=...`. |
+
+**API Discovery:**
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| GET | `/api/mcp/schema/` | None | Get MCP schema listing all endpoints, auth methods, and caching strategies. |
 
 ### Health & System (`/api/`)
 

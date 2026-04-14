@@ -7,7 +7,10 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.cache import cache
 
-from exchange_calendars import get_calendar
+try:
+    from exchange_calendars import get_calendar
+except ImportError:
+    get_calendar = None
 
 from .models import Asset, AssetQuote, MarketConfig, OHLCV, NewsItem
 
@@ -58,8 +61,13 @@ def is_market_open(market_code: str) -> bool:
     cfg = MARKET_CONFIGS.get(market_code)
     if cfg is None:
         return False
-    cal = get_calendar(cfg["exchange"])
-    return cal.is_session(timezone.now().date())
+    if get_calendar is None:
+        return None
+    try:
+        cal = get_calendar(cfg["exchange"])
+        return cal.is_session(timezone.now().date())
+    except Exception:
+        return None
 
 
 def get_market_timezone(market_code: str) -> str:
