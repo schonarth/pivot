@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import json
 from django.db.models import Sum
 from django.utils import timezone
+from django.core.cache import cache
 
 from .models import AIAuth, AICost
 from .encryption import KeyEncryption
@@ -166,6 +167,62 @@ class AIService:
                 return None
 
     @staticmethod
+    def build_connection_test_prompt() -> str:
+        return "Reply with OK"
+
+    @staticmethod
+    def build_indicator_insight_prompt(asset, indicators: dict, news_items: list[dict]) -> str:
+        return f"""You are analyzing one asset for a paper trading app.
+
+Return ONLY valid JSON with this exact shape:
+{{
+  "recommendation": "BUY" | "HOLD" | "SELL",
+  "confidence": integer from 0 to 100,
+  "technical_summary": "plain-English paragraph about the technical setup",
+  "news_context": "plain-English paragraph about the market or news context, or empty string if there is no meaningful context",
+  "price_target": number or null
+}}
+
+Asset:
+- Symbol: {asset.display_symbol}
+- Name: {asset.name}
+- Market: {asset.market}
+- Currency: {asset.currency}
+
+Technical indicators:
+- RSI 14: {indicators.get("rsi_14")}
+- MACD: {indicators.get("macd")}
+- MACD signal: {indicators.get("macd_signal")}
+- MACD histogram: {indicators.get("macd_histogram")}
+- MA 20: {indicators.get("ma_20")}
+- MA 50: {indicators.get("ma_50")}
+- MA 200: {indicators.get("ma_200")}
+- Bollinger upper: {indicators.get("bb_upper")}
+- Bollinger middle: {indicators.get("bb_middle")}
+- Bollinger lower: {indicators.get("bb_lower")}
+- 20 day average volume: {indicators.get("volume_20d_avg")}
+
+Recent headlines:
+{chr(10).join(f"- {item['headline']} ({item['source']})" for item in news_items) if news_items else "- None"}
+
+Writing rules:
+- Be useful to an everyday investor, not only a technical analyst.
+- First paragraph: explain what the indicators suggest in plain English.
+- Second paragraph: explain what broader news or market context may be influencing the asset right now.
+- If the headlines are weak, generic, or missing, set "news_context" to an empty string.
+- Do not mention every indicator mechanically.
+- No markdown."""
+
+    @staticmethod
+    def build_sentiment_prompt(headlines: list[str]) -> str:
+        return f"""Analyze the sentiment of each headline and return a JSON object mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
+
+Headlines:
+{chr(10).join(f'- {h}' for h in headlines)}
+
+Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
+
+    @staticmethod
     def _estimate_openai_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
         pricing = {
             "gpt-4o-mini": (Decimal("0.00000015"), Decimal("0.00000060")),
@@ -261,6 +318,11 @@ class AIService:
         if not self.ai_auth or not self.get_api_key():
             raise ValueError("AI is not configured for this user")
 
+        cache_key = f"ai_insight:{self.user.id}:{asset.id}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
         self.check_budget()
 
         indicators = IndicatorCalculator.calculate_indicators(str(asset.id), asset.display_symbol)
@@ -278,46 +340,7 @@ class AIService:
         model = self.ai_auth.get_model_for_task("indicator_insight")
         api_key = self.get_api_key()
 
-        prompt = f"""You are analyzing one asset for a paper trading app.
-
-Return ONLY valid JSON with this exact shape:
-{{
-  "recommendation": "BUY" | "HOLD" | "SELL",
-  "confidence": integer from 0 to 100,
-  "technical_summary": "plain-English paragraph about the technical setup",
-  "news_context": "plain-English paragraph about the market or news context, or empty string if there is no meaningful context",
-  "price_target": number or null
-}}
-
-Asset:
-- Symbol: {asset.display_symbol}
-- Name: {asset.name}
-- Market: {asset.market}
-- Currency: {asset.currency}
-
-Technical indicators:
-- RSI 14: {indicators.get("rsi_14")}
-- MACD: {indicators.get("macd")}
-- MACD signal: {indicators.get("macd_signal")}
-- MACD histogram: {indicators.get("macd_histogram")}
-- MA 20: {indicators.get("ma_20")}
-- MA 50: {indicators.get("ma_50")}
-- MA 200: {indicators.get("ma_200")}
-- Bollinger upper: {indicators.get("bb_upper")}
-- Bollinger middle: {indicators.get("bb_middle")}
-- Bollinger lower: {indicators.get("bb_lower")}
-- 20 day average volume: {indicators.get("volume_20d_avg")}
-
-Recent headlines:
-{chr(10).join(f"- {item['headline']} ({item['source']})" for item in news_items) if news_items else "- None"}
-
-Writing rules:
-- Be useful to an everyday investor, not only a technical analyst.
-- First paragraph: explain what the indicators suggest in plain English.
-- Second paragraph: explain what broader news or market context may be influencing the asset right now.
-- If the headlines are weak, generic, or missing, set "news_context" to an empty string.
-- Do not mention every indicator mechanically.
-- No markdown."""
+        prompt = self.build_indicator_insight_prompt(asset, indicators, news_items)
 
         response_text = ""
         prompt_tokens = 0
@@ -372,7 +395,7 @@ Writing rules:
             task_type="indicator_insight",
         )
 
-        return {
+        result = {
             "symbol": asset.display_symbol,
             "market": asset.market,
             "recommendation": parsed.get("recommendation", "HOLD"),
@@ -398,6 +421,11 @@ Writing rules:
             ],
         }
 
+        cache_key = f"ai_insight:{self.user.id}:{asset.id}"
+        cache.set(cache_key, result, timeout=86400)
+
+        return result
+
     @staticmethod
     def analyze_news_sentiment(headlines: list[str], user=None) -> dict[str, Decimal]:
         """Analyze sentiment for news headlines using configured AI provider.
@@ -407,6 +435,12 @@ Writing rules:
         """
         if not headlines:
             return {}
+
+        headlines_sorted = sorted(headlines)
+        cache_key = f"sentiment:{hash(tuple(headlines_sorted))}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
 
         if user:
             service = AIService(user)
@@ -423,12 +457,7 @@ Writing rules:
             logger.warning("No API key available for sentiment analysis")
             return {}
 
-        prompt = f"""Analyze the sentiment of each headline and return a JSON object mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
-
-Headlines:
-{chr(10).join(f'- {h}' for h in headlines)}
-
-Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
+        prompt = AIService.build_sentiment_prompt(headlines)
 
         import json
         try:
@@ -461,7 +490,9 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
                 return {}
 
             sentiments = json.loads(response_text)
-            return {h: Decimal(str(s)) for h, s in sentiments.items() if h in headlines}
+            result = {h: Decimal(str(s)) for h, s in sentiments.items() if h in headlines}
+            cache.set(cache_key, result, timeout=86400)
+            return result
         except Exception as e:
             logger.exception(f"Failed to analyze news sentiment: {e}")
             return {}
