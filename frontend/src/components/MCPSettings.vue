@@ -100,7 +100,7 @@ const otpLoading = ref(false)
 let otpInterval: number | null = null
 
 const authPrompt = computed(
-  () => `Please find my paper trader app MCP server at http://localhost:8000/api/mcp/ and authenticate. UUID: ${userID.value}`
+  () => `My paper trader app is at http://localhost:8000/api/. After exchanging OTP for token at /api/mcp/token/exchange/, use the token with /api/* endpoints (portfolios, assets, strategies, backtest-scenarios, ai, markets, etc.). User UUID: ${userID.value}`
 )
 
 onMounted(async () => {

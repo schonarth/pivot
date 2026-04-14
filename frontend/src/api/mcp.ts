@@ -12,6 +12,35 @@ export interface OTPResponse {
   expires_at: string
 }
 
+export interface MCPEndpoint {
+  name: string
+  method: string
+  path: string
+  description: string
+  auth: string
+  params: Array<{
+    name: string
+    type: string
+    required?: boolean
+    description?: string
+    location?: string
+  }>
+  response: Record<string, string> | Record<string, string>[]
+}
+
+export interface MCPSchema {
+  version: string
+  base_url: string
+  authentication: Record<string, string>
+  endpoints: MCPEndpoint[]
+  caching: Record<string, string>
+}
+
+export async function getSchema(): Promise<MCPSchema> {
+  const { data } = await api.get('/mcp/schema/')
+  return data
+}
+
 export async function generateOTP(): Promise<OTPResponse> {
   const { data } = await api.post('/mcp/otp/generate/')
   return data
