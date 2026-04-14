@@ -42,6 +42,8 @@ def fetch_yahoo_quote(provider_symbol: str) -> dict | None:
 
 def refresh_asset_quote(asset_id: str) -> AssetQuote | None:
     from .models import Asset
+    from .ohlcv_provider import fetch_ohlcv_with_fallback
+    from .services import ingest_ohlcv
 
     try:
         asset = Asset.objects.get(id=asset_id)
@@ -73,6 +75,14 @@ def refresh_asset_quote(asset_id: str) -> AssetQuote | None:
         is_delayed=quote_data["is_delayed"],
         provider_payload=quote_data.get("provider_payload"),
     )
+
+    try:
+        ohlcv_list = fetch_ohlcv_with_fallback(asset.provider_symbol, period="1d")
+        if ohlcv_list:
+            ingest_ohlcv(asset_id, ohlcv_list)
+    except Exception:
+        logger.exception(f"Failed to fetch daily OHLCV for {asset.provider_symbol} during quote refresh")
+
     return quote
 
 

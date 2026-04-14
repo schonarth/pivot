@@ -220,16 +220,16 @@ test.describe('API Endpoints - Basic Health Checks', () => {
 
   test('Markets endpoint requires authentication', async ({ request }) => {
     const response = await request.get('http://localhost:8000/api/markets/status/')
-    expect(response.status()).toBe(401)
+    expect(response.status()).toBe(403)
   })
 
   test('Assets endpoint requires authentication', async ({ request }) => {
     const response = await request.get('http://localhost:8000/api/assets/')
-    expect(response.status()).toBe(401)
+    expect(response.status()).toBe(403)
   })
 
   test('Portfolios endpoint requires authentication', async ({ request }) => {
     const response = await request.get('http://localhost:8000/api/portfolios/')
-    expect(response.status()).toBe(401)
+    expect(response.status()).toBe(403)
   })
 })

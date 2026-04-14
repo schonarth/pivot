@@ -1,6 +1,12 @@
 import pytest
 from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework.test import APIClient
+from unittest.mock import patch
+
+from ai.services import AIBudgetError
+from markets.models import NewsItem, OHLCV
 
 
 @pytest.mark.django_db
@@ -67,3 +73,83 @@ class TestMarketEndpoints:
         response = authenticated_client.post(f"/api/assets/{asset.id}/refresh-price/")
         assert response.status_code == 404
         assert "error" in response.data
+
+    @patch("markets.views.NewsService.fetch_and_store_news")
+    def test_asset_news_returns_recent_items_and_average_sentiment(self, mock_fetch_news, authenticated_client, asset):
+        NewsItem.objects.create(
+            asset=asset,
+            headline="Momentum improves after earnings",
+            summary="Analysts see better margins.",
+            url="https://example.com/news-1",
+            source="Example News",
+            sentiment_score=Decimal("0.80"),
+        )
+        NewsItem.objects.create(
+            asset=asset,
+            headline="Supply chain remains stable",
+            summary="Operations remain on track.",
+            url="https://example.com/news-2",
+            source="Example News",
+            sentiment_score=Decimal("0.20"),
+        )
+
+        response = authenticated_client.get(f"/api/assets/{asset.id}/news/")
+
+        assert response.status_code == 200
+        assert response.data["symbol"] == asset.display_symbol
+        assert response.data["average_sentiment"] == 0.5
+        assert len(response.data["news_items"]) == 2
+        mock_fetch_news.assert_called_once_with(asset)
+
+    def test_asset_indicators_returns_series_for_requested_window(self, authenticated_client, asset):
+        start_date = timezone.now().date() - timedelta(days=59)
+
+        for offset in range(60):
+            close = Decimal("100.00") + Decimal(str(offset))
+            OHLCV.objects.create(
+                asset=asset,
+                date=start_date + timedelta(days=offset),
+                open=close - Decimal("1.00"),
+                high=close + Decimal("1.00"),
+                low=close - Decimal("2.00"),
+                close=close,
+                volume=1000 + offset,
+            )
+
+        response = authenticated_client.get(f"/api/assets/{asset.id}/indicators/?days=30")
+
+        assert response.status_code == 200
+        assert len(response.data) == 31
+        assert response.data[-1]["date"] == start_date + timedelta(days=59)
+        assert response.data[-1]["ma_20"] is not None
+
+    @patch("ai.services.AIService.analyze_asset")
+    def test_asset_ai_insight_returns_generated_analysis(self, mock_analyze_asset, authenticated_client, asset):
+        mock_analyze_asset.return_value = {
+            "symbol": asset.display_symbol,
+            "market": asset.market,
+            "recommendation": "BUY",
+            "confidence": 78,
+            "technical_summary": "Trend remains constructive.",
+            "news_context": "Recent coverage is supportive.",
+            "reasoning": "Trend remains constructive.\n\nRecent coverage is supportive.",
+            "price_target": 145.5,
+            "model_used": "gpt-4o-mini",
+            "generated_at": timezone.now().isoformat(),
+            "news_items": [],
+        }
+
+        response = authenticated_client.get(f"/api/assets/{asset.id}/ai-insight/")
+
+        assert response.status_code == 200
+        assert response.data["recommendation"] == "BUY"
+        assert response.data["confidence"] == 78
+
+    @patch("ai.services.AIService.analyze_asset")
+    def test_asset_ai_insight_returns_budget_error(self, mock_analyze_asset, authenticated_client, asset):
+        mock_analyze_asset.side_effect = AIBudgetError("Budget exceeded")
+
+        response = authenticated_client.get(f"/api/assets/{asset.id}/ai-insight/")
+
+        assert response.status_code == 402
+        assert response.data["error"]["code"] == "budget_exceeded"

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Asset, AssetQuote, MarketConfig
+from .models import Asset, AssetQuote, MarketConfig, OHLCV, TechnicalIndicators
 
 
 class MarketConfigSerializer(serializers.ModelSerializer):
@@ -42,4 +42,38 @@ class AssetQuoteSerializer(serializers.ModelSerializer):
             "as_of",
             "fetched_at",
             "is_delayed",
+        )
+
+
+class OHLCVSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OHLCV
+        fields = (
+            "id",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        )
+
+
+class TechnicalIndicatorsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TechnicalIndicators
+        fields = (
+            "id",
+            "date",
+            "rsi_14",
+            "macd",
+            "macd_signal",
+            "macd_histogram",
+            "ma_20",
+            "ma_50",
+            "ma_200",
+            "bb_upper",
+            "bb_middle",
+            "bb_lower",
+            "volume_20d_avg",
         )

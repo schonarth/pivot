@@ -1,12 +1,18 @@
-from django.db.models import Q
+from django.db.models import Q, Avg
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Asset, AssetQuote, MarketConfig
-from .serializers import AssetQuoteSerializer, AssetSerializer, MarketConfigSerializer
-from .services import is_market_open, seed_market_configs
+from .models import Asset, AssetQuote, MarketConfig, OHLCV, TechnicalIndicators, NewsItem
+from .serializers import (
+    AssetQuoteSerializer,
+    AssetSerializer,
+    MarketConfigSerializer,
+    OHLCVSerializer,
+    TechnicalIndicatorsSerializer,
+)
+from .services import is_market_open, seed_market_configs, NewsService
 
 
 class MarketConfigViewSet(viewsets.ReadOnlyModelViewSet):
@@ -67,6 +73,184 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
             data = AssetQuoteSerializer(result).data
         data["market_open"] = is_market_open(asset.market)
         return Response(data)
+
+    @action(detail=True, methods=["get"], url_path="ohlcv")
+    def ohlcv(self, request, pk=None):
+        asset = self.get_object()
+        days = request.query_params.get("days", "90")
+        try:
+            days = int(days)
+        except ValueError:
+            days = 90
+
+        from django.utils import timezone
+        from datetime import timedelta
+
+        start_date = timezone.now().date() - timedelta(days=days)
+        ohlcv_data = OHLCV.objects.filter(asset=asset, date__gte=start_date).order_by("date")
+
+        serializer = OHLCVSerializer(ohlcv_data, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="news")
+    def news(self, request, pk=None):
+        asset = self.get_object()
+        limit = request.query_params.get("limit", "10")
+        try:
+            limit = int(limit)
+        except ValueError:
+            limit = 10
+
+        NewsService.fetch_and_store_news(asset)
+
+        news_queryset = NewsItem.objects.filter(asset=asset).order_by("-published_at", "-fetched_at")
+        news_items = news_queryset[:limit]
+        avg_sentiment = news_queryset.filter(sentiment_score__isnull=False).aggregate(Avg("sentiment_score"))
+
+        return Response({
+            "asset_id": str(asset.id),
+            "symbol": asset.display_symbol,
+            "average_sentiment": float(avg_sentiment["sentiment_score__avg"]) if avg_sentiment["sentiment_score__avg"] else None,
+            "news_items": [
+                {
+                    "headline": item.headline,
+                    "summary": item.summary,
+                    "url": item.url,
+                    "source": item.source,
+                    "sentiment_score": float(item.sentiment_score) if item.sentiment_score else None,
+                    "published_at": item.published_at,
+                    "fetched_at": item.fetched_at,
+                }
+                for item in news_items
+            ],
+        })
+
+    @action(detail=True, methods=["get"], url_path="indicators")
+    def indicators(self, request, pk=None):
+        asset = self.get_object()
+        days = request.query_params.get("days", "90")
+        try:
+            days = int(days)
+        except ValueError:
+            days = 90
+
+        from django.utils import timezone
+        from datetime import timedelta
+        import pandas as pd
+        import logging
+
+        logger = logging.getLogger("paper_trader.markets")
+
+        try:
+            import pandas_ta as ta
+        except ImportError:
+            return Response(
+                {"error": {"code": "missing_dependency", "message": "pandas-ta not installed"}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        start_date = timezone.now().date() - timedelta(days=days)
+
+        # Get all OHLCV data for the asset (need full history for indicator calculation)
+        all_ohlcv = OHLCV.objects.filter(asset=asset).order_by("date").values(
+            "date", "open", "high", "low", "close", "volume"
+        )
+
+        if not all_ohlcv:
+            return Response([])
+
+        ohlcv_list = list(all_ohlcv)
+        if len(ohlcv_list) < 20:  # Minimum for MA 20
+            return Response([])
+
+        df = pd.DataFrame(ohlcv_list)
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
+        df = df.astype({
+            "open": float,
+            "high": float,
+            "low": float,
+            "close": float,
+            "volume": float,
+        })
+
+        try:
+            # Calculate full indicator series
+            rsi = ta.rsi(df["close"], length=14)
+            macd_result = ta.macd(df["close"], fast=12, slow=26, signal=9)
+            ma_20 = ta.sma(df["close"], length=20)
+            ma_50 = ta.sma(df["close"], length=50)
+            ma_200 = ta.sma(df["close"], length=200)
+            bb = ta.bbands(df["close"], length=20, std=2)
+            volume_20d_avg = df["volume"].rolling(window=20).mean()
+
+            # Filter to requested date range and build result
+            result = []
+            def series_value(series, index):
+                if series is None:
+                    return None
+                value = series.iloc[index]
+                return float(value) if pd.notna(value) else None
+
+            def frame_value(frame, row_index, col_index):
+                if frame is None:
+                    return None
+                value = frame.iloc[row_index, col_index]
+                return float(value) if pd.notna(value) else None
+
+            for idx_pos in range(len(df)):
+                idx = df.index[idx_pos]
+                if idx.date() < start_date:
+                    continue
+                result.append({
+                    "date": idx.date(),
+                    "rsi_14": series_value(rsi, idx_pos),
+                    "macd": frame_value(macd_result, idx_pos, 0),
+                    "macd_signal": frame_value(macd_result, idx_pos, 1),
+                    "macd_histogram": frame_value(macd_result, idx_pos, 2),
+                    "ma_20": series_value(ma_20, idx_pos),
+                    "ma_50": series_value(ma_50, idx_pos),
+                    "ma_200": series_value(ma_200, idx_pos),
+                    "bb_upper": frame_value(bb, idx_pos, 0),
+                    "bb_middle": frame_value(bb, idx_pos, 1),
+                    "bb_lower": frame_value(bb, idx_pos, 2),
+                    "volume_20d_avg": int(volume_20d_avg.iloc[idx_pos]) if pd.notna(volume_20d_avg.iloc[idx_pos]) else None,
+                })
+
+            return Response(result)
+        except Exception:
+            logger.exception(f"Failed to calculate indicators for asset {asset.id}")
+            return Response(
+                {"error": {"code": "calculation_error", "message": "Failed to calculate indicators"}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=["get"], url_path="ai-insight")
+    def ai_insight(self, request, pk=None):
+        asset = self.get_object()
+
+        from ai.services import AIBudgetError, AIService
+
+        service = AIService(request.user)
+        try:
+            insight = service.analyze_asset(asset)
+        except AIBudgetError as exc:
+            return Response(
+                {"error": {"code": "budget_exceeded", "message": str(exc)}},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+        except ValueError as exc:
+            return Response(
+                {"error": {"code": "ai_unavailable", "message": str(exc)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception:
+            return Response(
+                {"error": {"code": "ai_error", "message": "Failed to generate AI insight"}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(insight)
 
 
 class MarketStatusView(viewsets.ViewSet):

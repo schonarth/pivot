@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from rest_framework import serializers
-from .models import CashTransaction, Portfolio, PortfolioSnapshot
+from .models import CashTransaction, Portfolio, PortfolioSnapshot, PortfolioGuardrails
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
@@ -59,3 +59,18 @@ class PortfolioSnapshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = PortfolioSnapshot
         fields = ("id", "cash", "positions_value", "total_equity", "net_external_cash_flows", "captured_at")
+
+
+class PortfolioGuardrailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PortfolioGuardrails
+        fields = (
+            "id",
+            "max_trades_per_day",
+            "max_position_size_pct",
+            "stop_loss_pct",
+            "take_profit_pct",
+            "min_order_value",
+            "enabled",
+        )
+        read_only_fields = ("id",)

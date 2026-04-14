@@ -2,6 +2,7 @@ import pytest
 from decimal import Decimal
 from rest_framework.test import APIClient
 from unittest.mock import patch
+from portfolios.models import PortfolioGuardrails
 
 
 @pytest.mark.django_db
@@ -111,3 +112,50 @@ class TestTradingEndpoints:
             format="json",
         )
         assert response.status_code == 400
+
+    @patch("realtime.services.publish_event")
+    def test_trade_guardrails_return_violations(self, mock_pub, authenticated_client, portfolio_with_cash, asset_with_quote):
+        PortfolioGuardrails.objects.create(
+            portfolio=portfolio_with_cash,
+            enabled=True,
+            max_position_size_pct=Decimal("1.00"),
+        )
+
+        response = authenticated_client.post(
+            f"/api/portfolios/{portfolio_with_cash.id}/trades/",
+            {
+                "asset_id": str(asset_with_quote.id),
+                "action": "BUY",
+                "quantity": 10,
+                "rationale": "Test buy",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert response.data["error"]["code"] == "guardrails_violation"
+        assert response.data["error"]["allow_bypass"] is True
+        assert response.data["error"]["violations"]
+
+    @patch("realtime.services.publish_event")
+    def test_trade_guardrails_can_be_bypassed_manually(self, mock_pub, authenticated_client, portfolio_with_cash, asset_with_quote):
+        PortfolioGuardrails.objects.create(
+            portfolio=portfolio_with_cash,
+            enabled=True,
+            max_position_size_pct=Decimal("1.00"),
+        )
+
+        response = authenticated_client.post(
+            f"/api/portfolios/{portfolio_with_cash.id}/trades/",
+            {
+                "asset_id": str(asset_with_quote.id),
+                "action": "BUY",
+                "quantity": 10,
+                "rationale": "Override",
+                "bypass_guardrails": True,
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201
+        assert response.data["trade"]["action"] == "BUY"

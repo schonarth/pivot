@@ -2,107 +2,256 @@
   <div>
     <div class="page-header">
       <h1>Alerts</h1>
-      <button class="btn" @click="showCreate = true">New Alert</button>
+      <button
+        class="btn"
+        @click="showCreate = true"
+      >
+        New Alert
+      </button>
     </div>
 
-    <div v-if="showCreate" class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 1rem;">Create Alert</h3>
-      <div v-if="createError" class="alert-danger">{{ createError }}</div>
+    <div
+      v-if="showCreate"
+      class="card"
+      style="margin-bottom: 1rem;"
+    >
+      <h3 style="margin-bottom: 1rem;">
+        Create Alert
+      </h3>
+      <div
+        v-if="createError"
+        class="alert-danger"
+      >
+        {{ createError }}
+      </div>
       <div class="form-group">
         <label>Asset</label>
         <template v-if="newAsset && presetAsset">
           <div>{{ newAsset.display_symbol }} — {{ newAsset.name }}</div>
         </template>
         <template v-else>
-          <input v-model="assetSearch" type="text" placeholder="Search asset..." @input="searchAssetsDebounced" />
-          <div v-if="assetResults.length" style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
-            <div v-for="a in assetResults" :key="a.id" style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);" @click="selectNewAsset(a)">
+          <input
+            v-model="assetSearch"
+            type="text"
+            placeholder="Search asset..."
+            @input="searchAssetsDebounced"
+          >
+          <div
+            v-if="assetResults.length"
+            style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;"
+          >
+            <div
+              v-for="a in assetResults"
+              :key="a.id"
+              style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);"
+              @click="selectNewAsset(a)"
+            >
               {{ a.display_symbol }} - {{ a.name }}
             </div>
           </div>
-          <div v-if="newAsset" style="margin-top: 0.5rem;" class="text-muted">Selected: {{ newAsset.display_symbol }}</div>
+          <div
+            v-if="newAsset"
+            style="margin-top: 0.5rem;"
+            class="text-muted"
+          >
+            Selected: {{ newAsset.display_symbol }}
+          </div>
         </template>
       </div>
       <div class="form-group">
         <label>Condition</label>
         <select v-model="newAlert.condition_type">
-          <option value="price_above">Price Above</option>
-          <option value="price_below">Price Below</option>
+          <option value="price_above">
+            Price Above
+          </option>
+          <option value="price_below">
+            Price Below
+          </option>
         </select>
       </div>
       <div class="form-group">
         <label>
           Threshold
-          <span v-if="selectedAssetPrice" class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">
+          <span
+            v-if="selectedAssetPrice"
+            class="text-muted"
+            style="font-size: 0.8rem; margin-left: 0.5rem;"
+          >
             Current: {{ selectedAssetPrice }}
           </span>
         </label>
-        <input v-model="newAlert.threshold" type="text" inputmode="decimal" placeholder="0.00" />
+        <input
+          v-model="newAlert.threshold"
+          type="text"
+          inputmode="decimal"
+          placeholder="0.00"
+        >
       </div>
       <div class="form-group">
-        <label><input type="checkbox" v-model="newAlert.notify_enabled" /> Notify me</label>
+        <label><input
+          v-model="newAlert.notify_enabled"
+          type="checkbox"
+        > Notify me</label>
       </div>
       <div class="form-group">
-        <label><input type="checkbox" v-model="newAlert.auto_trade_enabled" /> Auto-trade</label>
+        <label><input
+          v-model="newAlert.auto_trade_enabled"
+          type="checkbox"
+        > Auto-trade</label>
       </div>
-      <div v-if="newAlert.auto_trade_enabled" class="form-group">
+      <div
+        v-if="newAlert.auto_trade_enabled"
+        class="form-group"
+      >
         <label>Side</label>
         <select v-model="newAlert.auto_trade_side">
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
+          <option value="BUY">
+            BUY
+          </option>
+          <option value="SELL">
+            SELL
+          </option>
         </select>
       </div>
-      <div v-if="newAlert.auto_trade_enabled" class="form-group">
+      <div
+        v-if="newAlert.auto_trade_enabled"
+        class="form-group"
+      >
         <label>
-          <input type="radio" name="sizing" value="quantity" v-model="sizingType" />
+          <input
+            v-model="sizingType"
+            type="radio"
+            name="sizing"
+            value="quantity"
+          >
           Fixed Quantity
-          <input type="radio" name="sizing" value="pct" v-model="sizingType" />
+          <input
+            v-model="sizingType"
+            type="radio"
+            name="sizing"
+            value="pct"
+          >
           Percentage
         </label>
       </div>
-      <div v-if="newAlert.auto_trade_enabled && sizingType === 'quantity'" class="form-group">
+      <div
+        v-if="newAlert.auto_trade_enabled && sizingType === 'quantity'"
+        class="form-group"
+      >
         <label>Quantity</label>
-        <input v-model.number="newAlert.auto_trade_quantity" type="number" min="1" />
+        <input
+          v-model.number="newAlert.auto_trade_quantity"
+          type="number"
+          min="1"
+        >
       </div>
-      <div v-if="newAlert.auto_trade_enabled && sizingType === 'pct'" class="form-group">
+      <div
+        v-if="newAlert.auto_trade_enabled && sizingType === 'pct'"
+        class="form-group"
+      >
         <label>Percentage (0-100)</label>
-        <input v-model="newAlert.auto_trade_pct" type="text" inputmode="decimal" min="1" max="100" placeholder="0.00" />
+        <input
+          v-model="newAlert.auto_trade_pct"
+          type="text"
+          inputmode="decimal"
+          min="1"
+          max="100"
+          placeholder="0.00"
+        >
       </div>
       <div style="display: flex; gap: 0.5rem;">
-        <button class="btn" @click="handleCreate" :disabled="!newAsset || !newAlert.threshold">Create</button>
-        <button class="btn btn-secondary" @click="showCreate = false">Cancel</button>
+        <button
+          class="btn"
+          :disabled="!newAsset || !newAlert.threshold"
+          @click="handleCreate"
+        >
+          Create
+        </button>
+        <button
+          class="btn btn-secondary"
+          @click="showCreate = false"
+        >
+          Cancel
+        </button>
       </div>
     </div>
 
-    <div v-if="activeAlerts.length" class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem;">Active</h3>
-      <div v-for="a in activeAlerts" :key="a.id" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+    <div
+      v-if="activeAlerts.length"
+      class="card"
+      style="margin-bottom: 1rem;"
+    >
+      <h3 style="margin-bottom: 0.75rem;">
+        Active
+      </h3>
+      <div
+        v-for="a in activeAlerts"
+        :key="a.id"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);"
+      >
         <div>
           <strong>{{ a.asset_display_symbol }}</strong>
-          <span class="badge" :class="a.condition_type === 'price_above' ? 'badge-success' : 'badge-danger'" style="margin-left: 0.5rem;">
+          <span
+            class="badge"
+            :class="a.condition_type === 'price_above' ? 'badge-success' : 'badge-danger'"
+            style="margin-left: 0.5rem;"
+          >
             {{ a.condition_type === 'price_above' ? 'Above' : 'Below' }} {{ a.threshold }}
           </span>
-          <span v-if="a.auto_trade_enabled" class="badge badge-info" style="margin-left: 0.5rem;">
+          <span
+            v-if="a.auto_trade_enabled"
+            class="badge badge-info"
+            style="margin-left: 0.5rem;"
+          >
             Auto {{ a.auto_trade_side }}
           </span>
         </div>
         <div style="display: flex; gap: 0.25rem;">
-          <button class="btn btn-secondary btn-sm" @click="handlePause(a.id)">Pause</button>
-          <button class="btn btn-danger btn-sm" @click="handleDelete(a.id)">Delete</button>
+          <button
+            class="btn btn-secondary btn-sm"
+            @click="handlePause(a.id)"
+          >
+            Pause
+          </button>
+          <button
+            class="btn btn-danger btn-sm"
+            @click="handleDelete(a.id)"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-if="triggeredAlerts.length" class="card">
-      <h3 style="margin-bottom: 0.75rem;">Triggered</h3>
-      <div v-for="a in triggeredAlerts" :key="a.id" style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+    <div
+      v-if="triggeredAlerts.length"
+      class="card"
+    >
+      <h3 style="margin-bottom: 0.75rem;">
+        Triggered
+      </h3>
+      <div
+        v-for="a in triggeredAlerts"
+        :key="a.id"
+        style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);"
+      >
         <span class="text-muted">{{ a.asset_display_symbol }}</span>
         <span style="margin-left: 0.5rem;">{{ a.condition_type }} {{ a.threshold }}</span>
-        <span style="margin-left: 0.5rem; font-size: 0.75rem;" class="text-muted">Triggered {{ a.triggered_at ? formatDate(a.triggered_at) : 'N/A' }}</span>
+        <span
+          style="margin-left: 0.5rem; font-size: 0.75rem;"
+          class="text-muted"
+        >Triggered {{ a.triggered_at ? formatDate(a.triggered_at) : 'N/A' }}</span>
       </div>
     </div>
 
-    <div v-if="!alerts.length" class="card"><p class="text-muted">No alerts created yet.</p></div>
+    <div
+      v-if="!alerts.length"
+      class="card"
+    >
+      <p class="text-muted">
+        No alerts created yet.
+      </p>
+    </div>
   </div>
 </template>
 

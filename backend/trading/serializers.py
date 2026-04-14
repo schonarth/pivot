@@ -102,6 +102,7 @@ class TradeCreateSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["BUY", "SELL"])
     quantity = serializers.IntegerField(min_value=1)
     rationale = serializers.CharField(max_length=255, required=False, default="Manual operation")
+    bypass_guardrails = serializers.BooleanField(required=False, default=False)
 
     def validate_action(self, value):
         return value.upper()

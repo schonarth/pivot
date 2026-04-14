@@ -79,6 +79,14 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/portfolios/:id/strategies',
+      name: 'portfolio-strategies',
+      component: () => import('@/views/StrategiesView.vue'),
+      beforeEnter: requireValidPortfolioId,
+      props: true,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/assets',
       name: 'assets',
       component: () => import('@/views/AssetsView.vue'),
@@ -93,6 +101,12 @@ const router = createRouter({
     {
       path: '/settings',
       name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings/ai',
+      name: 'settings-ai',
       component: () => import('@/views/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
