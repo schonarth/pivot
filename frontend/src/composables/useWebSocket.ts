@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { getAccessToken } from '@/auth/session'
 
 const WS_URL = (() => {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -21,7 +22,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 function connect() {
   if (ws.value && ws.value.readyState === WebSocket.OPEN) return
 
-  const token = localStorage.getItem('access_token')
+  const token = getAccessToken()
   if (!token) return
 
   try {

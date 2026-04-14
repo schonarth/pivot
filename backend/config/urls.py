@@ -4,7 +4,7 @@ from django.urls import include, path
 
 
 def api_root(request):
-    return JsonResponse({"name": "Paper Trader API", "version": "1.0", "endpoints": {"health": "/api/health", "auth": "/api/auth/", "portfolios": "/api/portfolios/", "assets": "/api/assets/", "markets": "/api/markets/status"}})
+    return JsonResponse({"name": "Paper Trader API", "version": "1.0", "endpoints": {"health": "/api/health", "auth": "/api/auth/", "portfolios": "/api/portfolios/", "assets": "/api/assets/", "markets": "/api/markets/status/"}})
 
 
 urlpatterns = [
