@@ -258,8 +258,10 @@ class MarketStatusView(viewsets.ViewSet):
 
     def list(self, request):
         from .services import MARKET_CONFIGS
+        from rest_framework.response import Response
 
         statuses = {}
         for code in MARKET_CONFIGS:
-            statuses[code] = {"open": is_market_open(code)}
+            status = is_market_open(code)
+            statuses[code] = {"open": status if status is not None else False}
         return Response(statuses)
