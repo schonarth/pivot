@@ -83,11 +83,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useWebSocketStore } from '@/stores/websocket'
 import { useToast } from '@/composables/useToast'
 import * as mcpApi from '@/api/mcp'
 import type { MCPAgent } from '@/api/mcp'
 
 const auth = useAuthStore()
+const wsStore = useWebSocketStore()
 const toast = useToast()
 
 const userID = ref('')
@@ -104,10 +106,16 @@ const authPrompt = computed(
 onMounted(async () => {
   userID.value = auth.user?.api_uuid || ''
   await loadAgents()
+
+  // Listen for agent connection events
+  wsStore.on('agent_connected', () => {
+    loadAgents()
+  })
 })
 
 onUnmounted(() => {
   if (otpInterval) clearInterval(otpInterval)
+  wsStore.off('agent_connected')
 })
 
 async function generateOTP() {

@@ -17,10 +17,12 @@ export async function generateOTP(): Promise<OTPResponse> {
   return data
 }
 
-export async function exchangeOTPForToken(userID: string, code: string) {
+export async function exchangeOTPForToken(userID: string, code: string, name?: string, origin?: string) {
   const { data } = await api.post('/mcp/token/exchange/', {
     user_id: userID,
     otp: code,
+    name: name || 'Unknown Agent',
+    origin: origin || 'unknown',
   })
   return data
 }

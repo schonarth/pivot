@@ -6,6 +6,7 @@ from accounts.models import User
 from .models import AgentToken
 from .serializers import OTPSerializer, AgentTokenSerializer
 from .services import generate_otp, validate_and_use_otp, generate_agent_token
+from realtime.services import publish_event
 
 
 class OTPGenerateView(APIView):
@@ -53,6 +54,14 @@ class TokenExchangeView(APIView):
 
         # Generate agent token
         token = generate_agent_token(user, name, origin)
+
+        # Notify user via websocket that agent connected
+        publish_event(
+            f"user_{user.id}",
+            "agent_connected",
+            {"agent_name": name, "agent_origin": origin}
+        )
+
         return Response({'token': token}, status=status.HTTP_201_CREATED)
 
 
