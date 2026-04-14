@@ -2,6 +2,7 @@ import pytest
 from decimal import Decimal
 
 from ai.models import AIAuth, AICost
+from ai.services import AIService
 
 
 @pytest.mark.django_db
@@ -43,3 +44,8 @@ class TestAISettingsEndpoints:
         assert response.data["percentage_used"] == "92"
         assert response.data["at_limit"] is False
         assert response.data["should_warn"] is True
+
+    def test_provider_cost_estimation_is_non_zero_for_supported_non_openai_models(self):
+        cost = AIService._estimate_provider_cost("anthropic", "claude-opus-4-6", 1000, 500)
+
+        assert cost > 0

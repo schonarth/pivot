@@ -178,6 +178,42 @@ class AIService:
         return (Decimal(prompt_tokens) * prompt_rate) + (Decimal(completion_tokens) * completion_rate)
 
     @staticmethod
+    def _estimate_anthropic_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
+        pricing = {
+            "claude-haiku-4-5-20251001": (Decimal("0.00000080"), Decimal("0.00000400")),
+            "claude-sonnet-4-6": (Decimal("0.00000300"), Decimal("0.00001500")),
+            "claude-opus-4-6": (Decimal("0.00001500"), Decimal("0.00007500")),
+        }
+        prompt_rate, completion_rate = pricing.get(
+            model_name,
+            (Decimal("0.00000100"), Decimal("0.00000500")),
+        )
+        return (Decimal(prompt_tokens) * prompt_rate) + (Decimal(completion_tokens) * completion_rate)
+
+    @staticmethod
+    def _estimate_google_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
+        pricing = {
+            "gemini-2.0-flash": (Decimal("0.00000035"), Decimal("0.00000105")),
+            "gemini-1.5-pro": (Decimal("0.00000125"), Decimal("0.00000500")),
+        }
+        prompt_rate, completion_rate = pricing.get(
+            model_name,
+            (Decimal("0.00000100"), Decimal("0.00000500")),
+        )
+        return (Decimal(prompt_tokens) * prompt_rate) + (Decimal(completion_tokens) * completion_rate)
+
+    @staticmethod
+    def _estimate_provider_cost(provider: str, model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
+        if provider == "openai":
+            return AIService._estimate_openai_cost(model_name, prompt_tokens, completion_tokens)
+        elif provider == "anthropic":
+            return AIService._estimate_anthropic_cost(model_name, prompt_tokens, completion_tokens)
+        elif provider == "google":
+            return AIService._estimate_google_cost(model_name, prompt_tokens, completion_tokens)
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+    @staticmethod
     def test_connection(provider: str, api_key: str, model: str | None = None) -> dict:
         """Validate API credentials with a minimal provider call."""
         if provider == "anthropic":
@@ -313,7 +349,6 @@ Writing rules:
             if getattr(response, "usage", None):
                 prompt_tokens = getattr(response.usage, "input_tokens", 0) or 0
                 completion_tokens = getattr(response.usage, "output_tokens", 0) or 0
-                cost_usd = self._estimate_openai_cost(model, prompt_tokens, completion_tokens)
         elif provider == "google":
             import google.generativeai as genai
 
@@ -322,6 +357,8 @@ Writing rules:
             response_text = response.text
         else:
             raise ValueError(f"Unsupported provider: {provider}")
+
+        cost_usd = self._estimate_provider_cost(provider, model, prompt_tokens, completion_tokens)
 
         parsed = self._extract_json_object(response_text)
         if not parsed:
