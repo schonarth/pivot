@@ -52,7 +52,7 @@ class TestMarketEndpoints:
         assert "error" in response.data
 
     def test_market_status_lists_all_markets(self, authenticated_client):
-        response = authenticated_client.get("/api/markets/status")
+        response = authenticated_client.get("/api/markets/status/")
         assert response.status_code == 200
         assert "US" in response.data
         assert all("open" in status for status in response.data.values())
