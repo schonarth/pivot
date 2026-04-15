@@ -6,6 +6,7 @@ Organized reference for paper-trader architecture, troubleshooting, and solved p
 
 Reference documentation for system design and implementation details.
 
+- **[Autonomous Market Intelligence Roadmap](architecture/roadmap-autonomous-market-intelligence.md)** — Phased path from richer context to autonomous paper trading
 - **[Apps](architecture/apps.md)** — Purpose of each Django app
 - **[Core Event Loop](architecture/core-event-loop.md)** — Primary async cycle
 - **[Constraints](architecture/constraints.md)** — Critical architectural invariants
