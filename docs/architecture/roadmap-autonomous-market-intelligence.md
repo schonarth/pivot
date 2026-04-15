@@ -6,7 +6,7 @@ type: reference
 
 # Autonomous Market Intelligence Roadmap
 
-Status: Draft
+Status: Approved
 
 ## Purpose
 
