@@ -573,6 +573,21 @@ Rules for future ADRs:
 3. Each ADR should describe the next consumer of the capability
 4. Each ADR should keep storage, reasoning, and execution concerns separate
 
+## Execution
+
+Milestone execution should follow the reusable process defined in:
+
+- [Milestone Delivery Execution Model](../../execution/milestone-delivery-execution-model.md)
+
+That document defines:
+
+- milestone folder structure
+- spec file template
+- status model and ownership
+- testing policy
+- blocker and escalation rules
+- branching and UAT readiness
+
 ## Success Metrics by Stage
 
 Early-stage metrics:
@@ -610,7 +625,29 @@ Do not pull these into ADR-001:
 
 ## Related Documents
 
-- [ADR-001 Open News Context Expansion](ADR-001-open-news-context-expansion.md)
-- [PRD — Paper Trader](../reference/prd-paper-trader.md)
-- [PRD — MLP Phase](../reference/prd-mlp.md)
-- [Specification](../reference/specification.md)
+- [ADR-001 Open News Context Expansion](../../adrs/ADR-001-open-news-context-expansion.md)
+- [Milestone Delivery Execution Model](../../execution/milestone-delivery-execution-model.md)
+- [PRD — Paper Trader](../../../reference/prd-paper-trader.md)
+- [PRD — MLP Phase](../../../reference/prd-mlp.md)
+- [Specification](../../../reference/specification.md)
+
+## ADR Readiness Checklist
+
+Draft a milestone ADR only when most of the following are true:
+
+- the milestone has a clear user or system outcome
+- the milestone boundary is small enough to discuss without relying on later milestones
+- the main consumer of the capability is known
+- the likely storage, reasoning, and execution boundaries are understood
+- non-goals can be stated clearly
+- the main alternatives or tradeoffs are visible
+- open questions are specific enough to resolve in one ADR
+- success or exit criteria can be stated concretely
+- the team is likely to work on the milestone soon
+
+Prefer not to draft the ADR yet when any of these are true:
+
+- the milestone depends heavily on learning from an earlier milestone
+- the likely shape is still speculative
+- the document would mostly repeat the roadmap
+- the milestone has no clear consumer yet

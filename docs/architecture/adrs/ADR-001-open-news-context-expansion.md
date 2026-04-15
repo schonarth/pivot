@@ -14,7 +14,7 @@ Status: Open
 
 This ADR corresponds to Milestone 1 of the Autonomous Market Intelligence roadmap:
 
-- [Autonomous Market Intelligence Roadmap](roadmap-autonomous-market-intelligence.md)
+- [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
 Its role is narrow: improve asset-level context selection.
 
