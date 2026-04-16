@@ -6,7 +6,7 @@ type: reference
 
 # Milestone Delivery Execution Model
 
-Status: Draft
+Status: Approved
 
 ## Purpose
 
@@ -80,6 +80,15 @@ Structure rules:
 - a file may contain more than one task only when those tasks are tightly correlated
 - each file should stay small enough for one agent to execute in a single context window
 
+Clarification:
+
+- coordination files should stay relatively light and operational
+- implementation task files should be mini-specs, not just tickets
+- the goal is not verbosity for its own sake, but enough specificity that one agent can execute confidently without re-deriving requirements from the whole roadmap
+- the orchestrator should normally execute `00 - milestone coordination.md` itself
+- the orchestrator should normally delegate execution of task files `01+` to agents
+- delegation is primarily about keeping each agent's context window small and focused
+
 Naming rule:
 
 - two-digit numeric prefix
@@ -109,6 +118,19 @@ Each task spec should include, at minimum:
 13. `Exit Conditions`
 14. `Implementation Notes / What Was Done`
 15. `Open Follow-Ups`
+
+Implementation task files should usually include these additional sections:
+
+16. `Background`
+17. `Detailed Requirements`
+18. `Proposed Approach`
+19. `Validation Scenarios`
+
+Use judgment:
+
+- coordination files: lighter, execution-focused
+- implementation files: spec-heavy
+- final validation or release files: checklist-heavy plus validation detail
 
 Recommended minimal template:
 
@@ -188,6 +210,32 @@ Short note describing what was actually implemented, especially if it differs fr
 - none
 ```
 
+Recommended implementation-task expansion:
+
+```md
+## Background
+
+Why this task exists, what earlier decision it depends on, and what later task it unblocks.
+
+## Detailed Requirements
+
+- required behaviors
+- explicit non-behaviors
+- constraints and invariants
+
+## Proposed Approach
+
+- likely reuse points in the repo
+- expected implementation shape
+- what not to invent
+
+## Validation Scenarios
+
+- happy path examples
+- important edge cases
+- regression risks to check
+```
+
 ## Status Model
 
 Allowed task statuses:
@@ -225,6 +273,12 @@ Each agent should begin by:
 This scan is required to avoid duplicate implementations and to keep work aligned with the current architecture.
 
 Sub-agents are used primarily to keep context windows small, not merely to parallelize work.
+
+Default execution model:
+
+- orchestrator owns milestone coordination, sequencing, progress reporting, and UAT handoff
+- delegated agents own execution of the numbered task files after `00`
+- if one agent must handle multiple task files, it should still work through them sequentially with narrow context
 
 ## Testing Policy
 

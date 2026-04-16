@@ -627,6 +627,7 @@ Do not pull these into ADR-001:
 
 - [ADR-001 Open News Context Expansion](../../adrs/ADR-001-open-news-context-expansion.md)
 - [Milestone Delivery Execution Model](../../execution/milestone-delivery-execution-model.md)
+- [Deferred Improvements](deferred-improvements.md)
 - [PRD — Paper Trader](../../../reference/prd-paper-trader.md)
 - [PRD — MLP Phase](../../../reference/prd-mlp.md)
 - [Specification](../../../reference/specification.md)
