@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / implementation
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -123,7 +123,18 @@ The value of Milestone 01 depends less on “fetching more headlines” and more
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Defined the compact context pack shape and deterministic selection rules.
+
+What was done:
+
+- specified duplicate handling through normalized headline signatures
+- defined ranking order around directness, impact, source quality, and recency
+- bounded the final pack with bucket caps and a total item cap
+- kept the retained items compact and free of reasoning or execution fields
+
+Open follow-ups:
+
+- revisit whether source-quality ordering should stay hardcoded or move to a config artifact later
 
 ## Open Follow-Ups
 

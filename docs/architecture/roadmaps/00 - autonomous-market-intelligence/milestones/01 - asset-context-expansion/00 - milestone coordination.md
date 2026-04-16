@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / coordination
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -92,7 +92,20 @@ not started
 
 ## Implementation Notes / What Was Done
 
-Planned coordination file only.
+Completed Milestone 01 coordination.
+
+What was done:
+
+- read the roadmap, ADR-001, and required Milestone 00 references before execution
+- traced the current asset-analysis pipeline and identified `AIService.analyze_asset` as the insertion point
+- kept Milestone 01 scoped to deterministic asset context expansion only
+- required the downstream task files to preserve the Milestone 00 boundary between context, reasoning, and execution
+
+Milestone-end notes:
+
+- the milestone task sequence was executed in order
+- the implementation task updated the current asset-analysis path rather than creating a parallel flow
+- representative backend and frontend verification passed for the changed surface
 
 ## Open Follow-Ups
 

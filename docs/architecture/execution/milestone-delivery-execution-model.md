@@ -22,6 +22,7 @@ This document is reusable across roadmap-driven efforts. It is not specific to o
 - require quick project scanning before implementation to avoid duplication
 - require explicit handoff from earlier milestone outputs when later milestones depend on them
 - require tests and verification before tasks are considered done
+- require each task agent to update its own task file with status, owner (use model name), dates, and what was done before it marks the task complete
 - make UAT as smooth as possible by catching major issues before handoff
 
 ## Milestone Folders
@@ -132,6 +133,12 @@ Implementation task files should usually include these additional sections:
 18. `Proposed Approach`
 19. `Validation Scenarios`
 20. `Required Prior References` when the task depends on earlier milestone findings
+
+Completion rule:
+
+- a task is not complete until the task file itself has been updated to reflect the work actually done
+- the agent completing the task should set `Status`, `Owner`, `Date Started`, `Date Completed`, and `Implementation Notes / What Was Done` before handing off
+- this update is part of the task, not a separate cleanup step
 
 Use judgment:
 

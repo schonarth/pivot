@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / implementation
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -114,7 +114,19 @@ ADR-001 defines what Milestone 01 should do, but not yet where the change belong
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed the pipeline scan and identified the insertion point.
+
+What was done:
+
+- traced the current per-asset analysis path from frontend and MCP consumers into `AIService.analyze_asset`
+- confirmed the existing news-aware prompt assembly lives in `backend/ai/services.py`
+- identified the smallest safe insertion point as a backend context-pack builder inside the shared AI service
+- verified the frontend only consumes the already-produced analysis output, so Milestone 01 stays on the producer side
+
+Open risks noted:
+
+- symbol-only news selection existed in the shared AI service
+- prompt-building and context selection were coupled in one backend path, so the later implementation task had to add a narrow adapter rather than a second analysis flow
 
 ## Open Follow-Ups
 

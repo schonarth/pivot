@@ -18,7 +18,7 @@ done
 
 ## Owner
 
-Codex
+GPT-5.4 / docs
 
 ## Branch
 
