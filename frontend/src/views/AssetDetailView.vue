@@ -163,6 +163,41 @@
           :title="asset ? `No ${asset.market} portfolio` : 'Create a portfolio first'"
         >Create Alert</span>
       </template>
+
+      <template v-if="matchingPortfolios.length === 1">
+        <button
+          class="btn btn-secondary"
+          :disabled="watchSaving"
+          @click="handleAddToWatch(matchingPortfolios[0].id)"
+        >
+          {{ watchSaving ? 'Adding...' : 'Add to Watch' }}
+        </button>
+      </template>
+      <template v-else-if="matchingPortfolios.length > 1">
+        <select
+          class="btn btn-secondary"
+          style="cursor: pointer;"
+          @change="navigateToWatch"
+        >
+          <option value="">
+            Add to Watch in…
+          </option>
+          <option
+            v-for="p in matchingPortfolios"
+            :key="p.id"
+            :value="p.id"
+          >
+            {{ p.name }}
+          </option>
+        </select>
+      </template>
+      <template v-else>
+        <span
+          class="btn btn-secondary"
+          style="pointer-events: auto; cursor: default; opacity: 0.6;"
+          :title="asset ? `No ${asset.market} portfolio` : 'Create a portfolio first'"
+        >Add to Watch</span>
+      </template>
     </div>
 
     <div class="card">
@@ -178,11 +213,13 @@ import { useRoute, useRouter } from 'vue-router'
 import MarketBadge from '@/components/MarketBadge.vue'
 import AssetAnalysisTab from '@/components/AssetAnalysisTab.vue'
 import { getAsset, getAssetPrice, refreshAssetPrice } from '@/api/assets'
-import { getPortfolios } from '@/api/portfolios'
+import { addPortfolioWatchAsset, getPortfolios } from '@/api/portfolios'
+import { useToast } from '@/composables/useToast'
 import type { Asset, AssetQuote, Portfolio } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const assetId = route.params.symbol as string
 
 const asset = ref<Asset | null>(null)
@@ -190,6 +227,7 @@ const quote = ref<AssetQuote | null>(null)
 const refreshing = ref(false)
 const primaryPortfolioId = ref<string | null>(null)
 const portfolios = ref<Portfolio[]>([])
+const watchSaving = ref(false)
 
 const matchingPortfolios = computed(() =>
   asset.value ? portfolios.value.filter((p) => p.market === asset.value!.market) : []
@@ -224,6 +262,27 @@ function navigateToAlerts(event: Event) {
   const portfolioId = (event.target as HTMLSelectElement).value
   if (!portfolioId) return
   router.push(`/portfolios/${portfolioId}/alerts?asset=${asset.value!.id}`)
+}
+
+function navigateToWatch(event: Event) {
+  const portfolioId = (event.target as HTMLSelectElement).value
+  if (!portfolioId) return
+  handleAddToWatch(portfolioId)
+}
+
+async function handleAddToWatch(portfolioId: string) {
+  if (!asset.value || watchSaving.value) return
+  watchSaving.value = true
+  try {
+    await addPortfolioWatchAsset(portfolioId, asset.value.id)
+    toast.success('Added to watch')
+    await router.push({ path: `/portfolios/${portfolioId}`, query: { tab: 'watch' } })
+  } catch (e) {
+    console.error(e)
+    toast.error('Failed to add to watch')
+  } finally {
+    watchSaving.value = false
+  }
 }
 
 async function handleRefresh() {

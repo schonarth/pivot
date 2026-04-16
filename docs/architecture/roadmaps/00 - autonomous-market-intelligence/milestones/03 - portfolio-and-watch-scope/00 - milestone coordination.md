@@ -14,11 +14,19 @@ ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / coordination
+
+## Date Started
+
+2026-04-16
+
+## Date Completed
+
+2026-04-16
 
 ## Branch
 
@@ -95,8 +103,22 @@ feat/autonomous/03-scope-expansion
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed Milestone 03 coordination.
+
+What was done:
+
+- read the roadmap, the milestone delivery execution model, ADR-003, and the required prior references before coordinating the milestone
+- traced the current shared asset-analysis producer path through `AIService.analyze_asset`
+- confirmed the authenticated UI asset intelligence consumer is `frontend/src/components/AssetAnalysisTab.vue`
+- confirmed there is no current authenticated UI portfolio or watch intelligence surface to extend yet
+- updated the execution model so coordinating agents must verify `Owner` in each task file before handoff
+- required the task files to stay scoped to scan, contract, composition, and validation notes without touching ADR-004
+
+Milestone-end notes:
+
+- the scope-expansion milestone is still design-led; implementation work remains pending
+- the task files now record the narrowest currently visible insertion points and gaps for later implementation
 
 ## Open Follow-Ups
 
-- confirm exact route and component names for the first authenticated UI portfolio and watch consumers
+- confirm the first real authenticated UI portfolio and watch intelligence surfaces before implementation work begins

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from rest_framework import serializers
+
 from .models import CashTransaction, Portfolio, PortfolioSnapshot, PortfolioGuardrails
 
 
@@ -53,6 +54,8 @@ class PortfolioSummarySerializer(serializers.Serializer):
     net_external_cash_flows = serializers.CharField()
     trading_pnl = serializers.CharField()
     positions = serializers.ListField()
+    watch_assets = serializers.ListField(child=serializers.DictField())
+    scope_insights = serializers.JSONField()
 
 
 class PortfolioSnapshotSerializer(serializers.ModelSerializer):

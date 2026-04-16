@@ -14,11 +14,15 @@ ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
-planned
+in progress
 
 ## Owner
 
-unassigned
+GPT-5.4 / coordination
+
+## Date Started
+
+2026-04-16
 
 ## Branch
 
@@ -131,8 +135,20 @@ This is the milestone integration task. The earlier task files define where the 
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Performed the readiness scan for Milestone 03.
+
+What was found:
+
+- the current shared producer still ends at `AIService.analyze_asset`
+- the authenticated UI asset intelligence surface is `frontend/src/components/AssetAnalysisTab.vue`
+- there is currently no authenticated UI portfolio intelligence surface or watch intelligence surface to validate
+- watch membership is still absent from backend and frontend code, so no portfolio/watch implementation validation can be run yet
+- the milestone therefore remains blocked on implementation work before backend/frontend integration tests can be meaningful
+
+Release-readiness note:
+
+- the next implementation pass should land the smallest monitored-set adapter first, then add validation coverage around a real portfolio consumer and a real watch consumer
 
 ## Open Follow-Ups
 
-- confirm whether Milestone 04 sentiment trajectory should consume monitored-set outputs directly or through the same asset-first retained items
+- confirm the first concrete authenticated UI portfolio and watch intelligence surfaces before Milestone 04 implementation begins

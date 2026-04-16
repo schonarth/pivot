@@ -14,11 +14,19 @@ ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / coordination
+
+## Date Started
+
+2026-04-16
+
+## Date Completed
+
+2026-04-16
 
 ## Branch
 
@@ -111,8 +119,23 @@ Milestone 03 should extend the current asset-intelligence path rather than fork 
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed the consumer and insertion-point scan.
+
+What was found:
+
+- the shared backend producer path is still `AIService.analyze_asset` in `backend/ai/services.py`
+- the authenticated UI asset intelligence surface is `frontend/src/components/AssetAnalysisTab.vue`, which calls `frontend/src/api/assets.ts` and the `/api/assets/{id}/ai-insight/` endpoint
+- the MCP agent-facing equivalent is `backend/mcp/views.py` via `/api/mcp/asset-insight/`
+- there is no current authenticated UI portfolio intelligence surface to extend; the nearest authenticated portfolio view is `frontend/src/views/PortfolioDetailView.vue`, but it only handles summary, positions, alerts, and strategies
+- there is no current authenticated UI watch intelligence surface and no explicit watchlist or monitored-set model/API/UI in the codebase
+- the narrowest safe insertion point remains the shared asset-analysis path, ideally just before prompt assembly in `AIService.analyze_asset` or inside a very small adapter around `build_asset_context_pack`
+
+Coupling risks:
+
+- `build_asset_context_pack` still mixes selection, dedupe, and shape construction directly against `NewsItem`
+- prompt assembly is still adjacent to the context builder, so a new monitored-set layer should stay narrow and avoid creating a parallel reasoning path
+- any portfolio or watch support must preserve asset-level continuity reuse and should not move execution logic into context composition
 
 ## Open Follow-Ups
 
-- confirm whether MCP should expose the same monitored-set producer in the same milestone or in follow-on hardening
+- confirm whether the first implementation milestone should add a dedicated monitored-set adapter or extend `AIService.analyze_asset` directly

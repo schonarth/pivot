@@ -98,3 +98,21 @@ class PortfolioGuardrails(models.Model):
 
     def __str__(self):
         return f"Guardrails for {self.portfolio.name}"
+
+
+class PortfolioWatchMembership(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="watch_memberships")
+    asset = models.ForeignKey("markets.Asset", on_delete=models.CASCADE, related_name="portfolio_watch_memberships")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "portfolio_watch_memberships"
+        ordering = ["-created_at"]
+        unique_together = [("portfolio", "asset")]
+        indexes = [
+            models.Index(fields=["portfolio"]),
+        ]
+
+    def __str__(self):
+        return f"{self.portfolio.name} watch -> {self.asset.display_symbol}"

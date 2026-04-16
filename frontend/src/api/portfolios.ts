@@ -30,6 +30,16 @@ export async function getPortfolioSummary(id: string): Promise<PortfolioSummary>
   return data
 }
 
+export async function addPortfolioWatchAsset(id: string, assetId: string) {
+  const { data } = await api.post(`/portfolios/${id}/watch/`, { asset_id: assetId })
+  return data
+}
+
+export async function removePortfolioWatchAsset(id: string, assetId: string) {
+  const { data } = await api.delete(`/portfolios/${id}/watch/`, { data: { asset_id: assetId } })
+  return data
+}
+
 export async function getPortfolioPerformance(id: string) {
   const { data } = await api.get(`/portfolios/${id}/performance/`)
   return data

@@ -218,3 +218,70 @@ class TestAssetInsightPrompt:
         assert "Context pack:" in recorded_prompt["input"]
         assert "Story so far:" in recorded_prompt["input"]
         assert "[symbol]" in recorded_prompt["input"] or "[company]" in recorded_prompt["input"]
+
+
+@pytest.mark.django_db
+class TestScopeInsightPrompt:
+    def test_analyze_scope_uses_monitored_set_context(self, user):
+        asset_a = make_asset("AAA", sector="Financial", industry="Banks")
+        asset_b = make_asset("BBB", sector="Financial", industry="Banks")
+
+        make_news(asset_a, "AAA shares rise on earnings beat")
+        make_news(asset_b, "BBB sees steady inflows")
+
+        AIAuth.objects.create(user=user, provider_name="openai")
+        service = AIService(user)
+        service.set_api_key("test-key")
+
+        holdings = [
+            {
+                "asset_id": str(asset_a.id),
+                "symbol": asset_a.display_symbol,
+                "name": asset_a.name,
+                "market": asset_a.market,
+                "currency": asset_a.currency,
+                "current_price": "10.00",
+                "position_detail": "10 @ 10.00 | MV 100.00 | U P&L 5.00",
+            },
+            {
+                "asset_id": str(asset_b.id),
+                "symbol": asset_b.display_symbol,
+                "name": asset_b.name,
+                "market": asset_b.market,
+                "currency": asset_b.currency,
+                "current_price": "12.00",
+                "position_detail": "8 @ 12.00 | MV 96.00 | U P&L 4.00",
+            },
+        ]
+
+        fake_response = SimpleNamespace(
+            output_text=(
+                '{"recommendation":"HOLD","confidence":61,'
+                '"summary":"The monitored set is balanced.",'
+                '"technical_summary":"Momentum is mixed.",'
+                '"news_context":"Coverage is constructive."}'
+            ),
+            usage=SimpleNamespace(input_tokens=88, output_tokens=19),
+        )
+        recorded_prompt = {}
+
+        fake_openai = SimpleNamespace(
+            OpenAI=MagicMock(
+                return_value=SimpleNamespace(
+                    responses=SimpleNamespace(
+                        create=MagicMock(side_effect=lambda **kwargs: recorded_prompt.update(kwargs) or fake_response),
+                    )
+                )
+            )
+        )
+
+        with patch.dict(sys.modules, {"openai": fake_openai}):
+            result = service.analyze_scope("portfolio", "Core positions", [asset_a, asset_b], holdings)
+
+        assert result["scope_type"] == "portfolio"
+        assert result["asset_count"] == 2
+        assert result["summary"] == "The monitored set is balanced."
+        assert "Type: portfolio" in recorded_prompt["input"]
+        assert "Asset count: 2" in recorded_prompt["input"]
+        assert "AAA" in recorded_prompt["input"]
+        assert "BBB" in recorded_prompt["input"]

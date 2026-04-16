@@ -14,15 +14,23 @@ ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5 / docs
 
 ## Branch
 
 feat/autonomous/03-scope-expansion
+
+## Date Started
+
+2026-04-16
+
+## Date Completed
+
+2026-04-16
 
 ## Dependencies
 
@@ -60,31 +68,32 @@ ADR-003 approves explicit monitored-set membership and a shared scope contract, 
   - `scope_type`
   - `scope_id`
   - `as_of`
+- make the scope contract deterministic and closed:
+  - `scope_type` must be one of `asset`, `portfolio`, `watch`
+  - `scope_id` must resolve to the canonical identifier for the selected scope type
+  - `as_of` must be the evaluation boundary used for membership resolution
 - define deterministic membership rules for:
   - `asset`
   - `portfolio`
   - `watch`
-- specify the minimum watch-scope representation required for this milestone
 - keep watch scope distinct from portfolio holdings
 - avoid introducing discovery or inferred membership behavior
-- define any minimal API, serializer, model, or UI contract changes needed for explicit watch membership
-- use a dedicated watch persistence model for this milestone:
-  - one user-owned `WatchScope`
-  - one join model such as `WatchMembership`
-- keep persistent storage narrow and justified
+- specify the smallest explicit watch persistence boundary needed for this milestone
+- keep persistent storage narrow and auditable
 
 ## Proposed Approach
 
 - reuse existing scope vocabulary from Milestone 00
-- define watch scope as an explicit user-owned monitored asset set with minimal metadata
-- persist watch scope with dedicated tables rather than overloading `Portfolio` or storing raw asset ID lists in user settings
-- prefer the smallest persistence change that makes watch membership durable and auditable
-- if multiple persistence options exist, choose the one that least disturbs current portfolio and asset flows
+- define `asset` scope as a single-asset singleton, `portfolio` scope as positions at `as_of`, and `watch` scope as an explicit user-owned monitored asset set
+- persist watch scope with one user-owned `WatchScope` row and one join model such as `WatchMembership`
+- prefer the smallest persistence change that makes watch membership durable, explicit, and auditable
+- reject raw asset-id lists in user settings and any portfolio-based watch reuse
 - document the contract in a way later milestones can reuse without renaming fields
 
 ## Validation Scenarios
 
-- a portfolio scope deterministically resolves to currently held assets
+- an asset scope resolves to exactly one asset
+- a portfolio scope deterministically resolves to currently held assets at `as_of`
 - a watch scope deterministically resolves to explicitly attached assets without open positions
 - the same asset can appear in both a portfolio and a watch scope
 - no part of the contract implies inferred discovery behavior
@@ -94,9 +103,9 @@ ADR-003 approves explicit monitored-set membership and a shared scope contract, 
 ## Task Steps
 
 1. Confirm the minimal scope contract shape and where it enters the producer path.
-2. Define deterministic membership rules for each scope type.
-3. Define the minimum watch-scope persistence and API surface required for this milestone.
-4. Identify likely backend and frontend contract changes while keeping them as small as possible.
+2. Define deterministic membership rules for `asset`, `portfolio`, and `watch`.
+3. Define the smallest explicit watch persistence boundary needed for durable membership.
+4. Keep the contract narrow enough for later milestones to reuse without renaming fields.
 5. Call out rejected options that would introduce inferred discovery or oversized persistence.
 
 ## Tests to Add or Update
@@ -120,7 +129,18 @@ ADR-003 approves explicit monitored-set membership and a shared scope contract, 
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Defined the minimum scope contract and explicit watch membership boundary.
+
+What was done:
+
+- set the scope contract to `scope_type`, `scope_id`, and `as_of`
+- fixed deterministic membership rules for `asset`, `portfolio`, and `watch`
+- chose the smallest durable watch boundary as `WatchScope` plus `WatchMembership`
+- kept watch membership explicit, auditable, and separate from portfolio holdings
+
+Open follow-ups:
+
+- confirm whether the implementation milestone should reuse the same `WatchScope` name in backend models or map to an existing watchlist primitive if one appears during code scan
 
 ## Open Follow-Ups
 

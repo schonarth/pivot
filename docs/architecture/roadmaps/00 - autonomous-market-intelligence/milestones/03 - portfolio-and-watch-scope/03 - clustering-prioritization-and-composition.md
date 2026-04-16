@@ -14,15 +14,23 @@ ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / implementation
 
 ## Branch
 
 feat/autonomous/03-scope-expansion
+
+## Date Started
+
+2026-04-16
+
+## Date Completed
+
+2026-04-16
 
 ## Dependencies
 
@@ -56,25 +64,37 @@ Milestone 03 is valuable only if monitored-set output reduces duplicate noise wi
 
 ## Detailed Requirements
 
-- define how asset-level context packs are reused before monitored-set composition
-- define when shared events are eligible for clustering
-- define how clustered events list affected assets and preserve per-asset relevance
+- reuse already selected asset-level context packs as the only input to monitored-set composition; do not rescore raw provider payloads at portfolio or watch scope
+- define when shared events are eligible for clustering:
+  - overlap must be obvious through dedupe keys, story families, or theme tags
+  - at least two monitored assets must retain the event with per-asset relevance at or above `0.50`
+  - the shared event must still survive asset-level continuity filters for the participating assets
+- define when shared events must remain separate:
+  - only one monitored asset retains the item above the relevance floor
+  - overlap is ambiguous or weak
+  - the event is asset-specific even if the topic is broadly related
+- define how clustered events list affected assets while preserving per-asset relevance, stable asset identifiers, and drill-down paths
 - define deterministic monitored-set prioritization rules for:
   - multi-asset impact
   - portfolio weight when scope is `portfolio`, measured as percentage of total portfolio market value
   - recency
   - surviving asset-level ranking and continuity filters
-- define when the system should keep separate items instead of forcing a cluster
 - keep the output shape auditable and compact
+- make the same composition rules reusable for both `portfolio` and `watch` scopes without introducing a second pipeline
 
 ## Proposed Approach
 
-- compose monitored-set output from already selected asset-level items rather than rescoring raw provider payloads at portfolio level
-- cluster only when overlap is obvious through dedupe keys, story families, or theme tags, and only when at least two monitored assets retain the event with per-asset relevance at or above `0.50`
-- preserve unique asset-specific items alongside clustered shared events
-- keep continuity asset-bounded first, then compose the monitored-set view
+- select asset-level context first, apply continuity filters per asset, then compose the monitored set from the surviving items
+- cluster only after the asset-level pass has produced overlapping survivors for at least two monitored assets
+- prioritize clustered events by:
+  - higher number of implicated assets
+  - larger portfolio weight for portfolio scope
+  - more recent `published_at` or equivalent event timestamp
+  - stronger surviving asset-level rank after continuity reuse
+- preserve unique asset-specific items alongside clustered shared events instead of flattening them into clusters
 - define one monitored-set output shape that can serve both portfolio and watch consumers
 - preserve drill-down by returning compact implicated-asset summaries plus stable asset identifiers; full asset detail should be fetched through the existing `asset` scope path instead of expanding full detail inline
+- keep portfolio and watch ordering deterministic so equal inputs produce equal output ordering
 
 ## Validation Scenarios
 
@@ -83,6 +103,7 @@ Milestone 03 is valuable only if monitored-set output reduces duplicate noise wi
 - a larger portfolio position can outrank a smaller one when both share comparable event strength, using percentage of total portfolio market value
 - weak or ambiguous overlap does not force clustering
 - monitored-set output still allows drill-down to implicated assets through stable IDs and asset-scope reuse
+- portfolio and watch scopes produce the same monitored-set structure while preserving scope-specific ordering inputs
 
 ## Task Steps
 
@@ -91,6 +112,7 @@ Milestone 03 is valuable only if monitored-set output reduces duplicate noise wi
 3. Define deterministic prioritization rules for portfolio and watch scope.
 4. Define the monitored-set output shape, including clustered shared events and unique asset-level items.
 5. Identify the minimum regression and validation tests needed for clustering and prioritization behavior.
+6. Record the handoff state directly in this task file so the next pass does not need to rediscover ownership or completion status.
 
 ## Tests to Add or Update
 
@@ -110,11 +132,13 @@ Milestone 03 is valuable only if monitored-set output reduces duplicate noise wi
 - clustering and prioritization rules are deterministic
 - asset-level detail preservation is explicit
 - implementation can proceed without rediscovering composition semantics
+- Owner, Status, Date Started, Date Completed, and handoff notes are filled in this file
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Defined the monitored-set composition contract for Milestone 03. Asset-level context packs are reused first, then clustered only when overlap is obvious and at least two monitored assets keep the item at or above the `0.50` relevance floor. Separate items are preserved when overlap is weak, ambiguous, or asset-specific. Prioritization is deterministic across portfolio and watch scopes, with portfolio scope using portfolio-weight percentage as an ordering input. The monitored-set shape stays compact, auditable, and drill-down friendly through stable asset IDs and compact implicated-asset summaries.
 
 ## Open Follow-Ups
 
 - confirm whether monitored-set summaries need separate caps for clustered items and unique asset items after the first prompt-budget pass
+- update the execution model to make pre-handoff Owner completion part of the default task flow
