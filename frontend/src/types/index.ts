@@ -183,6 +183,34 @@ export interface MarketStatus {
   [key: string]: { open: boolean }
 }
 
+export interface OhlcvBackfillProcessedAsset {
+  symbol: string
+  status: 'completed' | 'failed'
+  rows_ingested?: number
+  error?: string
+  timestamp: string
+}
+
+export interface OhlcvBackfillStatus {
+  state: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
+  source: string | null
+  initiated_by: string | null
+  total_assets: number
+  processed_assets_count: number
+  successful_assets: number
+  failed_assets: number
+  current_asset: {
+    symbol: string
+    index: number
+    total_assets: number
+  } | null
+  processed_assets: OhlcvBackfillProcessedAsset[]
+  started_at: string | null
+  updated_at: string
+  completed_at: string | null
+  queued?: boolean
+}
+
 export interface WSMessage {
   type: string
   [key: string]: unknown
