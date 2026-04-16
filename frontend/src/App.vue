@@ -95,7 +95,9 @@ const aiBudgetColor = computed(() => {
 
 onMounted(async () => {
   if (auth.isAuthenticated) {
-    await auth.fetchUser()
+    if (!auth.user) {
+      await auth.fetchUser()
+    }
     requestPermission()
     await refreshBudget()
   }
@@ -143,8 +145,9 @@ watch(
 )
 
 function handleLogout() {
-  auth.logout()
-  router.push('/login')
+  void auth.logout().finally(() => {
+    router.push('/login')
+  })
 }
 </script>
 

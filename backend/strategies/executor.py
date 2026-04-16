@@ -37,8 +37,7 @@ class StrategyExecutor:
 
         # Get positions for this portfolio
         positions = Position.objects.filter(
-            portfolio=self.portfolio,
-            status="open"
+            portfolio=self.portfolio
         ).select_related("asset")
 
         if not positions.exists():

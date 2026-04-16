@@ -11,8 +11,8 @@ export async function login(username: string, password: string) {
   return data
 }
 
-export async function logout(refreshToken: string) {
-  await api.post('/auth/logout', { refresh: refreshToken })
+export async function logout() {
+  await api.post('/auth/logout')
 }
 
 export async function getMe(): Promise<User> {

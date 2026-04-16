@@ -2,6 +2,8 @@ import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 
+from .views import REFRESH_COOKIE_NAME
+
 User = get_user_model()
 
 
@@ -17,7 +19,8 @@ class TestAuthEndpoints:
         assert response.status_code == 201
         assert response.data["user"]["username"] == "newuser"
         assert "access" in response.data
-        assert "refresh" in response.data
+        assert "refresh" not in response.data
+        assert REFRESH_COOKIE_NAME in response.cookies
         assert User.objects.filter(username="newuser").exists()
 
     def test_register_with_duplicate_username_fails(self, user):
@@ -39,7 +42,24 @@ class TestAuthEndpoints:
         assert response.status_code == 200
         assert response.data["user"]["username"] == user.username
         assert "access" in response.data
-        assert "refresh" in response.data
+        assert "refresh" not in response.data
+        assert REFRESH_COOKIE_NAME in response.cookies
+
+    def test_refresh_rotates_cookie_and_returns_new_access(self, user):
+        client = APIClient()
+        login_response = client.post(
+            "/api/auth/login",
+            {"username": user.username, "password": "testpass123"},
+            format="json",
+        )
+        client.cookies[REFRESH_COOKIE_NAME] = login_response.cookies[REFRESH_COOKIE_NAME].value
+
+        response = client.post("/api/auth/token/refresh")
+
+        assert response.status_code == 200
+        assert "access" in response.data
+        assert "refresh" not in response.data
+        assert REFRESH_COOKIE_NAME in response.cookies
 
     def test_login_with_invalid_password_fails(self, user):
         client = APIClient()
@@ -63,12 +83,9 @@ class TestAuthEndpoints:
         assert response.status_code == 403
 
     def test_logout_succeeds(self, authenticated_client):
-        response = authenticated_client.post(
-            "/api/auth/logout",
-            {"refresh": "dummy_token"},
-            format="json",
-        )
+        response = authenticated_client.post("/api/auth/logout")
         assert response.status_code == 204
+        assert REFRESH_COOKIE_NAME in response.cookies
 
     def test_logout_without_token_succeeds(self, authenticated_client):
         response = authenticated_client.post("/api/auth/logout", {}, format="json")
