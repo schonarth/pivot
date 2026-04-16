@@ -102,6 +102,11 @@ export interface AssetAIInsightNewsItem {
   headline: string
   source: string
   published_at: string | null
+  bucket?: 'symbol' | 'company' | 'sector' | 'industry' | 'macro' | 'theme'
+  provenance?: string
+  relevance_basis?: string
+  asset_symbol?: string | null
+  market?: string | null
 }
 
 export interface AssetAIInsight {

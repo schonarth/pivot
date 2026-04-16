@@ -1,13 +1,25 @@
-import logging
-from decimal import Decimal
-from datetime import datetime, timedelta
 import json
+import logging
+import re
+from decimal import Decimal
+
+from django.core.cache import cache
 from django.db.models import Sum
 from django.utils import timezone
-from django.core.cache import cache
 
-from .models import AIAuth, AICost
 from .encryption import KeyEncryption
+from .models import AIAuth, AICost
+from .news_context_policy import (
+    ASSET_METADATA_OVERRIDES,
+    BUCKET_LIMITS,
+    BUCKET_ORDER,
+    CORPORATE_SUFFIXES,
+    HEADLINE_STOPWORDS,
+    RAW_BUCKET_LIMITS,
+    SOURCE_QUALITY,
+    THEME_RULES,
+    TOTAL_CONTEXT_LIMIT,
+)
 
 logger = logging.getLogger("paper_trader.ai")
 
@@ -171,6 +183,228 @@ class AIService:
         return "Reply with OK"
 
     @staticmethod
+    def _normalize_text(text: str) -> str:
+        cleaned = re.sub(r"[^a-z0-9]+", " ", (text or "").lower())
+        return " ".join(cleaned.split())
+
+    @classmethod
+    def _headline_signature(cls, text: str) -> str:
+        tokens = []
+        for token in cls._normalize_text(text).split():
+            if token in HEADLINE_STOPWORDS or token in CORPORATE_SUFFIXES:
+                continue
+            tokens.append(token)
+        if not tokens:
+            return cls._normalize_text(text)
+        return " ".join(sorted(set(tokens)))
+
+    @classmethod
+    def _matches_alias(cls, headline: str, alias: str) -> bool:
+        normalized_headline = f" {cls._normalize_text(headline)} "
+        normalized_alias = cls._normalize_text(alias)
+        if not normalized_alias:
+            return False
+        return f" {normalized_alias} " in normalized_headline
+
+    @classmethod
+    def _asset_aliases(cls, asset) -> list[str]:
+        names = [asset.display_symbol, asset.provider_symbol, asset.name]
+        base_name = cls._normalize_text(asset.name)
+        if base_name:
+            stripped_name = " ".join(
+                token for token in base_name.split()
+                if token not in CORPORATE_SUFFIXES
+            )
+            if stripped_name and stripped_name != base_name:
+                names.append(stripped_name)
+        return [name for name in names if name]
+
+    @classmethod
+    def _resolved_asset_metadata(cls, asset) -> tuple[str, str]:
+        override = ASSET_METADATA_OVERRIDES.get(asset.display_symbol, {})
+        sector = asset.sector or override.get("sector") or ""
+        industry = asset.industry or override.get("industry") or ""
+        return sector, industry
+
+    @staticmethod
+    def _source_quality(source: str) -> int:
+        return SOURCE_QUALITY.get((source or "").lower(), 1)
+
+    @staticmethod
+    def _impact_score(headline: str) -> int:
+        impact_keywords = (
+            "beats",
+            "misses",
+            "guidance",
+            "raises",
+            "cuts",
+            "merger",
+            "acquisition",
+            "lawsuit",
+            "tariff",
+            "opec",
+            "oil",
+            "rates",
+            "inflation",
+            "fed",
+            "cpi",
+            "earnings",
+            "dividend",
+        )
+        normalized = AIService._normalize_text(headline)
+        score = 0
+        for keyword in impact_keywords:
+            if keyword in normalized:
+                score += 2
+        if any(char.isdigit() for char in headline):
+            score += 1
+        if len(normalized.split()) >= 8:
+            score += 1
+        return score
+
+    @staticmethod
+    def _recency_score(published_at) -> int:
+        if not published_at:
+            return 0
+        if timezone.is_naive(published_at):
+            published_at = timezone.make_aware(published_at, timezone=timezone.get_current_timezone())
+        hours_old = max(0, (timezone.now() - published_at).total_seconds() / 3600)
+        if hours_old <= 6:
+            return 4
+        if hours_old <= 24:
+            return 3
+        if hours_old <= 72:
+            return 2
+        if hours_old <= 168:
+            return 1
+        return 0
+
+    @classmethod
+    def _ranking_score(cls, item: dict) -> tuple[int, int, int, int, str]:
+        directness = {
+            "symbol": 5,
+            "company": 4,
+            "sector": 3,
+            "industry": 3,
+            "macro": 2,
+            "theme": 2,
+        }.get(item["bucket"], 1)
+        return (
+            directness,
+            cls._impact_score(item["headline"]),
+            cls._source_quality(item["source"]),
+            cls._recency_score(item.get("published_at")),
+            item["headline"].lower(),
+        )
+
+    @classmethod
+    def _theme_match(cls, headline: str, asset_sector: str, asset_industry: str) -> dict | None:
+        normalized = cls._normalize_text(headline)
+        for rule in THEME_RULES:
+            if rule["sector_names"] and asset_sector not in rule["sector_names"]:
+                continue
+            if rule["industry_names"] and asset_industry not in rule["industry_names"]:
+                continue
+            if any(keyword in normalized for keyword in rule["keywords"]):
+                return rule
+        return None
+
+    @classmethod
+    def _classify_context_item(cls, item, asset, asset_sector: str, asset_industry: str) -> tuple[str | None, str, str]:
+        headline = item.headline or ""
+        if item.asset_id == asset.id:
+            if any(cls._matches_alias(headline, alias) for alias in (asset.display_symbol, asset.provider_symbol)):
+                return "symbol", f"asset:{asset.display_symbol}", "headline explicitly mentions the symbol"
+            if any(cls._matches_alias(headline, alias) for alias in cls._asset_aliases(asset)):
+                return "company", f"asset:{asset.display_symbol}", "headline explicitly mentions the company"
+            return "company", f"asset:{asset.display_symbol}", "current asset news"
+
+        if item.asset and asset_sector and item.asset.sector == asset_sector:
+            return "sector", f"sector:{asset_sector}", f"same sector asset: {item.asset.display_symbol}"
+
+        if item.asset and asset_industry and item.asset.industry == asset_industry:
+            return "industry", f"industry:{asset_industry}", f"same industry asset: {item.asset.display_symbol}"
+
+        matched_rule = cls._theme_match(headline, asset_sector, asset_industry)
+        if matched_rule:
+            provenance = f"{matched_rule['bucket']}:{matched_rule['name']}"
+            relevance_basis = f"keyword match: {matched_rule['name']}"
+            return matched_rule["bucket"], provenance, relevance_basis
+
+        return None, "", ""
+
+    @classmethod
+    def build_asset_context_pack(cls, asset, max_items: int = TOTAL_CONTEXT_LIMIT) -> list[dict]:
+        from markets.models import NewsItem
+
+        asset_sector, asset_industry = cls._resolved_asset_metadata(asset)
+        candidates: list[dict] = []
+
+        news_items = (
+            NewsItem.objects.select_related("asset")
+            .order_by("-published_at", "-fetched_at")[:200]
+        )
+
+        bucket_raw_counts: dict[str, int] = {bucket: 0 for bucket in BUCKET_ORDER}
+
+        for item in news_items:
+            bucket, provenance, relevance_basis = cls._classify_context_item(item, asset, asset_sector, asset_industry)
+            if bucket is None:
+                continue
+
+            if bucket_raw_counts[bucket] >= RAW_BUCKET_LIMITS[bucket]:
+                continue
+            bucket_raw_counts[bucket] += 1
+
+            candidates.append({
+                "headline": item.headline,
+                "source": item.source,
+                "published_at": item.published_at or item.fetched_at,
+                "bucket": bucket,
+                "provenance": provenance,
+                "relevance_basis": relevance_basis,
+                "asset_symbol": item.asset.display_symbol if item.asset_id else None,
+                "market": item.asset.market if item.asset_id else None,
+                "dedupe_key": cls._headline_signature(item.headline),
+            })
+
+        deduped: dict[str, dict] = {}
+        for candidate in candidates:
+            key = candidate["dedupe_key"]
+            existing = deduped.get(key)
+            if existing is None or cls._ranking_score(candidate) > cls._ranking_score(existing):
+                deduped[key] = candidate
+
+        selected_by_bucket: dict[str, list[dict]] = {bucket: [] for bucket in BUCKET_ORDER}
+        for candidate in deduped.values():
+            selected_by_bucket[candidate["bucket"]].append(candidate)
+
+        selected: list[dict] = []
+        for bucket in BUCKET_ORDER:
+            ranked = sorted(
+                selected_by_bucket[bucket],
+                key=cls._ranking_score,
+                reverse=True,
+            )[:BUCKET_LIMITS[bucket]]
+            selected.extend(ranked)
+
+        selected = sorted(selected, key=cls._ranking_score, reverse=True)[:max_items]
+
+        return [
+            {
+                "headline": item["headline"],
+                "source": item["source"],
+                "published_at": item["published_at"],
+                "bucket": item["bucket"],
+                "provenance": item["provenance"],
+                "relevance_basis": item["relevance_basis"],
+                "asset_symbol": item["asset_symbol"],
+                "market": item["market"],
+            }
+            for item in selected
+        ]
+
+    @staticmethod
     def build_indicator_insight_prompt(asset, indicators: dict, news_items: list[dict]) -> str:
         return f"""You are analyzing one asset for a paper trading app.
 
@@ -202,8 +436,11 @@ Technical indicators:
 - Bollinger lower: {indicators.get("bb_lower")}
 - 20 day average volume: {indicators.get("volume_20d_avg")}
 
-Recent headlines:
-{chr(10).join(f"- {item['headline']} ({item['source']})" for item in news_items) if news_items else "- None"}
+Context pack:
+{chr(10).join(
+    f"- [{item.get('bucket', 'news')}] {item['headline']} ({item['source']}; {item.get('provenance', 'unclassified')})"
+    for item in news_items
+) if news_items else "- None"}
 
 Writing rules:
 - Be useful to an everyday investor, not only a technical analyst.
@@ -311,7 +548,6 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
         raise ValueError(f"Unsupported provider: {provider}")
 
     def analyze_asset(self, asset) -> dict:
-        from markets.models import NewsItem
         from markets.services import NewsService
         from trading.technical import IndicatorCalculator
 
@@ -330,11 +566,7 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
             raise ValueError("Not enough historical data to generate AI insight")
 
         NewsService.fetch_and_store_news(asset)
-        news_items = list(
-            NewsItem.objects.filter(asset=asset)
-            .order_by("-published_at", "-fetched_at")[:5]
-            .values("headline", "source", "published_at")
-        )
+        news_items = self.build_asset_context_pack(asset)
 
         provider = self.ai_auth.provider_name
         model = self.ai_auth.get_model_for_task("indicator_insight")
@@ -416,6 +648,11 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
                     "headline": item["headline"],
                     "source": item["source"],
                     "published_at": item["published_at"].isoformat() if item["published_at"] else None,
+                    "bucket": item["bucket"],
+                    "provenance": item["provenance"],
+                    "relevance_basis": item["relevance_basis"],
+                    "asset_symbol": item["asset_symbol"],
+                    "market": item["market"],
                 }
                 for item in news_items
             ],
