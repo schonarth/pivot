@@ -1,3 +1,4 @@
+from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote_plus
 
@@ -354,11 +355,12 @@ class NewsService:
     @classmethod
     def _store_news_items(cls, asset: Asset, news_items: list[dict]) -> int:
         """Store news items in database, skip duplicates."""
+        created_items = []
         count = 0
         for item in news_items:
             if not item.get("url"):
                 continue
-            _, created = NewsItem.objects.update_or_create(
+            news_item, created = NewsItem.objects.update_or_create(
                 asset=asset,
                 url=item["url"][:500],
                 defaults={
@@ -370,4 +372,27 @@ class NewsService:
             )
             if created:
                 count += 1
+                created_items.append(news_item)
+        cls._attach_sentiment_scores(created_items)
         return count
+
+    @classmethod
+    def _attach_sentiment_scores(cls, news_items: list[NewsItem]) -> None:
+        if not news_items:
+            return
+
+        from ai.services import AIService
+
+        headlines = [item.headline for item in news_items if item.headline]
+        sentiments = AIService.analyze_news_sentiment(headlines)
+        if not sentiments:
+            return
+
+        for news_item in news_items:
+            score = sentiments.get(news_item.headline)
+            if score is None:
+                continue
+            score_decimal = Decimal(str(score)) if not isinstance(score, Decimal) else score
+            score_decimal = max(Decimal("-1.0"), min(Decimal("1.0"), score_decimal))
+            news_item.sentiment_score = score_decimal
+            news_item.save(update_fields=["sentiment_score"])
