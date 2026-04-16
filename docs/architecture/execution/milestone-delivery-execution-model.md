@@ -65,6 +65,8 @@ Examples:
 - `feat/autonomous/00-baseline`
 - `feat/autonomous/01-asset-context`
 
+Milestones always branch off of `develop`.
+
 ## Spec Files
 
 Each milestone folder should contain small, sequential spec files.
