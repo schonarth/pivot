@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { MarketStatus } from '@/types'
-import { getMarketStatus } from '@/api/assets'
+import { getMarketStatus } from '@/api/markets'
 
 export const useMarketStore = defineStore('market', () => {
   const status = ref<MarketStatus>({})
