@@ -146,3 +146,47 @@ Milestone 00 establishes shared vocabulary and minimum interface contracts, but 
 
 - multiple consumers may drift into slightly different context-pack assumptions
 - later refactors may become harder if the shape is used widely without an explicit contract
+
+---
+
+## 004 - RSS Source Management and Feed Operations
+
+### Context
+
+News collection currently needs a pragmatic, low-friction path that yields enough headlines for asset analysis. Query-based RSS is a good short-term fit, but source quality, duplication, locale coverage, and provider drift will need operational management over time.
+
+### Current Safe Policy
+
+- allow simple code-level RSS source configuration that restores headline flow
+- prefer accessible feeds over brittle HTML scraping in the critical ingestion path
+- keep source selection deterministic and lightweight for now
+
+### Why Deferred
+
+- proper source management introduces operational concerns beyond the immediate fix:
+  - source onboarding and retirement
+  - per-market locale tuning
+  - feed health monitoring
+  - duplicate-source suppression
+  - source quality scoring
+- this work is useful, but not required to prove that headline ingestion is functioning again
+- the immediate priority is restoring non-zero headline volume without creating a new management surface prematurely
+
+### Earliest Revisit
+
+- Milestone 01 or 02 implementation hardening
+- more likely before broader portfolio and watch-scope rollout in Milestone 03, when source volume and duplication pressure increase
+
+### Future Direction
+
+- define explicit RSS source registries by market, locale, and query purpose
+- support source priorities, caps, and failover rules
+- track feed health and last successful ingest
+- expose operator-visible controls for enabling, disabling, or tuning sources without code edits
+- distinguish asset-specific, sector, macro, and theme-oriented feed inputs
+
+### Risk If Deferred Too Long
+
+- source drift may silently reduce headline quality or coverage
+- duplicate or low-signal feeds may inflate prompt noise
+- adding new markets or monitored scopes may become operationally clumsy without a clearer source-management model

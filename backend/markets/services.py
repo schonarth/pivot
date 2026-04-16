@@ -1,18 +1,19 @@
-import uuid
-from decimal import Decimal
-import requests
+from email.utils import parsedate_to_datetime
+from urllib.parse import quote_plus
+
 import feedparser
+import requests
 from bs4 import BeautifulSoup
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
-from django.core.cache import cache
+
+from .models import Asset, MarketConfig, NewsItem, OHLCV
 
 try:
     from exchange_calendars import get_calendar
 except ImportError:
     get_calendar = None
-
-from .models import Asset, AssetQuote, MarketConfig, OHLCV, NewsItem
 
 
 MARKET_CONFIGS = {
@@ -152,6 +153,7 @@ class NewsService:
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
     }
     CACHE_TTL = 4 * 3600
+    EMPTY_CACHE_TTL = 15 * 60
 
     @classmethod
     def fetch_and_store_news(cls, asset: Asset) -> int:
@@ -161,6 +163,7 @@ class NewsService:
             return 0
 
         news_items = []
+        news_items.extend(cls._fetch_google_news_rss(asset))
         news_items.extend(cls._fetch_yahoo_finance(asset))
         news_items.extend(cls._fetch_marketwatch(asset))
         if asset.market == "BR":
@@ -170,8 +173,77 @@ class NewsService:
             news_items.extend(cls._fetch_rss_fallback(asset))
 
         count = cls._store_news_items(asset, news_items)
-        cache.set(f"news:{asset.id}", True, cls.CACHE_TTL)
+        cache.set(f"news:{asset.id}", True, cls.CACHE_TTL if news_items else cls.EMPTY_CACHE_TTL)
         return count
+
+    @classmethod
+    def _google_news_locale(cls, asset: Asset) -> tuple[str, str, str]:
+        locales = {
+            "BR": ("pt-BR", "BR", "BR:pt-419"),
+            "US": ("en-US", "US", "US:en"),
+            "UK": ("en-GB", "GB", "GB:en"),
+            "EU": ("en", "FR", "FR:en"),
+        }
+        return locales.get(asset.market, ("en-US", "US", "US:en"))
+
+    @classmethod
+    def _google_news_queries(cls, asset: Asset) -> list[str]:
+        queries = [asset.provider_symbol, asset.display_symbol]
+        if asset.name and asset.name.lower() not in {
+            asset.display_symbol.lower(),
+            asset.provider_symbol.lower(),
+        }:
+            queries.append(f'"{asset.name}"')
+            queries.append(f'{asset.display_symbol} OR "{asset.name}"')
+
+        seen = set()
+        result = []
+        for query in queries:
+            normalized = query.strip().lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            result.append(query)
+        return result[:3]
+
+    @classmethod
+    def _fetch_google_news_rss(cls, asset: Asset) -> list[dict]:
+        hl, gl, ceid = cls._google_news_locale(asset)
+        items = []
+        seen_urls = set()
+
+        for query in cls._google_news_queries(asset):
+            url = (
+                "https://news.google.com/rss/search?"
+                f"q={quote_plus(query)}&hl={hl}&gl={gl}&ceid={ceid}"
+            )
+            try:
+                feed = feedparser.parse(url)
+            except Exception:
+                continue
+
+            for entry in feed.entries[:8]:
+                link = entry.get("link", "")
+                headline = entry.get("title", "").strip()
+                if not link or not headline or link in seen_urls:
+                    continue
+                seen_urls.add(link)
+                published_at = None
+                published_value = entry.get("published") or entry.get("updated")
+                if published_value:
+                    try:
+                        published_at = parsedate_to_datetime(published_value)
+                    except (TypeError, ValueError, IndexError, OverflowError):
+                        published_at = None
+                items.append({
+                    "headline": headline[:500],
+                    "url": link,
+                    "source": "google_news_rss",
+                    "summary": entry.get("summary", "")[:1000] or None,
+                    "published_at": published_at,
+                })
+
+        return items
 
     @classmethod
     def _fetch_yahoo_finance(cls, asset: Asset) -> list[dict]:
@@ -192,6 +264,7 @@ class NewsService:
                         "url": href if href.startswith("http") else f"https://finance.yahoo.com{href}",
                         "source": "yahoo_finance",
                         "summary": None,
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -218,6 +291,7 @@ class NewsService:
                         "url": href if href.startswith("http") else f"https://www.marketwatch.com{href}",
                         "source": "marketwatch",
                         "summary": None,
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -242,6 +316,7 @@ class NewsService:
                         "url": href if href.startswith("http") else f"https://www.valor.com.br{href}",
                         "source": "valor_economico",
                         "summary": None,
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -270,6 +345,7 @@ class NewsService:
                         "url": entry.get("link", ""),
                         "source": "rss_feed",
                         "summary": entry.get("summary", "")[:1000],
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -284,11 +360,12 @@ class NewsService:
                 continue
             _, created = NewsItem.objects.update_or_create(
                 asset=asset,
-                url=item["url"],
+                url=item["url"][:500],
                 defaults={
                     "headline": item["headline"],
                     "summary": item.get("summary"),
                     "source": item["source"],
+                    "published_at": item.get("published_at"),
                 },
             )
             if created:
