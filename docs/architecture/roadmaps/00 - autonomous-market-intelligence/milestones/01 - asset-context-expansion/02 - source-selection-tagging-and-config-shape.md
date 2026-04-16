@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / implementation
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -126,7 +126,18 @@ ADR-001 expands context selection from symbol-only headlines to a broader determ
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Defined the Milestone 01 source model and tagging policy.
+
+What was done:
+
+- fixed the source buckets as `symbol`, `company`, `sector`, `industry`, `macro`, and `theme`
+- established deterministic fallback behavior for incomplete metadata using existing asset data first, then explicit overrides
+- defined the minimum context-item metadata needed for tagged asset analysis
+- kept thematic mappings in code as a small versioned policy artifact instead of a database-backed structure
+
+Open follow-ups:
+
+- populate `ASSET_METADATA_OVERRIDES` only if a real seeded-data gap appears
 
 ## Open Follow-Ups
 

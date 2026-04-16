@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / validation
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -134,7 +134,20 @@ This is the milestone integration task. The earlier task files define where the 
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Implemented and validated the Milestone 01 asset context expansion.
+
+What was done:
+
+- integrated the compact tagged context pack into `AIService.analyze_asset`
+- preserved the existing asset-analysis entrypoints for both the frontend and MCP consumer
+- added regression coverage for context tagging, deduplication, and prompt assembly
+- verified the frontend type contract still compiles with the expanded insight payload
+
+Validation notes:
+
+- backend focused tests passed for the changed analysis path
+- frontend typecheck passed
+- the new context pack remains bounded and deterministic
 
 ## Open Follow-Ups
 
