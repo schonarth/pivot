@@ -190,3 +190,41 @@ News collection currently needs a pragmatic, low-friction path that yields enoug
 - source drift may silently reduce headline quality or coverage
 - duplicate or low-signal feeds may inflate prompt noise
 - adding new markets or monitored scopes may become operationally clumsy without a clearer source-management model
+
+---
+
+## 005 - OHLCV Backfill Settings Card Refinements
+
+### Context
+
+Milestone 02 now exposes OHLCV backfill status in Settings so operators can start and observe history catch-up. The current card is intentionally functional first, but it can become quieter and more informative once the backfill path proves stable.
+
+### Current Safe Policy
+
+- keep the existing Settings card simple and readable
+- show live progress while backfill is actively running
+- avoid adding extra UI states unless they help with operator clarity
+
+### Why Deferred
+
+- the current live log is useful during catch-up but noisy once backfill finishes
+- filtering down to failed entries or summarizing completion would require extra display rules
+- subtle presentation changes are valuable, but not on the critical path for proving the backfill itself
+
+### Earliest Revisit
+
+- after backfill behavior has settled in normal use
+- ideally alongside a broader Settings polish pass
+
+### Future Direction
+
+- hide the processed-entry log once backfill completes
+- show only failed entries after completion
+- replace repeated log rows with a compact summary when the queue is idle
+- surface a small last-run summary instead of the full historical log
+
+### Risk If Deferred Too Long
+
+- the card may stay noisier than necessary for operators
+- the Settings page could feel heavier than the underlying feature warrants
+- repeated full logs may distract from higher-value configuration controls

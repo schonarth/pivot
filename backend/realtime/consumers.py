@@ -8,7 +8,10 @@ logger = logging.getLogger("paper_trader.realtime")
 
 class PortfolioConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        logger.info(f"WebSocket connect attempt - user: {self.scope['user']}, is_anonymous: {self.scope['user'].is_anonymous}")
+        logger.info(
+            f"WebSocket connect attempt - user: {self.scope['user']}, "
+            f"is_anonymous: {self.scope['user'].is_anonymous}"
+        )
         if self.scope["user"].is_anonymous:
             logger.warning("Rejecting anonymous WebSocket connection")
             await self.close()
@@ -16,14 +19,17 @@ class PortfolioConsumer(AsyncWebsocketConsumer):
 
         self.user_id = str(self.scope["user"].id)
         self.user_group = f"user_{self.user_id}"
+        self.backfill_group = "ohlcv_backfill"
         self.portfolio_groups = set()
 
         await self.channel_layer.group_add(self.user_group, self.channel_name)
+        await self.channel_layer.group_add(self.backfill_group, self.channel_name)
         logger.info(f"WebSocket connected for user {self.user_id}")
         await self.accept()
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.user_group, self.channel_name)
+        await self.channel_layer.group_discard(self.backfill_group, self.channel_name)
         for group in self.portfolio_groups:
             await self.channel_layer.group_discard(group, self.channel_name)
 
