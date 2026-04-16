@@ -23,6 +23,7 @@ This document is reusable across roadmap-driven efforts. It is not specific to o
 - require explicit handoff from earlier milestone outputs when later milestones depend on them
 - require tests and verification before tasks are considered done
 - require each task agent to update its own task file with status, owner (use model name), dates, and what was done before it marks the task complete
+- require the coordinating agent to verify the task file's `Owner` field before handoff and, if missing, send the task back for the owner entry before completion
 - make UAT as smooth as possible by catching major issues before handoff
 
 ## Milestone Folders

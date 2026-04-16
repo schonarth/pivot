@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import re
@@ -578,6 +579,28 @@ class AIService:
             for item in selected
         ]
 
+    @classmethod
+    def build_scope_context_pack(cls, assets, max_items: int = TOTAL_CONTEXT_LIMIT) -> list[dict]:
+        candidates: list[dict] = []
+        for asset in assets:
+            candidates.extend(cls.build_asset_context_pack(asset, max_items=max_items))
+
+        deduped: dict[str, dict] = {}
+        for candidate in candidates:
+            key = cls._headline_signature(candidate["headline"])
+            existing = deduped.get(key)
+            if existing is None or cls._ranking_score(candidate) > cls._ranking_score(existing):
+                deduped[key] = candidate
+
+        return sorted(deduped.values(), key=cls._ranking_score, reverse=True)[:max_items]
+
+    @staticmethod
+    def _format_news_line(item: dict) -> str:
+        return (
+            f"- [{item.get('bucket', 'news')}] {item['headline']} "
+            f"({item['source']}; {item.get('provenance', 'unclassified')})"
+        )
+
     @staticmethod
     def build_indicator_insight_prompt(
         asset,
@@ -598,63 +621,102 @@ class AIService:
         else:
             story_section = "- None"
 
-        return f"""You are analyzing one asset for a paper trading app.
+        news_lines = "\n".join(
+            AIService._format_news_line(item) for item in news_items
+        ) if news_items else "- None"
 
-Return ONLY valid JSON with this exact shape:
-{{
-  "recommendation": "BUY" | "HOLD" | "SELL",
-  "confidence": integer from 0 to 100,
-  "technical_summary": "plain-English paragraph about the technical setup",
-  "news_context": "plain-English paragraph about the market or news context,
-  or empty string if there is no meaningful context",
-  "price_target": number or null
-}}
+        return (
+            "You are analyzing one asset for a paper trading app.\n\n"
+            "Return ONLY valid JSON with this exact shape:\n"
+            "{\n"
+            '  "recommendation": "BUY" | "HOLD" | "SELL",\n'
+            '  "confidence": integer from 0 to 100,\n'
+            '  "technical_summary": "plain-English paragraph about the technical setup",\n'
+            '  "news_context": "plain-English paragraph about the market or news context, or '
+            'empty string if there is no meaningful context",\n'
+            '  "price_target": number or null\n'
+            "}\n\n"
+            f"Asset:\n"
+            f"- Symbol: {asset.display_symbol}\n"
+            f"- Name: {asset.name}\n"
+            f"- Market: {asset.market}\n"
+            f"- Currency: {asset.currency}\n\n"
+            "Technical indicators:\n"
+            f"- RSI 14: {indicators.get('rsi_14')}\n"
+            f"- MACD: {indicators.get('macd')}\n"
+            f"- MACD signal: {indicators.get('macd_signal')}\n"
+            f"- MACD histogram: {indicators.get('macd_histogram')}\n"
+            f"- MA 20: {indicators.get('ma_20')}\n"
+            f"- MA 50: {indicators.get('ma_50')}\n"
+            f"- MA 200: {indicators.get('ma_200')}\n"
+            f"- Bollinger upper: {indicators.get('bb_upper')}\n"
+            f"- Bollinger middle: {indicators.get('bb_middle')}\n"
+            f"- Bollinger lower: {indicators.get('bb_lower')}\n"
+            f"- 20 day average volume: {indicators.get('volume_20d_avg')}\n\n"
+            "Context pack:\n"
+            f"{news_lines}\n\n"
+            "Story so far:\n"
+            f"{story_section}\n\n"
+            "Writing rules:\n"
+            "- Be useful to an everyday investor, not only a technical analyst.\n"
+            "- First paragraph: explain what the indicators suggest in plain English.\n"
+            "- Second paragraph: explain what broader news or market context may be influencing the asset right now.\n"
+            '- If the headlines are weak, generic, or missing, set "news_context" to an empty string.\n'
+            "- Do not mention every indicator mechanically.\n"
+            "- No markdown."
+        )
 
-Asset:
-- Symbol: {asset.display_symbol}
-- Name: {asset.name}
-- Market: {asset.market}
-- Currency: {asset.currency}
+    @staticmethod
+    def build_scope_insight_prompt(
+        scope_type: str,
+        scope_label: str,
+        holdings: list[dict],
+        news_items: list[dict],
+    ) -> str:
+        holdings_lines = "\n".join(
+            f"- {item['symbol']} | {item['name']} | {item.get('position_detail', item.get('current_price', '-'))}"
+            for item in holdings
+        ) if holdings else "- None"
+        news_lines = "\n".join(
+            AIService._format_news_line(item) for item in news_items
+        ) if news_items else "- None"
 
-Technical indicators:
-- RSI 14: {indicators.get("rsi_14")}
-- MACD: {indicators.get("macd")}
-- MACD signal: {indicators.get("macd_signal")}
-- MACD histogram: {indicators.get("macd_histogram")}
-- MA 20: {indicators.get("ma_20")}
-- MA 50: {indicators.get("ma_50")}
-- MA 200: {indicators.get("ma_200")}
-- Bollinger upper: {indicators.get("bb_upper")}
-- Bollinger middle: {indicators.get("bb_middle")}
-- Bollinger lower: {indicators.get("bb_lower")}
-- 20 day average volume: {indicators.get("volume_20d_avg")}
-
-Context pack:
-{chr(10).join(
-    f"- [{item.get('bucket', 'news')}] {item['headline']} ({item['source']}; {item.get('provenance', 'unclassified')})"
-    for item in news_items
-) if news_items else "- None"}
-
-Story so far:
-{story_section}
-
-Writing rules:
-- Be useful to an everyday investor, not only a technical analyst.
-- First paragraph: explain what the indicators suggest in plain English.
-- Second paragraph: explain what broader news or market context may be influencing the asset right now.
-- If the headlines are weak, generic, or missing, set "news_context" to an empty string.
-- Do not mention every indicator mechanically.
-- No markdown."""
+        return (
+            "You are analyzing one monitored set for a paper trading app.\n\n"
+            "Return ONLY valid JSON with this exact shape:\n"
+            "{\n"
+            '  "recommendation": "BUY" | "HOLD" | "SELL",\n'
+            '  "confidence": integer from 0 to 100,\n'
+            '  "summary": "plain-English paragraph about the monitored set overall",\n'
+            '  "technical_summary": "plain-English paragraph about the scope\'s technical posture",\n'
+            '  "news_context": "plain-English paragraph about the broader news or market context, or '
+            'empty string if there is no meaningful context"\n'
+            "}\n\n"
+            f"Scope:\n"
+            f"- Type: {scope_type}\n"
+            f"- Label: {scope_label}\n"
+            f"- Asset count: {len(holdings)}\n\n"
+            "Holdings:\n"
+            f"{holdings_lines}\n\n"
+            "Context pack:\n"
+            f"{news_lines}\n\n"
+            "Writing rules:\n"
+            "- Focus on the monitored set as a whole, not one asset at a time.\n"
+            "- Explain how the holdings relate to each other and what the combined setup suggests.\n"
+            '- If the headlines are weak, generic, or missing, set "news_context" to an empty string.\n'
+            "- Do not mention every holding mechanically.\n"
+            "- No markdown."
+        )
 
     @staticmethod
     def build_sentiment_prompt(headlines: list[str]) -> str:
-        return f"""Analyze the sentiment of each headline and return a JSON object
-mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
-
-Headlines:
-{chr(10).join(f'- {h}' for h in headlines)}
-
-Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
+        return (
+            "Analyze the sentiment of each headline and return a JSON object mapping each headline "
+            "to a sentiment score from -1.0 (most negative) to 1.0 (most positive).\n\n"
+            "Headlines:\n"
+            f"{chr(10).join(f'- {h}' for h in headlines)}\n\n"
+            'Return ONLY valid JSON object, e.g. {"headline1": -0.5, "headline2": 0.3}'
+        )
 
     @staticmethod
     def _estimate_openai_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
@@ -859,6 +921,114 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
         cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cache.set(cache_key, result, timeout=86400)
 
+        return result
+
+    def analyze_scope(self, scope_type: str, scope_label: str, assets, holdings: list[dict]) -> dict:
+        if scope_type not in {"portfolio", "watch"}:
+            raise ValueError(f"Unsupported scope type: {scope_type}")
+        if not assets:
+            raise ValueError("No assets available for monitored set insight")
+        if not self.ai_auth or not self.get_api_key():
+            raise ValueError("AI is not configured for this user")
+
+        news_items = self.build_scope_context_pack(assets)
+        scope_signature = hashlib.sha256(
+            json.dumps(
+                {
+                    "scope_type": scope_type,
+                    "scope_label": scope_label,
+                    "holdings": holdings,
+                    "news_items": news_items,
+                },
+                sort_keys=True,
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()
+        cache_key = f"ai_scope_insight:{self.user.id}:{scope_type}:{scope_signature}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
+        self.check_budget()
+
+        provider = self.ai_auth.provider_name
+        model = self.ai_auth.get_model_for_task("indicator_insight")
+        api_key = self.get_api_key()
+        prompt = self.build_scope_insight_prompt(scope_type, scope_label, holdings, news_items)
+
+        response_text = ""
+        prompt_tokens = 0
+        completion_tokens = 0
+
+        if provider == "anthropic":
+            import anthropic
+
+            client = anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model=model,
+                max_tokens=300,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            response_text = message.content[0].text if message.content else ""
+            if getattr(message, "usage", None):
+                prompt_tokens = getattr(message.usage, "input_tokens", 0) or 0
+                completion_tokens = getattr(message.usage, "output_tokens", 0) or 0
+        elif provider == "openai":
+            import openai
+
+            response = openai.OpenAI(api_key=api_key).responses.create(
+                model=model,
+                max_output_tokens=300,
+                input=prompt,
+            )
+            response_text = response.output_text
+            if getattr(response, "usage", None):
+                prompt_tokens = getattr(response.usage, "input_tokens", 0) or 0
+                completion_tokens = getattr(response.usage, "output_tokens", 0) or 0
+        elif provider == "google":
+            import google.generativeai as genai
+
+            genai.configure(api_key=api_key)
+            response = genai.GenerativeModel(model).generate_content(prompt)
+            response_text = response.text
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+        cost_usd = self._estimate_provider_cost(provider, model, prompt_tokens, completion_tokens)
+
+        parsed = self._extract_json_object(response_text)
+        if not parsed:
+            raise ValueError("AI returned an invalid response")
+
+        self.log_call(
+            model_name=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cost_usd=cost_usd,
+            task_type=f"{scope_type}_insight",
+        )
+
+        result = {
+            "scope_type": scope_type,
+            "scope_label": scope_label,
+            "asset_count": len(holdings),
+            "recommendation": parsed.get("recommendation", "HOLD"),
+            "confidence": int(parsed.get("confidence", 50)),
+            "summary": parsed.get("summary", ""),
+            "technical_summary": parsed.get("technical_summary", ""),
+            "news_context": parsed.get("news_context", ""),
+            "reasoning": "\n\n".join(
+                part for part in [
+                    parsed.get("summary", ""),
+                    parsed.get("technical_summary", ""),
+                    parsed.get("news_context", ""),
+                ] if part
+            ),
+            "model_used": model,
+            "generated_at": timezone.now().isoformat(),
+        }
+
+        cache.set(cache_key, result, timeout=900)
         return result
 
     @staticmethod

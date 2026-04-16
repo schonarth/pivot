@@ -38,6 +38,8 @@ export interface PortfolioSummary {
   trading_pnl: string
   is_simulating: boolean
   positions: PositionDetail[]
+  watch_assets: MonitoredAssetSummary[]
+  scope_insights?: PortfolioScopeInsights
 }
 
 export interface PositionDetail {
@@ -50,6 +52,34 @@ export interface PositionDetail {
   market_value: string
   unrealized_pnl: string
   currency: string
+}
+
+export interface MonitoredScopeInsight {
+  scope_type: 'portfolio' | 'watch'
+  scope_label: string
+  asset_count: number
+  recommendation: 'BUY' | 'HOLD' | 'SELL'
+  confidence: number
+  summary: string
+  technical_summary: string
+  news_context: string
+  reasoning: string
+  model_used: string
+  generated_at: string
+}
+
+export interface PortfolioScopeInsights {
+  portfolio: MonitoredScopeInsight | null
+  watch: MonitoredScopeInsight | null
+}
+
+export interface MonitoredAssetSummary {
+  asset_id: string
+  symbol: string
+  name: string
+  market: string
+  currency: string
+  current_price: string | null
 }
 
 export interface Trade {

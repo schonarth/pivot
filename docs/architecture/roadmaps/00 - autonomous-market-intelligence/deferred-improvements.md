@@ -228,3 +228,39 @@ Milestone 02 now exposes OHLCV backfill status in Settings so operators can star
 - the card may stay noisier than necessary for operators
 - the Settings page could feel heavier than the underlying feature warrants
 - repeated full logs may distract from higher-value configuration controls
+
+## 006 - Portfolio and Watch UI Polish
+
+### Context
+
+Milestone 03 now has a true portfolio-level and watch-level AI summary UI, but the first pass favors capability over finish. The current shape is functional, yet it still needs refinement in layout hierarchy, tab navigation clarity, and overall visual cleanliness.
+
+### Current Safe Policy
+
+- keep the current monitored-set intelligence behavior intact
+- preserve portfolio summary, watch summary, and asset drill-down
+- defer visual polish until after the milestone is accepted and the user flow is stable
+
+### Why Deferred
+
+- the first pass needed to prove the monitored-set AI summaries and watch binding
+- layout and navigation refinements are valuable, but they are not blockers for the core milestone outcome
+- the current implementation is good enough to use, so the safest next step is a focused UX pass rather than more structural change
+
+### Earliest Revisit
+
+- immediately after Milestone 03 acceptance
+- before starting Milestone 04 work
+
+### Future Direction
+
+- simplify the portfolio page hierarchy so the AI summary reads as the primary scope result
+- tighten tab navigation and tab labels so positions, watches, and drill-down feel obvious
+- reduce visual clutter in the portfolio detail page and asset detail controls
+- align spacing, card density, and button placement for a cleaner browsing flow
+
+### Risk If Deferred Too Long
+
+- the current UI may feel busy or confusing even though the underlying capability is correct
+- users may miss the scope-level summary because the drill-down remains prominent
+- the new monitored-set experience may feel more like a convenience feature than the primary portfolio/watch analysis surface
