@@ -20,6 +20,7 @@ This document is reusable across roadmap-driven efforts. It is not specific to o
 - keep task scope small enough for one agent to complete in one context window
 - prefer sequential, auditable progress over large opaque implementation bursts
 - require quick project scanning before implementation to avoid duplication
+- require explicit handoff from earlier milestone outputs when later milestones depend on them
 - require tests and verification before tasks are considered done
 - make UAT as smooth as possible by catching major issues before handoff
 
@@ -88,6 +89,11 @@ Clarification:
 - the orchestrator should normally execute `00 - milestone coordination.md` itself
 - the orchestrator should normally delegate execution of task files `01+` to agents
 - delegation is primarily about keeping each agent's context window small and focused
+- every milestone `00 - milestone coordination.md` file should explicitly require reading:
+  - the roadmap the milestone belongs to
+  - this milestone delivery execution model
+- when a milestone depends on outputs from an earlier milestone, the coordination file should name the exact earlier files that must be read and treated as normative inputs
+- dependent task files should repeat those earlier-file dependencies when the handoff materially affects boundaries, vocabulary, interfaces, or storage decisions
 
 Naming rule:
 
@@ -125,6 +131,7 @@ Implementation task files should usually include these additional sections:
 17. `Detailed Requirements`
 18. `Proposed Approach`
 19. `Validation Scenarios`
+20. `Required Prior References` when the task depends on earlier milestone findings
 
 Use judgment:
 
@@ -234,7 +241,31 @@ Why this task exists, what earlier decision it depends on, and what later task i
 - happy path examples
 - important edge cases
 - regression risks to check
+
+## Required Prior References
+
+- earlier ADRs, milestone task files, or baseline documents that must be read before implementation
+- only include when the task depends on prior findings materially enough that omission would risk architectural drift
 ```
+
+## Cross-Milestone Handoff Rule
+
+When Milestone `N` depends on Milestone `N-1` or another earlier milestone:
+
+- the milestone coordination file must list the exact earlier files to review
+- entry conditions must say those files are not only complete, but read and adopted as working constraints
+- early task files should explicitly restate the required prior references when they affect insertion points, interface contracts, shared vocabulary, or storage boundaries
+- later implementation tasks should verify that the new behavior still respects those inherited constraints instead of re-deriving them from scratch
+
+## Coordination File Rule
+
+Every milestone `00 - milestone coordination.md` file should make these startup requirements explicit:
+
+- read the roadmap the milestone belongs to in full before executing milestone tasks
+- read this execution model in full before executing milestone tasks
+- if the milestone depends on earlier milestone outputs, read those named files before task execution as well
+
+This should appear in the coordination file's entry conditions or task steps, not remain implicit.
 
 ## Status Model
 

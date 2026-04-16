@@ -14,11 +14,11 @@ Roadmap-only planning task for Milestone 00 baseline work.
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/00-baseline
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -98,6 +98,93 @@ This task creates the architectural baseline that later milestone tasks can refe
 5. Call out any current coupling that later milestones must avoid reinforcing.
 6. Keep recommendations minimal and architectural.
 
+## Current-State Boundary Map
+
+### Current analysis entrypoints
+
+- First-party UI consumer:
+  - `frontend/src/views/AssetDetailView.vue`
+  - embeds `frontend/src/components/AssetAnalysisTab.vue`
+  - calls `GET /api/assets/:id/ai-insight`, `GET /api/assets/:id/ohlcv`, and `GET /api/assets/:id/indicators`
+- Agent-facing consumer:
+  - `backend/mcp/views.py`
+  - `MCPAssetInsightView.post`
+  - calls the same `AIService.analyze_asset(asset)` path as the first-party UI
+
+### Current context and reasoning flow
+
+1. Asset-level analysis request enters through `backend/markets/views.py` `AssetViewSet.ai_insight` or `backend/mcp/views.py` `MCPAssetInsightView`.
+2. Both entrypoints delegate to `backend/ai/services.py` `AIService.analyze_asset`.
+3. `AIService.analyze_asset` currently performs all of the following in one method:
+   - verifies AI configuration and budget
+   - calculates technical indicators via `trading.technical.IndicatorCalculator.calculate_indicators`
+   - refreshes and reads recent news via `markets.services.NewsService.fetch_and_store_news` plus `markets.models.NewsItem`
+   - assembles the analysis prompt with `build_indicator_insight_prompt`
+   - calls the configured LLM provider
+   - parses the model response into the current asset insight shape
+   - caches the final analysis artifact for 24 hours
+4. The response is returned to UI or MCP consumers with recommendation, confidence, summaries, price target, and selected headlines.
+
+### Current data collection boundaries
+
+- News retrieval and persistence:
+  - `backend/markets/services.py` `NewsService`
+  - fetches symbol-oriented news from Yahoo Finance, MarketWatch, Valor, and RSS fallback
+  - persists results to `backend/markets/models.py` `NewsItem`
+- Technical signal generation:
+  - `backend/trading/technical.py` `IndicatorCalculator.calculate_indicators`
+  - reads persisted `OHLCV`
+  - returns a latest-indicator snapshot in memory
+  - `IndicatorCalculator.ingest_indicators` can persist a latest snapshot to `TechnicalIndicators`
+- Technical chart data for frontend:
+  - `backend/markets/views.py` `AssetViewSet.indicators`
+  - recalculates full indicator series inline from `OHLCV`
+  - does not reuse `IndicatorCalculator`
+
+### Current execution boundaries
+
+- Manual trade execution:
+  - `backend/trading/views.py` `TradeViewSet.create`
+- Agent-triggered trade execution:
+  - `backend/trading/views.py` `agent_execute_trade`
+- Alert-triggered execution:
+  - `backend/alerts/services.py` `_execute_auto_trade`
+- Strategy-triggered execution:
+  - `backend/strategies/tasks.py` `evaluate_active_strategies`
+  - execution delegated to `StrategyExecutor`
+
+These execution paths consume market data and technical logic, but they do not consume `AIService.analyze_asset` outputs today.
+
+## Milestone 00 Boundary Rule
+
+Future milestones should preserve this separation:
+
+- Context selection:
+  - gathers candidate facts, headlines, technical snapshots, and metadata
+  - ranks, deduplicates, tags, and bounds those inputs
+  - does not interpret what they mean for a trade
+- Reasoning:
+  - consumes an explicit context pack
+  - generates analysis artifacts such as explanations, confidence, scenarios, or recommendations
+  - does not place trades, change alerts, or mutate portfolio state
+- Execution:
+  - consumes explicit approved outputs or deterministic rule inputs
+  - applies guardrails and permission checks
+  - never infers permission to act from raw context items or free-form analysis text alone
+
+## Current Coupling Risks
+
+- `AIService.analyze_asset` mixes context retrieval, prompt assembly, reasoning, and response shaping in one method. Milestone 01 should avoid extending that coupling further.
+- `AssetViewSet.indicators` duplicates technical-calculation responsibility instead of depending on one shared technical-analysis boundary.
+- `NewsService.fetch_and_store_news` both fetches and persists in the same step, which is acceptable today but should not become the only interface for future non-asset scopes.
+- Strategy and alert execution paths already act on deterministic inputs. Later intelligence milestones should not bypass those paths with free-form LLM output.
+
+## Minimal Architectural Guidance
+
+- Milestone 01 should add richer context selection ahead of `AIService.analyze_asset`, not inside trade or alert execution code.
+- New context expansion should reuse current `AssetViewSet.ai_insight` and `MCPAssetInsightView` entrypoints rather than creating a second asset-analysis entrypoint.
+- Any future execution-oriented milestone should consume structured analysis outputs, not prompt text.
+
 ## Tests to Add or Update
 
 - docs-only baseline task
@@ -116,7 +203,7 @@ This task creates the architectural baseline that later milestone tasks can refe
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Reviewed the roadmap and execution model, then scanned the live asset-analysis and execution paths in backend and frontend. Documented the current entrypoints, identified `AIService.analyze_asset` as the present coupling hotspot, and recorded the separation rule Milestone 01 should preserve.
 
 ## Open Follow-Ups
 
