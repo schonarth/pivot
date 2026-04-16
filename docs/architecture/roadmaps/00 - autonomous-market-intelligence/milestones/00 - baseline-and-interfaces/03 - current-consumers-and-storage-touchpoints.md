@@ -14,11 +14,11 @@ Roadmap-only planning task for Milestone 00 baseline work.
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex
 
 ## Branch
 
@@ -26,11 +26,11 @@ feat/autonomous/00-baseline
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
@@ -94,6 +94,143 @@ Milestone 01 should improve the current asset-analysis consumer first, but later
 4. Note what should remain transient until later milestones prove persistent storage is needed.
 5. Call out duplication risks if multiple milestones create separate storage or prompt-building paths.
 
+## Current Consumer
+
+Primary Milestone 01 consumer:
+
+- per-asset AI insight
+  - first-party UI path:
+    - `frontend/src/components/AssetAnalysisTab.vue`
+    - `GET /api/assets/:id/ai-insight`
+  - agent-facing path:
+    - `POST /api/mcp/asset-insight/`
+  - shared backend implementation:
+    - `backend/ai/services.py` `AIService.analyze_asset`
+
+This is the current user-visible analysis consumer Milestone 01 should improve first.
+
+## Near-Term Consumers in Roadmap Order
+
+1. Asset analysis
+   - current live consumer
+   - direct Milestone 01 dependency
+2. Portfolio monitoring
+   - future portfolio-level context and prioritization
+   - likely reuses asset-level context selection plus portfolio state
+3. Watch monitoring
+   - future watched-assets scope without open positions
+   - should reuse the same context-selection vocabulary, not create a separate prompt path
+4. Strategy validation
+   - future bounded reasoning about whether a setup should be approved or rejected
+   - should remain separate from autonomous execution
+
+## Storage Touchpoints
+
+### News metadata
+
+Current touchpoint:
+
+- `backend/markets/models.py` `NewsItem`
+
+What belongs here today:
+
+- headline
+- summary
+- source
+- URL
+- asset link
+- fetched/published timestamps
+- optional sentiment score
+
+Milestone 00 guidance:
+
+- continue treating `NewsItem` as the current persisted source artifact for asset-scoped news retrieval
+- avoid creating a second persisted news artifact path in Milestone 01
+
+### Technical signals
+
+Current touchpoints:
+
+- raw history:
+  - `backend/markets/models.py` `OHLCV`
+- optional persisted snapshot:
+  - `backend/markets/models.py` `TechnicalIndicators`
+
+What belongs here today:
+
+- market history in `OHLCV`
+- reusable derived indicators only when there is a clear reuse case
+
+Milestone 00 guidance:
+
+- `OHLCV` is the durable source of truth for technical derivation
+- `TechnicalIndicators` may hold reusable snapshots, but Milestone 01 should not introduce parallel technical-signal stores
+
+### Context artifacts
+
+Current touchpoint:
+
+- none as a durable model
+
+Current behavior:
+
+- context is assembled transiently inside `AIService.analyze_asset`
+
+Milestone 00 guidance:
+
+- keep context packs transient in early milestones
+- do not add persisted prompt-time context tables until retrieval, reuse, or audit needs are proven
+
+### Analysis outputs
+
+Current touchpoints:
+
+- transient response from `AIService.analyze_asset`
+- cached copy in Django cache for 24 hours via `cache.set(...)`
+
+Milestone 00 guidance:
+
+- treat current insight output as transient plus cache-backed
+- do not add durable analysis-output tables in Milestone 01 unless later milestones require replay, audit history, or temporal continuity
+
+## Transient vs Persistent Guidance
+
+Keep transient for now:
+
+- prompt-time context packs
+- ranked context selections
+- per-request reasoning scaffolds
+- LLM raw prompt/response artifacts unless an explicit audit requirement appears
+
+Reasonable to persist now or continue persisting:
+
+- raw or normalized market history in `OHLCV`
+- fetched asset-scoped news metadata in `NewsItem`
+- reusable technical indicator snapshots in `TechnicalIndicators`
+- strategy/backtest execution records already modeled outside the analysis path
+
+May justify persistence later:
+
+- continuity artifacts across days
+- scored and deduplicated context selections
+- analysis history for audit and change-tracking
+- watch-scope or portfolio-scope monitoring state
+
+## Duplication Risks
+
+- Prompt-building duplication:
+  - current prompt assembly lives in `AIService.build_indicator_insight_prompt`
+  - future milestones should not create one-off prompt builders per consumer for the same asset-analysis task
+- Technical-calculation duplication:
+  - `AssetViewSet.indicators` recalculates indicator series inline while `IndicatorCalculator` computes a latest snapshot elsewhere
+  - later milestones should extend one technical-analysis boundary, not both independently
+- News-storage duplication:
+  - `NewsItem` already exists
+  - Milestone 01 should avoid adding a second asset-news store for expanded context unless the existing model proves insufficient
+- Consumer-path duplication:
+  - frontend and MCP already share `AIService.analyze_asset`
+  - new asset-analysis behavior should continue to converge on one backend analysis path
+
 ## Tests to Add or Update
 
 - docs-only baseline task
@@ -112,7 +249,7 @@ Milestone 01 should improve the current asset-analysis consumer first, but later
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Named the current per-asset insight consumer, listed roadmap-near consumers in dependency order, and documented which artifacts should stay transient versus where persistence already exists. Added concrete duplication risks so Milestone 01 can extend one path instead of creating parallel prompt, signal, or storage flows.
 
 ## Open Follow-Ups
 

@@ -37,6 +37,12 @@ not started
 - 00 - milestone coordination.md
 - Milestone 00 core baseline outputs complete enough to unblock Milestone 01
 
+## Required Prior References
+
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/01 - boundary-decision-and-current-state-scan.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
+
 ## Likely Files Touched
 
 - backend/*
@@ -47,6 +53,7 @@ not started
 
 - ADR-001 reviewed
 - milestone coordination reviewed
+- required Milestone 00 references reviewed
 
 ## Background
 
@@ -80,11 +87,12 @@ ADR-001 defines what Milestone 01 should do, but not yet where the change belong
 
 ## Task Steps
 
-1. Scan the current backend and frontend paths that produce asset analysis and news-aware prompts.
-2. Identify where symbol-only context is selected today.
-3. Identify the minimal insertion point for a new context-building step.
-4. Record any existing abstractions that should be reused rather than replaced.
-5. Call out any risky coupling that would cause context selection to bleed into reasoning or execution.
+1. Read the required Milestone 00 references before rescanning code.
+2. Scan the current backend and frontend paths that produce asset analysis and news-aware prompts.
+3. Identify where symbol-only context is selected today.
+4. Identify the minimal insertion point for a new context-building step that preserves the Milestone 00 context/reasoning/execution boundary.
+5. Record any existing abstractions that should be reused rather than replaced.
+6. Call out any risky coupling that would cause context selection to bleed into reasoning or execution.
 
 ## Tests to Add or Update
 

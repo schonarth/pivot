@@ -35,6 +35,10 @@ not started
 ## Dependencies
 
 - Milestone 00 baseline work complete
+- required Milestone 00 references:
+  - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/01 - boundary-decision-and-current-state-scan.md`
+  - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
+  - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
 ## Likely Files Touched
 
@@ -53,15 +57,18 @@ not started
   - shared vocabulary and interface contracts
   - current consumers and storage touchpoints
 - baseline interfaces understood well enough to avoid mixing context, reasoning, and execution concerns
+- required Milestone 00 references reviewed and treated as working constraints for Milestone 01 design and implementation
 
 ## Task Steps
 
-1. Review ADR-001 and extract only in-scope work.
-2. Quickly scan the codebase for the current asset analysis, news retrieval, and prompt assembly path.
-3. Execute the milestone task files in order.
-4. Keep the milestone scoped to compact asset context packs only.
-5. Exclude narrative memory, strategy logic, and portfolio aggregation from implementation.
-6. Prepare milestone-end smoke and integration verification for UAT.
+1. Read the roadmap and the milestone delivery execution model in full before executing milestone tasks.
+2. Review ADR-001 and the required Milestone 00 reference files; treat their boundary, vocabulary, consumer, and storage findings as normative inputs.
+3. Extract only in-scope Milestone 01 work after reconciling it with the Milestone 00 constraints.
+4. Quickly scan the codebase for the current asset analysis, news retrieval, and prompt assembly path.
+5. Execute the milestone task files in order.
+6. Keep the milestone scoped to compact asset context packs only.
+7. Exclude narrative memory, strategy logic, and portfolio aggregation from implementation.
+8. Prepare milestone-end smoke and integration verification for UAT, including a check that Milestone 00 boundaries were preserved.
 
 ## Tests to Add or Update
 

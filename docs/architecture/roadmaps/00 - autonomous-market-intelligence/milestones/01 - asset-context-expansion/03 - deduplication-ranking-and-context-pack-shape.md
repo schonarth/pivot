@@ -38,6 +38,11 @@ not started
 - 01 - existing-pipeline-scan-and-insertion-point.md
 - 02 - source-selection-tagging-and-config-shape.md
 
+## Required Prior References
+
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/01 - boundary-decision-and-current-state-scan.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
+
 ## Likely Files Touched
 
 - backend/*
@@ -48,6 +53,7 @@ not started
 
 - source buckets defined
 - tag set defined
+- required Milestone 00 references reviewed
 
 ## Background
 
@@ -84,16 +90,17 @@ The value of Milestone 01 depends less on “fetching more headlines” and more
 
 ## Task Steps
 
-1. Define exact duplicate and near-duplicate handling.
-2. Define deterministic ranking factors such as:
+1. Reuse the Milestone 00 context-pack and analysis-input boundary as the contract ceiling for this task.
+2. Define exact duplicate and near-duplicate handling.
+3. Define deterministic ranking factors such as:
    - recency
    - source quality
    - directness of match
    - likely market impact
-3. Define per-bucket and total prompt budget limits.
-4. Define the final context pack structure consumed by asset analysis.
-5. Keep the output compact and auditable.
-6. Avoid introducing reasoning or recommendation fields.
+4. Define per-bucket and total prompt budget limits.
+5. Define the final context pack structure consumed by asset analysis without introducing reasoning fields.
+6. Keep the output compact and auditable.
+7. Avoid introducing recommendation or execution fields.
 
 ## Tests to Add or Update
 

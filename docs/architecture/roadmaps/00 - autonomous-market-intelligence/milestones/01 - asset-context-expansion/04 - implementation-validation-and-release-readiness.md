@@ -39,6 +39,12 @@ not started
 - 02 - source-selection-tagging-and-config-shape.md
 - 03 - deduplication-ranking-and-context-pack-shape.md
 
+## Required Prior References
+
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/01 - boundary-decision-and-current-state-scan.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
+
 ## Likely Files Touched
 
 - backend/*
@@ -53,6 +59,7 @@ not started
 - source bucket rules finalized
 - context pack shape finalized
 - insertion point identified
+- required Milestone 00 references reviewed
 
 ## Background
 
@@ -90,12 +97,13 @@ This is the milestone integration task. The earlier task files define where the 
 
 ## Task Steps
 
-1. Implement the context-building step at the selected integration point.
+1. Implement the context-building step at the selected integration point while preserving the Milestone 00 context/reasoning/execution boundary.
 2. Add or update smoke coverage for the asset analysis happy path.
 3. Add validation scenarios for at least three representative assets from different supported markets, selected after scanning the seeded asset universe.
 4. Confirm broader context improves analysis when relevant drivers do not mention the symbol directly.
-5. Run lint, typecheck, affected unit tests, and milestone-end integration tests.
-6. Prepare UAT notes:
+5. Verify the implementation still respects the Milestone 00 vocabulary, current-consumer path, and transient-vs-persistent storage guidance.
+6. Run lint, typecheck, affected unit tests, and milestone-end integration tests.
+7. Prepare UAT notes:
    - user-visible behavior change
    - known limitations
    - representative examples
