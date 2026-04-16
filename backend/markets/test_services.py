@@ -44,6 +44,12 @@ class TestNewsService:
             "markets.services.NewsService._fetch_marketwatch", return_value=[]
         ), patch(
             "markets.services.NewsService._fetch_rss_fallback", return_value=[]
+        ), patch(
+            "ai.services.AIService.analyze_news_sentiment",
+            return_value={
+                "Momentum improves after earnings": 0.4,
+                "Supply chain remains stable": 0.1,
+            },
         ):
             count = NewsService.fetch_and_store_news(asset)
 
@@ -52,6 +58,7 @@ class TestNewsService:
         assert count == 2
         assert stored.count() == 2
         assert stored.first().source == "google_news_rss"
+        assert stored.first().sentiment_score is not None
 
     def test_fetch_and_store_news_uses_short_cache_for_empty_results(self, asset):
         with patch("markets.services.cache.set") as cache_set, patch(

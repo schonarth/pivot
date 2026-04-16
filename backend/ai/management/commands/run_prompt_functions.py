@@ -104,7 +104,8 @@ class Command(BaseCommand):
 
     def _run_asset_insight(self, provider, api_key, asset, indicators, news_items):
         model = TASK_MODELS["indicator_insight"].get(provider, "gpt-4o-mini")
-        prompt = AIService.build_indicator_insight_prompt(asset, indicators, news_items)
+        story_so_far = AIService.build_story_so_far(asset, news_items)
+        prompt = AIService.build_indicator_insight_prompt(asset, indicators, news_items, story_so_far)
         response_text = self._call_provider(provider, api_key, model, prompt, max_output_tokens=300)
         return {
             "function": "AIService.analyze_asset",

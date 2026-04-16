@@ -14,11 +14,11 @@ ADR-002 Narrative Continuity for Asset Context
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / coordination
 
 ## Branch
 
@@ -30,7 +30,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Date Completed
 
-TBD
+2026-04-16
 
 ## Dependencies
 
@@ -99,9 +99,14 @@ TBD
 
 ## Implementation Notes / What Was Done
 
-Created the Milestone 02 coordination scaffold and task sequence based on ADR-002 and the milestone delivery execution model.
+Coordinated the Milestone 02 implementation across the existing asset-analysis path, keeping the scope bounded to asset continuity only.
+
+What was done:
+
+- confirmed the current consumer remains `AIService.analyze_asset`
+- implemented the continuity work without touching ADR-003
+- validated the result with focused backend tests and lint
 
 ## Open Follow-Ups
 
-- confirm representative validation assets and narrative-shift examples before implementation
-
+- none

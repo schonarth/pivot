@@ -78,6 +78,85 @@ class TestAssetContextPack:
         assert any(item["bucket"] == "theme" for item in context_items)
         assert any(item["provenance"] == "theme:semiconductors" for item in context_items)
 
+    def test_build_story_so_far_labels_new_continuing_and_shifted(self, user):
+        asset = make_asset("AAA")
+
+        prior = make_news(asset, "AAA beats earnings expectations", hours_ago=72)
+        middle = make_news(asset, "AAA shares rally on earnings beat", hours_ago=2)
+        current = make_news(asset, "AAA misses earnings expectations", hours_ago=1)
+
+        service = AIService(user)
+        service.set_api_key("test-key")
+
+        context_items = [
+            {
+                "news_item_id": str(prior.id),
+                "headline": "AAA beats earnings expectations",
+                "source": "yahoo_finance",
+                "published_at": timezone.now() - timedelta(hours=72),
+                "bucket": "company",
+                "provenance": "asset:AAA",
+                "relevance_basis": "current asset news",
+                "asset_symbol": "AAA",
+                "market": "US",
+            },
+            {
+                "news_item_id": str(middle.id),
+                "headline": "AAA shares rally on earnings beat",
+                "source": "yahoo_finance",
+                "published_at": timezone.now() - timedelta(hours=2),
+                "bucket": "company",
+                "provenance": "asset:AAA",
+                "relevance_basis": "current asset news",
+                "asset_symbol": "AAA",
+                "market": "US",
+            },
+            {
+                "news_item_id": str(current.id),
+                "headline": "AAA misses earnings expectations",
+                "source": "yahoo_finance",
+                "published_at": timezone.now() - timedelta(hours=1),
+                "bucket": "company",
+                "provenance": "asset:AAA",
+                "relevance_basis": "current asset news",
+                "asset_symbol": "AAA",
+                "market": "US",
+            },
+        ]
+
+        story = service.build_story_so_far(asset, context_items)
+
+        assert any(item["label"] == "shifted" for item in story)
+        assert any(item["label"] == "continuing" for item in story)
+        assert any(item["label"] == "new" for item in story)
+
+    def test_build_story_so_far_excludes_items_outside_window(self, user):
+        asset = make_asset("AAA")
+
+        make_news(asset, "AAA beats earnings expectations", hours_ago=8 * 24)
+        current = make_news(asset, "AAA shares rally on earnings beat", hours_ago=1)
+
+        service = AIService(user)
+        service.set_api_key("test-key")
+
+        context_items = [
+            {
+                "news_item_id": str(current.id),
+                "headline": "AAA shares rally on earnings beat",
+                "source": "yahoo_finance",
+                "published_at": timezone.now() - timedelta(hours=1),
+                "bucket": "company",
+                "provenance": "asset:AAA",
+                "relevance_basis": "current asset news",
+                "asset_symbol": "AAA",
+                "market": "US",
+            }
+        ]
+
+        story = service.build_story_so_far(asset, context_items)
+
+        assert story[0]["label"] == "new"
+
 
 @pytest.mark.django_db
 class TestAssetInsightPrompt:
@@ -137,4 +216,5 @@ class TestAssetInsightPrompt:
         assert result["news_items"]
         assert any(item["bucket"] in {"symbol", "company", "sector", "macro"} for item in result["news_items"])
         assert "Context pack:" in recorded_prompt["input"]
+        assert "Story so far:" in recorded_prompt["input"]
         assert "[symbol]" in recorded_prompt["input"] or "[company]" in recorded_prompt["input"]

@@ -14,11 +14,11 @@ ADR-002 Narrative Continuity for Asset Context
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -30,7 +30,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Date Completed
 
-TBD
+2026-04-16
 
 ## Dependencies
 
@@ -114,9 +114,10 @@ ADR-002 requires continuity to stay an extension of context building, not a seco
 
 ## Implementation Notes / What Was Done
 
-TBD
+The continuity insertion point is the existing `AIService.analyze_asset` flow, with `build_asset_context_pack()` as the narrow handoff into prompt assembly.
+
+The retained continuity unit is the persisted `NewsItem` row, reused through a short bounded lookback window instead of a new narrative table.
 
 ## Open Follow-Ups
 
-- confirm whether continuity can rely only on retained `NewsItem` data or needs an additive artifact for prior selections
-
+- none

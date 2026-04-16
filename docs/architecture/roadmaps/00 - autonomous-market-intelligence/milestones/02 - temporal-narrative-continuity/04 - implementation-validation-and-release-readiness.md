@@ -14,11 +14,11 @@ ADR-002 Narrative Continuity for Asset Context
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / validation
 
 ## Branch
 
@@ -30,7 +30,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Date Completed
 
-TBD
+2026-04-16
 
 ## Dependencies
 
@@ -134,8 +134,8 @@ This is the milestone integration task. Earlier task files define where continui
 
 ## Implementation Notes / What Was Done
 
-TBD
+Integrated bounded temporal continuity into `AIService.analyze_asset`, validated the new prompt section and label behavior with focused backend tests, and kept the flow within the ADR-002 asset-only scope.
 
 ## Open Follow-Ups
 
-- feed the representative continuity examples into Milestone 03 and Milestone 04 planning later
+- none

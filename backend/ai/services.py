@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
@@ -31,6 +32,53 @@ class AIBudgetError(Exception):
 
 class AIService:
     """Manage AI API calls with budget enforcement and usage tracking."""
+
+    CONTINUITY_LOOKBACK_DAYS = 5
+    CONTINUITY_PROMPT_LIMIT = 5
+    CONTINUITY_TOPIC_OVERLAP = 2
+    CONTINUITY_SENTIMENT_THRESHOLD = Decimal("0.2")
+    POSITIVE_HEADLINE_MARKERS = {
+        "beats",
+        "beat",
+        "growth",
+        "gains",
+        "gain",
+        "rises",
+        "rise",
+        "rally",
+        "rallies",
+        "raises",
+        "raise",
+        "approval",
+        "approved",
+        "expands",
+        "expansion",
+        "wins",
+        "win",
+        "upgrade",
+        "upgrades",
+    }
+    NEGATIVE_HEADLINE_MARKERS = {
+        "misses",
+        "miss",
+        "cuts",
+        "cut",
+        "falls",
+        "fall",
+        "slump",
+        "slumps",
+        "drops",
+        "drop",
+        "lawsuit",
+        "probe",
+        "probes",
+        "downgrade",
+        "downgrades",
+        "delays",
+        "delay",
+        "loss",
+        "losses",
+    }
 
     def __init__(self, user):
         self.user = user
@@ -199,6 +247,128 @@ class AIService:
         return " ".join(sorted(set(tokens)))
 
     @classmethod
+    def _headline_terms(cls, text: str) -> set[str]:
+        tokens = set()
+        for token in cls._normalize_text(text).split():
+            if token in HEADLINE_STOPWORDS or token in CORPORATE_SUFFIXES:
+                continue
+            if token in cls.POSITIVE_HEADLINE_MARKERS or token in cls.NEGATIVE_HEADLINE_MARKERS:
+                continue
+            tokens.add(token)
+        return tokens
+
+    @classmethod
+    def _headline_direction(cls, text: str) -> str:
+        normalized = cls._normalize_text(text)
+        positive = sum(1 for marker in cls.POSITIVE_HEADLINE_MARKERS if marker in normalized)
+        negative = sum(1 for marker in cls.NEGATIVE_HEADLINE_MARKERS if marker in normalized)
+        if positive > negative:
+            return "positive"
+        if negative > positive:
+            return "negative"
+        return "neutral"
+
+    @classmethod
+    def _sentiment_label(cls, sentiment_score) -> str | None:
+        if sentiment_score is None:
+            return None
+        score = Decimal(str(sentiment_score))
+        if score >= cls.CONTINUITY_SENTIMENT_THRESHOLD:
+            return "positive"
+        if score <= -cls.CONTINUITY_SENTIMENT_THRESHOLD:
+            return "negative"
+        return "neutral"
+
+    @classmethod
+    def _continuity_label(cls, current_item: dict, prior_item) -> str:
+        current_terms = cls._headline_terms(current_item["headline"])
+        prior_terms = cls._headline_terms(prior_item.headline)
+        overlap = len(current_terms & prior_terms)
+        if overlap < cls.CONTINUITY_TOPIC_OVERLAP:
+            return "new"
+
+        current_sentiment = cls._sentiment_label(current_item.get("sentiment_score"))
+        prior_sentiment = cls._sentiment_label(prior_item.sentiment_score)
+        if current_sentiment and prior_sentiment and current_sentiment != prior_sentiment:
+            return "shifted"
+
+        current_direction = cls._headline_direction(current_item["headline"])
+        prior_direction = cls._headline_direction(prior_item.headline)
+        if current_direction != "neutral" and prior_direction != "neutral" and current_direction != prior_direction:
+            return "shifted"
+
+        return "continuing"
+
+    @classmethod
+    def _best_prior_continuity_match(cls, asset, current_item: dict):
+        from markets.models import NewsItem
+
+        if not current_item.get("published_at"):
+            return None
+
+        window_start = current_item["published_at"] - timedelta(days=cls.CONTINUITY_LOOKBACK_DAYS)
+        excluded_id = current_item.get("news_item_id")
+        prior_items = (
+            NewsItem.objects.select_related("asset")
+            .filter(
+                asset=asset,
+                published_at__gte=window_start,
+                published_at__lt=current_item["published_at"],
+            )
+            .order_by("-published_at", "-fetched_at")
+        )
+        if excluded_id:
+            prior_items = prior_items.exclude(id=excluded_id)
+
+        current_terms = cls._headline_terms(current_item["headline"])
+        best_item = None
+        best_overlap = 0
+        for prior_item in prior_items:
+            overlap = len(current_terms & cls._headline_terms(prior_item.headline))
+            if overlap > best_overlap:
+                best_item = prior_item
+                best_overlap = overlap
+            if best_overlap >= cls.CONTINUITY_TOPIC_OVERLAP and overlap == best_overlap:
+                break
+
+        if best_overlap < cls.CONTINUITY_TOPIC_OVERLAP:
+            return None
+
+        return best_item
+
+    @classmethod
+    def build_story_so_far(cls, asset, context_items: list[dict]) -> list[dict]:
+        story_items = []
+        for item in context_items:
+            prior_item = cls._best_prior_continuity_match(asset, item)
+            label = "new" if prior_item is None else cls._continuity_label(item, prior_item)
+            story_items.append({
+                "label": label,
+                "news_item_id": item.get("news_item_id"),
+                "headline": item["headline"],
+                "source": item["source"],
+                "published_at": item.get("published_at"),
+                "sentiment": cls._sentiment_label(item.get("sentiment_score")),
+            })
+
+        label_rank = {"shifted": 0, "continuing": 1, "new": 2}
+        def sort_key(item: dict) -> tuple[int, float, str]:
+            published_at = item["published_at"] or timezone.now()
+            if timezone.is_naive(published_at):
+                published_at = timezone.make_aware(published_at, timezone=timezone.get_current_timezone())
+            return (
+                label_rank.get(item["label"], 3),
+                -published_at.timestamp(),
+                item["headline"].lower(),
+            )
+
+        ordered = sorted(
+            story_items,
+            key=sort_key,
+        )
+        return ordered[:cls.CONTINUITY_PROMPT_LIMIT]
+
+    @classmethod
     def _matches_alias(cls, headline: str, alias: str) -> bool:
         normalized_headline = f" {cls._normalize_text(headline)} "
         normalized_alias = cls._normalize_text(alias)
@@ -357,6 +527,7 @@ class AIService:
             bucket_raw_counts[bucket] += 1
 
             candidates.append({
+                "news_item_id": str(item.id),
                 "headline": item.headline,
                 "source": item.source,
                 "published_at": item.published_at or item.fetched_at,
@@ -365,6 +536,7 @@ class AIService:
                 "relevance_basis": relevance_basis,
                 "asset_symbol": item.asset.display_symbol if item.asset_id else None,
                 "market": item.asset.market if item.asset_id else None,
+                "sentiment_score": item.sentiment_score,
                 "dedupe_key": cls._headline_signature(item.headline),
             })
 
@@ -392,6 +564,7 @@ class AIService:
 
         return [
             {
+                "news_item_id": item["news_item_id"],
                 "headline": item["headline"],
                 "source": item["source"],
                 "published_at": item["published_at"],
@@ -400,12 +573,31 @@ class AIService:
                 "relevance_basis": item["relevance_basis"],
                 "asset_symbol": item["asset_symbol"],
                 "market": item["market"],
+                "sentiment_score": item["sentiment_score"],
             }
             for item in selected
         ]
 
     @staticmethod
-    def build_indicator_insight_prompt(asset, indicators: dict, news_items: list[dict]) -> str:
+    def build_indicator_insight_prompt(
+        asset,
+        indicators: dict,
+        news_items: list[dict],
+        story_so_far: list[dict] | None = None,
+    ) -> str:
+        if story_so_far:
+            story_section = "\n".join(
+                "- [{label}] {headline} ({source}{sentiment})".format(
+                    label=item["label"],
+                    headline=item["headline"],
+                    source=item["source"],
+                    sentiment=f"; {item['sentiment']}" if item.get("sentiment") else "",
+                )
+                for item in story_so_far
+            )
+        else:
+            story_section = "- None"
+
         return f"""You are analyzing one asset for a paper trading app.
 
 Return ONLY valid JSON with this exact shape:
@@ -413,7 +605,8 @@ Return ONLY valid JSON with this exact shape:
   "recommendation": "BUY" | "HOLD" | "SELL",
   "confidence": integer from 0 to 100,
   "technical_summary": "plain-English paragraph about the technical setup",
-  "news_context": "plain-English paragraph about the market or news context, or empty string if there is no meaningful context",
+  "news_context": "plain-English paragraph about the market or news context,
+  or empty string if there is no meaningful context",
   "price_target": number or null
 }}
 
@@ -442,6 +635,9 @@ Context pack:
     for item in news_items
 ) if news_items else "- None"}
 
+Story so far:
+{story_section}
+
 Writing rules:
 - Be useful to an everyday investor, not only a technical analyst.
 - First paragraph: explain what the indicators suggest in plain English.
@@ -452,7 +648,8 @@ Writing rules:
 
     @staticmethod
     def build_sentiment_prompt(headlines: list[str]) -> str:
-        return f"""Analyze the sentiment of each headline and return a JSON object mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
+        return f"""Analyze the sentiment of each headline and return a JSON object
+mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
 
 Headlines:
 {chr(10).join(f'- {h}' for h in headlines)}
@@ -567,12 +764,13 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
 
         NewsService.fetch_and_store_news(asset)
         news_items = self.build_asset_context_pack(asset)
+        story_so_far = self.build_story_so_far(asset, news_items)
 
         provider = self.ai_auth.provider_name
         model = self.ai_auth.get_model_for_task("indicator_insight")
         api_key = self.get_api_key()
 
-        prompt = self.build_indicator_insight_prompt(asset, indicators, news_items)
+        prompt = self.build_indicator_insight_prompt(asset, indicators, news_items, story_so_far)
 
         response_text = ""
         prompt_tokens = 0

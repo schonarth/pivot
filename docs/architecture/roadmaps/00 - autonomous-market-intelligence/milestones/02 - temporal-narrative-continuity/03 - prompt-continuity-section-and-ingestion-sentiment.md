@@ -14,11 +14,11 @@ ADR-002 Narrative Continuity for Asset Context
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -30,7 +30,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Date Completed
 
-TBD
+2026-04-16
 
 ## Dependencies
 
@@ -118,9 +118,8 @@ Milestone 02 only helps users if continuity reaches the prompt in a small, usefu
 
 ## Implementation Notes / What Was Done
 
-TBD
+Added a compact `Story so far` section to the asset-insight prompt and wired forward-only ingestion-time sentiment scoring onto newly stored `NewsItem` rows.
 
 ## Open Follow-Ups
 
-- confirm whether sentiment batching belongs in the same execution task or a small follow-up hardening task
-
+- none

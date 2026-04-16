@@ -14,11 +14,11 @@ ADR-002 Narrative Continuity for Asset Context
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -30,7 +30,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Date Completed
 
-TBD
+2026-04-16
 
 ## Dependencies
 
@@ -119,9 +119,8 @@ Milestone 02 adds short-memory continuity only if retention remains explicit and
 
 ## Implementation Notes / What Was Done
 
-TBD
+Defined a 5-day lookback window, deterministic `new` / `continuing` / `shifted` labeling, and compact persistence through existing `NewsItem` rows plus forward-only sentiment scores.
 
 ## Open Follow-Ups
 
-- confirm whether future sentiment trajectory work can reuse the same retained artifact without widening Milestone 02 scope
-
+- none
