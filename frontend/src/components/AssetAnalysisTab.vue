@@ -294,6 +294,45 @@ function hasValidData(data: any[]): boolean {
   return data.some((point) => point.y !== null && point.y !== undefined)
 }
 
+function getPriceExtent() {
+  const prices = ohlcvData.value.flatMap((d) => [
+    Number(d.high),
+    Number(d.low),
+  ]).filter((value) => Number.isFinite(value) && value > 0)
+
+  if (prices.length === 0) return null
+
+  return {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+  }
+}
+
+function buildLogAxisBounds(minValue: number, maxValue: number) {
+  const step = maxValue >= 100 ? 5 : 1
+  const min = Math.max(step, Math.floor(minValue / step) * step - step)
+  const max = Math.ceil(maxValue / step) * step + step
+  const ratio = max / min
+  const tickAmount = Math.min(6, Math.max(4, Math.round(Math.log10(ratio) * 12)))
+
+  return {
+    min,
+    max,
+    tickAmount,
+  }
+}
+
+function buildLogAxisReferenceValues(minValue: number, maxValue: number) {
+  if (minValue <= 0 || maxValue <= 0 || maxValue <= minValue) return []
+
+  const ratio = maxValue / minValue
+  const count = Math.min(8, Math.max(5, Math.ceil(Math.log10(ratio) * 10)))
+  const start = Math.log(minValue)
+  const end = Math.log(maxValue)
+  const step = (end - start) / (count + 1)
+
+  return Array.from({ length: count }, (_, index) => Math.exp(start + step * (index + 1)))
+}
 
 async function loadData() {
   loading.value = true
@@ -421,7 +460,11 @@ function renderMainChart() {
 
   const darkMode = isDarkMode()
   const textColor = darkMode ? '#e0e0e0' : '#333'
-  const gridColor = darkMode ? '#333' : '#e0e0e0'
+  const gridColor = darkMode ? 'rgba(255, 255, 255, 0.30)' : 'rgba(0, 0, 0, 0.28)'
+  const priceExtent = getPriceExtent()
+  const logAxis = priceExtent ? buildLogAxisBounds(priceExtent.min, priceExtent.max) : null
+  const logMin = logAxis?.min ?? priceExtent?.min ?? 1
+  const logMax = logAxis?.max ?? priceExtent?.max ?? 10
 
   const options: ApexCharts.ApexOptions = {
     chart: {
@@ -446,7 +489,9 @@ function renderMainChart() {
     },
     yaxis: {
       logarithmic: true,
-      tickAmount: 8,
+      min: logMin,
+      max: logMax,
+      tickAmount: logAxis?.tickAmount ?? 4,
       tooltip: {
         enabled: true,
       },
@@ -455,7 +500,7 @@ function renderMainChart() {
           colors: [textColor],
         },
         showDuplicates: false,
-        formatter: (val: number) => Number(val).toFixed(0),
+        formatter: (value: number) => String(Math.round(value)),
       },
       crosshairs: {
         position: 'back',
@@ -469,6 +514,18 @@ function renderMainChart() {
     },
     grid: {
       borderColor: gridColor,
+      position: 'back',
+      strokeDashArray: 0,
+      xaxis: {
+        lines: {
+          show: false,
+        },
+      },
+      yaxis: {
+        lines: {
+          show: true,
+        },
+      },
     },
     stroke: {
       width: [1, 1, 1, 1],
@@ -492,6 +549,13 @@ function renderMainChart() {
       : mainIndicator.value === 'mas'
         ? ['#ffffff', '#93c5fd', '#3b82f6', '#1d4ed8']
         : undefined,
+    annotations: logAxis ? {
+      yaxis: buildLogAxisReferenceValues(logAxis.min, logAxis.max).map((value) => ({
+        y: value,
+        borderColor: gridColor,
+        strokeDashArray: 0,
+      })),
+    } : undefined,
   }
 
   if (mainChart) {
