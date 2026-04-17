@@ -239,8 +239,8 @@ class BacktestEngine:
             return []
 
         bb = ta.bbands(df["close"], length=20, std=2)
-        df["bb_upper"] = bb.iloc[:, 0]
-        df["bb_lower"] = bb.iloc[:, 2]
+        df["bb_upper"] = bb.iloc[:, 2]
+        df["bb_lower"] = bb.iloc[:, 0]
 
         trades = []
         for i in range(len(df)):

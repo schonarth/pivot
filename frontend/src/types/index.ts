@@ -241,6 +241,39 @@ export interface OhlcvBackfillStatus {
   queued?: boolean
 }
 
+export interface OhlcvRepairProcessedAsset {
+  symbol: string
+  status: 'completed' | 'failed'
+  invalid_rows_deleted?: number
+  rows_ingested?: number
+  error?: string
+  timestamp: string
+}
+
+export interface OhlcvRepairStatus {
+  state: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
+  source: string | null
+  initiated_by: string | null
+  symbol: string | null
+  date_from: string | null
+  date_to: string | null
+  total_assets: number
+  processed_assets_count: number
+  invalid_rows_found: number
+  invalid_rows_deleted: number
+  repaired_rows: number
+  current_asset: {
+    symbol: string
+    index: number
+    total_assets: number
+  } | null
+  processed_assets: OhlcvRepairProcessedAsset[]
+  started_at: string | null
+  updated_at: string
+  completed_at: string | null
+  queued?: boolean
+}
+
 export interface WSMessage {
   type: string
   [key: string]: unknown

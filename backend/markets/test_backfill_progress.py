@@ -6,6 +6,7 @@ from django.core.cache import cache
 
 from markets.backfill_progress import get_backfill_status
 from markets.models import Asset, OHLCV
+from markets.ohlcv_provider import OhlcvFetchResult
 from markets.tasks import backfill_ohlcv_historical
 
 
@@ -65,7 +66,10 @@ class TestOhlcvBackfillProgress:
 
         with patch(
             "markets.ohlcv_provider.fetch_ohlcv_with_fallback",
-            side_effect=[make_ohlcv_list(date(2026, 4, 15)), make_ohlcv_list(date(2026, 4, 15))],
+            side_effect=[
+                OhlcvFetchResult(source="yahoo_finance", records=make_ohlcv_list(date(2026, 4, 15))),
+                OhlcvFetchResult(source="yahoo_finance", records=make_ohlcv_list(date(2026, 4, 15))),
+            ],
         ), patch("realtime.services.publish_event"):
             backfill_ohlcv_historical(source="startup")
 

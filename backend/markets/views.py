@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db.models import Avg, Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -6,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .backfill_progress import get_backfill_status, queue_ohlcv_backfill
+from .repair_progress import get_repair_status, queue_ohlcv_repair
 from .models import Asset, AssetQuote, MarketConfig, NewsItem, OHLCV
 from .serializers import (
     AssetQuoteSerializer,
@@ -217,9 +220,9 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
                     "ma_20": series_value(ma_20, idx_pos),
                     "ma_50": series_value(ma_50, idx_pos),
                     "ma_200": series_value(ma_200, idx_pos),
-                    "bb_upper": frame_value(bb, idx_pos, 0),
+                    "bb_upper": frame_value(bb, idx_pos, 2),
                     "bb_middle": frame_value(bb, idx_pos, 1),
-                    "bb_lower": frame_value(bb, idx_pos, 2),
+                    "bb_lower": frame_value(bb, idx_pos, 0),
                     "volume_20d_avg": (
                         int(volume_20d_avg.iloc[idx_pos])
                         if pd.notna(volume_20d_avg.iloc[idx_pos])
@@ -288,6 +291,37 @@ class OhlcvBackfillView(APIView):
         queued, status_data = queue_ohlcv_backfill(
             source="manual",
             initiated_by=str(request.user.id),
+        )
+        status_data["queued"] = queued
+        return Response(status_data, status=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK)
+
+
+class OhlcvRepairView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_repair_status())
+
+    def post(self, request):
+        symbol = request.data.get("symbol")
+        date_from = request.data.get("date_from")
+        date_to = request.data.get("date_to")
+        try:
+            if date_from:
+                date.fromisoformat(date_from)
+            if date_to:
+                date.fromisoformat(date_to)
+        except ValueError:
+            return Response(
+                {"error": {"code": "invalid_date", "message": "Dates must use YYYY-MM-DD format."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queued, status_data = queue_ohlcv_repair(
+            source="manual",
+            initiated_by=str(request.user.id),
+            symbol=symbol or None,
+            date_from=date_from or None,
+            date_to=date_to or None,
         )
         status_data["queued"] = queued
         return Response(status_data, status=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK)

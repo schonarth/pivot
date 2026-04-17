@@ -43,7 +43,7 @@ def fetch_yahoo_quote(provider_symbol: str) -> dict | None:
 def refresh_asset_quote(asset_id: str) -> AssetQuote | None:
     from .models import Asset
     from .ohlcv_provider import fetch_ohlcv_with_fallback
-    from .services import ingest_ohlcv
+    from .services import ingest_ohlcv, recent_ohlcv_needs_repair
 
     try:
         asset = Asset.objects.get(id=asset_id)
@@ -77,9 +77,10 @@ def refresh_asset_quote(asset_id: str) -> AssetQuote | None:
     )
 
     try:
-        ohlcv_list = fetch_ohlcv_with_fallback(asset.provider_symbol, period="1d")
-        if ohlcv_list:
-            ingest_ohlcv(asset_id, ohlcv_list)
+        period = "5d" if recent_ohlcv_needs_repair(asset_id) else "1d"
+        ohlcv_result = fetch_ohlcv_with_fallback(asset.provider_symbol, period=period)
+        if ohlcv_result:
+            ingest_ohlcv(asset_id, ohlcv_result.records, source=ohlcv_result.source)
     except Exception:
         logger.exception(f"Failed to fetch daily OHLCV for {asset.provider_symbol} during quote refresh")
 
