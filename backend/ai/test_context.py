@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.core.cache import cache
 from django.utils import timezone
 
 from ai.models import AIAuth
@@ -215,10 +216,63 @@ class TestAssetInsightPrompt:
             result = service.analyze_asset(asset)
 
         assert result["news_items"]
+        assert all(item["url"] for item in result["news_items"])
         assert any(item["bucket"] in {"symbol", "company", "sector", "macro"} for item in result["news_items"])
         assert "Context pack:" in recorded_prompt["input"]
         assert "Story so far:" in recorded_prompt["input"]
         assert "[symbol]" in recorded_prompt["input"] or "[company]" in recorded_prompt["input"]
+
+    def test_analyze_asset_returns_cached_result_on_second_call(self, user):
+        cache.clear()
+
+        asset = make_asset("AAA", sector="Financial", industry="Banks")
+        make_news(asset, "AAA shares rise on earnings beat")
+
+        AIAuth.objects.create(user=user, provider_name="openai")
+        service = AIService(user)
+        service.set_api_key("test-key")
+
+        indicator_payload = {
+            "rsi_14": 61.0,
+            "macd": 1.5,
+            "macd_signal": 1.0,
+            "macd_histogram": 0.5,
+            "ma_20": 101.0,
+            "ma_50": 99.0,
+            "ma_200": 95.0,
+            "bb_upper": 110.0,
+            "bb_middle": 100.0,
+            "bb_lower": 90.0,
+            "volume_20d_avg": 1000,
+        }
+
+        fake_response = SimpleNamespace(
+            output_text=(
+                '{"recommendation":"HOLD","confidence":55,'
+                '"summary":"The setup is balanced.",'
+                '"technical_summary":"Trend is steady.",'
+                '"news_context":"Rates matter.",'
+                '"price_target":null}'
+            ),
+            usage=SimpleNamespace(input_tokens=111, output_tokens=22),
+        )
+        openai_create = MagicMock(return_value=fake_response)
+        fake_openai = SimpleNamespace(
+            OpenAI=MagicMock(
+                return_value=SimpleNamespace(
+                    responses=SimpleNamespace(create=openai_create),
+                )
+            )
+        )
+
+        with patch("markets.services.NewsService.fetch_and_store_news", return_value=0), patch(
+            "trading.technical.IndicatorCalculator.calculate_indicators", return_value=indicator_payload
+        ), patch.dict(sys.modules, {"openai": fake_openai}):
+            first = service.analyze_asset(asset)
+            second = service.analyze_asset(asset)
+
+        assert first == second
+        assert openai_create.call_count == 1
 
 
 @pytest.mark.django_db

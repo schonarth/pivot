@@ -530,6 +530,7 @@ class AIService:
             candidates.append({
                 "news_item_id": str(item.id),
                 "headline": item.headline,
+                "url": item.url,
                 "source": item.source,
                 "published_at": item.published_at or item.fetched_at,
                 "bucket": bucket,
@@ -567,6 +568,7 @@ class AIService:
             {
                 "news_item_id": item["news_item_id"],
                 "headline": item["headline"],
+                "url": item["url"],
                 "source": item["source"],
                 "published_at": item["published_at"],
                 "bucket": item["bucket"],
@@ -816,8 +818,13 @@ class AIService:
             raise ValueError("AI is not configured for this user")
 
         cache_key = f"ai_insight:v2:{self.user.id}:{asset.id}"
+        legacy_cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cached = cache.get(cache_key)
         if cached:
+            return cached
+        cached = cache.get(legacy_cache_key)
+        if cached:
+            cache.set(cache_key, cached, timeout=86400)
             return cached
 
         self.check_budget()
@@ -904,6 +911,7 @@ class AIService:
             "news_items": [
                 {
                     "headline": item["headline"],
+                    "url": item["url"],
                     "source": item["source"],
                     "published_at": item["published_at"].isoformat() if item["published_at"] else None,
                     "bucket": item["bucket"],
@@ -916,7 +924,6 @@ class AIService:
             ],
         }
 
-        cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cache.set(cache_key, result, timeout=86400)
 
         return result

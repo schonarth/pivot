@@ -130,6 +130,7 @@ export interface AssetQuote {
 
 export interface AssetAIInsightNewsItem {
   headline: string
+  url?: string
   source: string
   published_at: string | null
   bucket?: 'symbol' | 'company' | 'sector' | 'industry' | 'macro' | 'theme'

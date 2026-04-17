@@ -62,7 +62,19 @@
           class="text-muted"
           style="margin-bottom: 0.35rem; font-size: 0.85rem; line-height: 1.5;"
         >
-          {{ item.headline }} <span class="text-muted">({{ item.source }})</span>
+          <a
+            v-if="item.url"
+            :href="item.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="color: inherit; text-decoration: underline;"
+          >
+            {{ item.headline }}
+          </a>
+          <span v-else>
+            {{ item.headline }}
+          </span>
+          <span class="text-muted">({{ item.source }})</span>
         </li>
       </ul>
     </div>
@@ -85,6 +97,7 @@ import { computed } from 'vue'
 
 type FootnoteItem = {
   headline: string
+  url?: string
   source: string
 }
 

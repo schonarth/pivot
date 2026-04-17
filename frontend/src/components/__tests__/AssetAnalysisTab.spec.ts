@@ -84,8 +84,8 @@ describe('AssetAnalysisTab', () => {
       model_used: 'gpt-test',
       generated_at: '2025-04-02T00:00:00.000Z',
       news_items: [
-        { headline: 'Headline one', source: 'Source A', published_at: null },
-        { headline: 'Headline two', source: 'Source B', published_at: null },
+        { headline: 'Headline one', url: 'https://example.com/one', source: 'Source A', published_at: null },
+        { headline: 'Headline two', url: 'https://example.com/two', source: 'Source B', published_at: null },
       ],
     })
   })
@@ -130,8 +130,8 @@ describe('AssetAnalysisTab', () => {
         model_used: 'gpt-test',
         generated_at: '2025-04-02T00:00:00.000Z',
         news_items: [
-          { headline: 'Headline one', source: 'Source A', published_at: null },
-          { headline: 'Headline two', source: 'Source B', published_at: null },
+          { headline: 'Headline one', url: 'https://example.com/one', source: 'Source A', published_at: null },
+          { headline: 'Headline two', url: 'https://example.com/two', source: 'Source B', published_at: null },
         ],
       })
     }
@@ -151,6 +151,8 @@ describe('AssetAnalysisTab', () => {
     expect(wrapper.text()).toContain('Technical summary')
     expect(wrapper.text()).toContain('Headline one')
     expect(wrapper.text()).toContain('Headline two')
+    expect(wrapper.find('a[href="https://example.com/one"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="https://example.com/two"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Legacy news context')
 
     expect(apexChartsState.instances).toHaveLength(2)
