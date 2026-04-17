@@ -553,7 +553,7 @@ function renderMainChart() {
       yaxis: buildLogAxisReferenceValues(logAxis.min, logAxis.max).map((value) => ({
         y: value,
         borderColor: gridColor,
-        strokeDashArray: 0,
+        strokeDashArray: 1,
       })),
     } : undefined,
   }
