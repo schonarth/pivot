@@ -217,9 +217,9 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
                     "ma_20": series_value(ma_20, idx_pos),
                     "ma_50": series_value(ma_50, idx_pos),
                     "ma_200": series_value(ma_200, idx_pos),
-                    "bb_upper": frame_value(bb, idx_pos, 0),
+                    "bb_upper": frame_value(bb, idx_pos, 2),
                     "bb_middle": frame_value(bb, idx_pos, 1),
-                    "bb_lower": frame_value(bb, idx_pos, 2),
+                    "bb_lower": frame_value(bb, idx_pos, 0),
                     "volume_20d_avg": (
                         int(volume_20d_avg.iloc[idx_pos])
                         if pd.notna(volume_20d_avg.iloc[idx_pos])

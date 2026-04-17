@@ -76,9 +76,9 @@ class IndicatorCalculator:
                 "ma_20": float(ma_20.iloc[-1]) if pd.notna(ma_20.iloc[-1]) else None,
                 "ma_50": float(ma_50.iloc[-1]) if pd.notna(ma_50.iloc[-1]) else None,
                 "ma_200": float(ma_200.iloc[-1]) if pd.notna(ma_200.iloc[-1]) else None,
-                "bb_upper": float(bb.iloc[-1, 0]) if pd.notna(bb.iloc[-1, 0]) else None,
+                "bb_upper": float(bb.iloc[-1, 2]) if pd.notna(bb.iloc[-1, 2]) else None,
                 "bb_middle": float(bb.iloc[-1, 1]) if pd.notna(bb.iloc[-1, 1]) else None,
-                "bb_lower": float(bb.iloc[-1, 2]) if pd.notna(bb.iloc[-1, 2]) else None,
+                "bb_lower": float(bb.iloc[-1, 0]) if pd.notna(bb.iloc[-1, 0]) else None,
                 "volume_20d_avg": int(volume_20d_avg.iloc[-1]) if pd.notna(volume_20d_avg.iloc[-1]) else None,
             }
         except Exception:
