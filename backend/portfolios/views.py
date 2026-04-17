@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -16,7 +16,20 @@ from .serializers import (
     PortfolioSummarySerializer,
     PortfolioGuardrailsSerializer,
 )
-from .services import calculate_twr, create_portfolio, deposit, get_portfolio_summary, withdraw
+from markets.models import Asset
+from .services import (
+    add_watch_asset,
+    calculate_twr,
+    create_portfolio,
+    deposit,
+    get_portfolio_summary,
+    remove_watch_asset,
+    withdraw,
+)
+
+
+class WatchAssetSerializer(serializers.Serializer):
+    asset_id = serializers.UUIDField()
 
 
 class PortfolioViewSet(viewsets.ModelViewSet):
@@ -49,6 +62,33 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         portfolio = self.get_object()
         summary = get_portfolio_summary(portfolio)
         return Response(summary)
+
+    @action(detail=True, methods=["post", "delete"])
+    def watch(self, request, pk=None):
+        portfolio = self.get_object()
+        serializer = WatchAssetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asset = get_object_or_404(Asset, id=serializer.validated_data["asset_id"])
+
+        if request.method == "POST":
+            result = add_watch_asset(portfolio=portfolio, asset=asset)
+            return Response(
+                {
+                    "asset_id": str(asset.id),
+                    "portfolio_id": str(portfolio.id),
+                    "created": result["created"],
+                },
+                status=status.HTTP_201_CREATED if result["created"] else status.HTTP_200_OK,
+            )
+
+        result = remove_watch_asset(portfolio=portfolio, asset=asset)
+        return Response(
+            {
+                "asset_id": str(asset.id),
+                "portfolio_id": str(portfolio.id),
+                "deleted": result["deleted"],
+            }
+        )
 
     @action(detail=True, methods=["get"])
     def performance(self, request, pk=None):

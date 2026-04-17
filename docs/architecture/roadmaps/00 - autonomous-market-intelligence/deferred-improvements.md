@@ -146,3 +146,121 @@ Milestone 00 establishes shared vocabulary and minimum interface contracts, but 
 
 - multiple consumers may drift into slightly different context-pack assumptions
 - later refactors may become harder if the shape is used widely without an explicit contract
+
+---
+
+## 004 - RSS Source Management and Feed Operations
+
+### Context
+
+News collection currently needs a pragmatic, low-friction path that yields enough headlines for asset analysis. Query-based RSS is a good short-term fit, but source quality, duplication, locale coverage, and provider drift will need operational management over time.
+
+### Current Safe Policy
+
+- allow simple code-level RSS source configuration that restores headline flow
+- prefer accessible feeds over brittle HTML scraping in the critical ingestion path
+- keep source selection deterministic and lightweight for now
+
+### Why Deferred
+
+- proper source management introduces operational concerns beyond the immediate fix:
+  - source onboarding and retirement
+  - per-market locale tuning
+  - feed health monitoring
+  - duplicate-source suppression
+  - source quality scoring
+- this work is useful, but not required to prove that headline ingestion is functioning again
+- the immediate priority is restoring non-zero headline volume without creating a new management surface prematurely
+
+### Earliest Revisit
+
+- Milestone 01 or 02 implementation hardening
+- more likely before broader portfolio and watch-scope rollout in Milestone 03, when source volume and duplication pressure increase
+
+### Future Direction
+
+- define explicit RSS source registries by market, locale, and query purpose
+- support source priorities, caps, and failover rules
+- track feed health and last successful ingest
+- expose operator-visible controls for enabling, disabling, or tuning sources without code edits
+- distinguish asset-specific, sector, macro, and theme-oriented feed inputs
+
+### Risk If Deferred Too Long
+
+- source drift may silently reduce headline quality or coverage
+- duplicate or low-signal feeds may inflate prompt noise
+- adding new markets or monitored scopes may become operationally clumsy without a clearer source-management model
+
+---
+
+## 005 - OHLCV Backfill Settings Card Refinements
+
+### Context
+
+Milestone 02 now exposes OHLCV backfill status in Settings so operators can start and observe history catch-up. The current card is intentionally functional first, but it can become quieter and more informative once the backfill path proves stable.
+
+### Current Safe Policy
+
+- keep the existing Settings card simple and readable
+- show live progress while backfill is actively running
+- avoid adding extra UI states unless they help with operator clarity
+
+### Why Deferred
+
+- the current live log is useful during catch-up but noisy once backfill finishes
+- filtering down to failed entries or summarizing completion would require extra display rules
+- subtle presentation changes are valuable, but not on the critical path for proving the backfill itself
+
+### Earliest Revisit
+
+- after backfill behavior has settled in normal use
+- ideally alongside a broader Settings polish pass
+
+### Future Direction
+
+- hide the processed-entry log once backfill completes
+- show only failed entries after completion
+- replace repeated log rows with a compact summary when the queue is idle
+- surface a small last-run summary instead of the full historical log
+
+### Risk If Deferred Too Long
+
+- the card may stay noisier than necessary for operators
+- the Settings page could feel heavier than the underlying feature warrants
+- repeated full logs may distract from higher-value configuration controls
+
+## 006 - Portfolio and Watch UI Polish
+
+### Context
+
+Milestone 03 now has a true portfolio-level and watch-level AI summary UI, but the first pass favors capability over finish. The current shape is functional, yet it still needs refinement in layout hierarchy, tab navigation clarity, and overall visual cleanliness.
+
+### Current Safe Policy
+
+- keep the current monitored-set intelligence behavior intact
+- preserve portfolio summary, watch summary, and asset drill-down
+- defer visual polish until after the milestone is accepted and the user flow is stable
+
+### Why Deferred
+
+- the first pass needed to prove the monitored-set AI summaries and watch binding
+- layout and navigation refinements are valuable, but they are not blockers for the core milestone outcome
+- the current implementation is good enough to use, so the safest next step is a focused UX pass rather than more structural change
+
+### Earliest Revisit
+
+- immediately after Milestone 03 acceptance
+- before starting Milestone 04 work
+
+### Future Direction
+
+- simplify the portfolio page hierarchy so the AI summary reads as the primary scope result
+- tighten tab navigation and tab labels so positions, watches, and drill-down feel obvious
+- reduce visual clutter in the portfolio detail page and asset detail controls
+- align spacing, card density, and button placement for a cleaner browsing flow
+
+### Risk If Deferred Too Long
+
+- the current UI may feel busy or confusing even though the underlying capability is correct
+- users may miss the scope-level summary because the drill-down remains prominent
+- the new monitored-set experience may feel more like a convenience feature than the primary portfolio/watch analysis surface

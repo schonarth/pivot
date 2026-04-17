@@ -1,5 +1,3 @@
-import json
-
 from django.core.management.base import BaseCommand, CommandError
 
 from ai.models import TASK_MODELS
@@ -27,12 +25,12 @@ class Command(BaseCommand):
 
         asset = self._get_asset(options["asset_id"], options["symbol"])
         indicators = self._get_indicators(asset)
-        news_items = self._get_news_items(asset)
+        context_items = self._get_news_items(asset)
         headlines = self._get_headlines(options["headlines_limit"])
 
         reports = [
             self._run_connection_test(provider, api_key),
-            self._run_asset_insight(provider, api_key, asset, indicators, news_items),
+            self._run_asset_insight(provider, api_key, asset, indicators, context_items),
             self._run_sentiment_analysis(provider, api_key, headlines),
         ]
 
@@ -80,11 +78,7 @@ class Command(BaseCommand):
         }
 
     def _get_news_items(self, asset):
-        return list(
-            NewsItem.objects.filter(asset=asset)
-            .order_by("-published_at", "-fetched_at")[:5]
-            .values("headline", "source", "published_at")
-        )
+        return AIService.build_asset_context_pack(asset)
 
     def _get_headlines(self, limit):
         return list(
@@ -110,7 +104,8 @@ class Command(BaseCommand):
 
     def _run_asset_insight(self, provider, api_key, asset, indicators, news_items):
         model = TASK_MODELS["indicator_insight"].get(provider, "gpt-4o-mini")
-        prompt = AIService.build_indicator_insight_prompt(asset, indicators, news_items)
+        story_so_far = AIService.build_story_so_far(asset, news_items)
+        prompt = AIService.build_indicator_insight_prompt(asset, indicators, news_items, story_so_far)
         response_text = self._call_provider(provider, api_key, model, prompt, max_output_tokens=300)
         return {
             "function": "AIService.analyze_asset",

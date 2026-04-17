@@ -1,8 +1,19 @@
 <template>
   <div
-    v-if="summary"
-    :style="summary.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.03)', minHeight: '100vh' } : {}"
+    v-if="loading"
+    class="portfolio-loading"
   >
+    <span class="spinner" />
+  </div>
+  <div
+    v-else-if="summary"
+    class="portfolio-detail"
+    :class="{ 'portfolio-detail-simulating': summary.is_simulating }"
+  >
+    <div
+      v-if="summary.is_simulating"
+      class="portfolio-detail-simulating-overlay"
+    />
     <div class="page-header">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <h1>{{ summary.name }}</h1>
@@ -136,6 +147,18 @@
       </button>
       <button
         class="tab-btn"
+        :class="{ active: activeTab === 'watch' }"
+        @click="activeTab = 'watch'"
+      >
+        Watches
+        <span
+          v-if="watchAssessments.length"
+          class="badge badge-info"
+          style="margin-left: 0.4rem; font-size: 0.7rem;"
+        >{{ watchAssessments.length }}</span>
+      </button>
+      <button
+        class="tab-btn"
         :class="{ active: activeTab === 'alerts' }"
         @click="activeTab = 'alerts'"
       >
@@ -156,6 +179,13 @@
     </div>
 
     <div v-if="activeTab === 'positions'">
+      <ScopeInsightCard
+        title="Portfolio AI Summary"
+        scope-label="Portfolio positions"
+        :asset-count="positionAssessments.length"
+        empty-message="No positions to analyze yet."
+        :insight="portfolioInsight"
+      />
       <div
         v-if="summary.positions.length"
         class="card"
@@ -208,6 +238,83 @@
           No positions yet. Start by making a trade!
         </p>
       </div>
+      <div style="margin-top: 1rem;">
+        <MonitoredSetAssessment
+          title="Position Assessments"
+          scope-label="Portfolio positions"
+          empty-message="No positions to assess yet."
+          :assets="positionAssessments"
+        />
+      </div>
+    </div>
+
+    <div v-if="activeTab === 'watch'">
+      <ScopeInsightCard
+        title="Watch AI Summary"
+        scope-label="Portfolio watch"
+        :asset-count="watchAssessments.length"
+        empty-message="No watch assets to analyze yet."
+        :insight="watchInsight"
+      />
+      <div class="card" style="margin-bottom: 1rem;">
+        <h3 style="margin-bottom: 0.75rem;">
+          Add to Watch
+        </h3>
+        <div v-if="watchCreateError" class="alert-error">
+          {{ watchCreateError }}
+        </div>
+        <div class="form-group">
+          <label>Asset</label>
+          <template v-if="watchAssetSelected">
+            <div>{{ watchAssetSelected.display_symbol }} — {{ watchAssetSelected.name }}</div>
+          </template>
+          <template v-else>
+            <input
+              v-model="watchAssetSearch"
+              type="text"
+              placeholder="Search asset..."
+              @input="searchWatchAssetsDebounced"
+            >
+            <div
+              v-if="watchAssetResults.length"
+              style="margin-top: 0.25rem; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;"
+            >
+              <div
+                v-for="a in watchAssetResults"
+                :key="a.id"
+                style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--border);"
+                @click="selectWatchAsset(a)"
+              >
+                {{ a.display_symbol }} - {{ a.name }}
+              </div>
+            </div>
+          </template>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button
+            class="btn"
+            :disabled="!watchAssetSelected || watchSaving"
+            @click="handleAddWatchAsset"
+          >
+            {{ watchSaving ? 'Adding...' : 'Add to Watch' }}
+          </button>
+          <button
+            class="btn btn-secondary"
+            :disabled="watchSaving && !!watchAssetSelected"
+            @click="cancelWatchCreate"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      <MonitoredSetAssessment
+        title="Watch Assessments"
+        scope-label="Portfolio watch"
+        empty-message="No watch assets yet."
+        :assets="watchAssessments"
+        :allow-removal="true"
+        @remove="handleRemoveWatchAsset"
+      />
     </div>
 
     <div v-if="activeTab === 'alerts'">
@@ -674,16 +781,27 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
+import MonitoredSetAssessment from '@/components/MonitoredSetAssessment.vue'
 import StrategiesView from '@/views/StrategiesView.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPortfolioSummary, getPortfolioTimeline, refreshPortfolioPrices, deposit, withdraw, updatePortfolio } from '@/api/portfolios'
+import {
+  addPortfolioWatchAsset,
+  getPortfolioSummary,
+  getPortfolioTimeline,
+  refreshPortfolioPrices,
+  deposit,
+  removePortfolioWatchAsset,
+  withdraw,
+  updatePortfolio,
+} from '@/api/portfolios'
 import { getAlerts, createAlert, deleteAlert, pauseAlert, resumeAlert } from '@/api/alerts'
 import { searchAssets, getAssetPrice } from '@/api/assets'
 import { parseNumericInput, formatCurrency } from '@/utils/numbers'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useNotifications } from '@/composables/useNotifications'
 import { useToast } from '@/composables/useToast'
-import type { Alert, Asset, PortfolioSummary } from '@/types'
+import ScopeInsightCard from '@/components/ScopeInsightCard.vue'
+import type { Alert, Asset, PortfolioSummary, MonitoredAssetSummary } from '@/types'
 
 const props = defineProps<{ id?: string | string[] }>()
 const route = useRoute()
@@ -702,6 +820,7 @@ const getPortfolioId = () => {
 const portfolioId = ref(getPortfolioId())
 
 const summary = ref<PortfolioSummary | null>(null)
+const loading = ref(true)
 const timeline = ref<any[]>([])
 const refreshing = ref(false)
 const showDeposit = ref(false)
@@ -712,7 +831,9 @@ const withdrawWarning = ref('')
 const depositInput = ref<HTMLInputElement | null>(null)
 const withdrawInput = ref<HTMLInputElement | null>(null)
 
-const activeTab = ref<'positions' | 'alerts' | 'strategies'>('positions')
+const activeTab = ref<'positions' | 'watch' | 'alerts' | 'strategies'>(
+  route.query.tab === 'watch' ? 'watch' : 'positions',
+)
 
 const alerts = ref<Alert[]>([])
 const alertPrices = ref<Record<string, string>>({})
@@ -733,11 +854,30 @@ const newAlertForm = ref({
   auto_trade_quantity: undefined as number | undefined,
   auto_trade_pct: undefined as string | undefined,
 })
+const watchAssetSearch = ref('')
+const watchAssetResults = ref<Asset[]>([])
+const watchAssetSelected = ref<Asset | null>(null)
+const watchSaving = ref(false)
+const watchCreateError = ref('')
 
 const activeAlerts = computed(() => alerts.value.filter((a) => a.status === 'active'))
 const triggeredAlerts = computed(() => alerts.value.filter((a) => a.status === 'triggered'))
 const pausedAlerts = computed(() => alerts.value.filter((a) => a.status === 'paused'))
 const assetsWithAlerts = computed(() => new Set(activeAlerts.value.map((a) => a.asset)))
+const positionAssessments = computed<MonitoredAssetSummary[]>(() => {
+  if (!summary.value) return []
+  return summary.value.positions.map((position) => ({
+    asset_id: position.asset_id,
+    symbol: position.symbol,
+    name: position.name,
+    market: summary.value!.market,
+    currency: position.currency,
+    current_price: position.current_price,
+  }))
+})
+const watchAssessments = computed<MonitoredAssetSummary[]>(() => summary.value?.watch_assets ?? [])
+const portfolioInsight = computed(() => summary.value?.scope_insights?.portfolio ?? null)
+const watchInsight = computed(() => summary.value?.scope_insights?.watch ?? null)
 
 watch(showDeposit, (val) => {
   if (val) nextTick(() => depositInput.value?.focus())
@@ -758,14 +898,29 @@ watch(() => route.params.id, () => {
   }
 })
 
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab === 'watch') {
+      activeTab.value = 'watch'
+    }
+  },
+  { immediate: true },
+)
+
 async function load() {
   if (!portfolioId.value || portfolioId.value === 'undefined') {
-    await router.replace('/portfolios')
+    await router.replace('/')
     return
   }
-  summary.value = await getPortfolioSummary(portfolioId.value)
-  timeline.value = await getPortfolioTimeline(portfolioId.value)
-  await loadAlerts()
+  loading.value = true
+  try {
+    summary.value = await getPortfolioSummary(portfolioId.value)
+    timeline.value = await getPortfolioTimeline(portfolioId.value)
+    await loadAlerts()
+  } finally {
+    loading.value = false
+  }
 }
 
 async function loadAlerts() {
@@ -883,6 +1038,19 @@ function searchAssetsDebounced() {
   }, 300)
 }
 
+let watchSearchTimeout: ReturnType<typeof setTimeout>
+function searchWatchAssetsDebounced() {
+  clearTimeout(watchSearchTimeout)
+  watchSearchTimeout = setTimeout(async () => {
+    if (watchAssetSearch.value.length < 2 || !summary.value) return
+    try {
+      watchAssetResults.value = await searchAssets(watchAssetSearch.value, summary.value.market)
+    } catch {
+      watchAssetResults.value = []
+    }
+  }, 300)
+}
+
 async function selectNewAsset(asset: Asset) {
   newAsset.value = asset
   assetSearch.value = asset.display_symbol
@@ -892,6 +1060,12 @@ async function selectNewAsset(asset: Asset) {
     const quote = await getAssetPrice(asset.id)
     selectedAssetPrice.value = quote.price
   } catch {}
+}
+
+async function selectWatchAsset(asset: Asset) {
+  watchAssetSelected.value = asset
+  watchAssetSearch.value = asset.display_symbol
+  watchAssetResults.value = []
 }
 
 function cancelCreate() {
@@ -910,6 +1084,13 @@ function cancelCreate() {
     auto_trade_quantity: undefined,
     auto_trade_pct: undefined,
   }
+}
+
+function cancelWatchCreate() {
+  watchCreateError.value = ''
+  watchAssetSelected.value = null
+  watchAssetSearch.value = ''
+  watchAssetResults.value = []
 }
 
 async function handleCreateAlert() {
@@ -938,6 +1119,34 @@ async function handleCreateAlert() {
   } catch (e: any) {
     createError.value = e.response?.data?.error?.message || 'Failed to create alert'
     toast.error('Failed to create alert')
+  }
+}
+
+async function handleAddWatchAsset() {
+  watchCreateError.value = ''
+  if (!summary.value || !watchAssetSelected.value || watchSaving.value) return
+  watchSaving.value = true
+  try {
+    await addPortfolioWatchAsset(summary.value.portfolio_id, watchAssetSelected.value.id)
+    cancelWatchCreate()
+    await load()
+    toast.success('Watch asset added')
+  } catch (e: any) {
+    watchCreateError.value = e.response?.data?.error?.message || 'Failed to add watch asset'
+    toast.error('Failed to add watch asset')
+  } finally {
+    watchSaving.value = false
+  }
+}
+
+async function handleRemoveWatchAsset(assetId: string) {
+  if (!summary.value) return
+  try {
+    await removePortfolioWatchAsset(summary.value.portfolio_id, assetId)
+    await load()
+    toast.success('Watch asset removed')
+  } catch {
+    toast.error('Failed to remove watch asset')
   }
 }
 
@@ -990,6 +1199,40 @@ function outcomeLabel(outcome: string): string {
   return labels[outcome] ?? outcome
 }
 </script>
+
+<style scoped>
+.portfolio-loading {
+  min-height: calc(100vh - 3.5rem);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: calc((100vh - 3.5rem) / 3);
+}
+
+.portfolio-detail {
+  min-height: calc(100vh - 3.5rem);
+}
+
+.portfolio-detail-simulating {
+  position: relative;
+}
+
+.portfolio-detail-simulating > * {
+  position: relative;
+  z-index: 1;
+}
+
+.portfolio-detail-simulating-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 193, 7, 0.03);
+  pointer-events: none;
+  z-index: 0;
+}
+</style>
 
 <style scoped>
 .modal-overlay {

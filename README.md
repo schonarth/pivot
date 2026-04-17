@@ -1,19 +1,19 @@
 # ![Pivot logo](./frontend/public/pivot-logo.png) Pivot
 
 
-**An AI-powered paper trading simulator** for developing and testing investment strategies across global markets without risking real capital. Build strategies, get AI-generated insights, backtest with real market data, and execute trades, all risk-free — or let your AI agent do it for you with MCP support!
+**An AI-powered paper trading simulator** for developing and testing investment strategies across global markets without risking real capital. Build strategies, get AI-generated insights with broad market context, track how the story changes over time, and compare portfolio or watchlist summaries, all risk-free — or let your AI agent do it for you with MCP support!
 
 ---
 
 ## What You Can Do
 
 - **Develop strategies** with technical indicators and backtesting engine
-- **Get AI insights** — Technical analysis powered by your choice of AI providers
+- **Get AI insights** — Technical analysis powered by your choice of AI providers, with linked source headlines and broader context beyond the ticker
 - **Backtest strategies** against historical OHLCV data
-- **Paper trade** across 4 global markets: Brazil, US, UK, and Europe
+- **Paper trade** across 4 global markets: Brazil, US, UK, and Europe (Your market isn't here? Feel free to add! 😄)
 - **Set smart alerts** that trigger trades automatically when conditions are met
 - **Simulate market prices** to test strategies when markets are closed
-- **Manage multiple portfolios** for different investment goals and risk profiles
+- **Manage multiple portfolios** and watchlists for different investment goals and risk profiles, with AI summaries that can cover the whole set
 - **Bring your AI agent** to trade with you with our simple to setup MCP server
 
 Perfect for developing trading strategies, testing alert logic, learning portfolio management, and experimenting with automated trading — all without risking real capital.
@@ -65,13 +65,15 @@ The application will be ready at `http://localhost:3000` in about 30 seconds.
 - **Test and iterate** — Refine rules before deploying to live trading
 
 ### AI-Powered Insights
-- **Generate technical analysis** — Claude, GPT, and Gemini supported now for market insights
+- **Generate technical analysis** — Claude, GPT, and Gemini supported now for market insights, with recent headlines tied back to the original source articles
+- **Follow the narrative** — news digest is kept short and readable, so the insight can explain what changed instead of treating each run like a blank slate
 - **Budget tracking** — Monitor AI provider costs and set spending limits (API key required — sorry, no flat rate support 😅)
 
 ### Portfolios
 - Create separate portfolios for different markets
 - Track cash, invested value, and profit/loss
 - View performance history and returns
+- See AI summaries for portfolios and watchlists when you want a quick read on the whole group
 - Deposit or withdraw funds anytime
 
 ### Trading

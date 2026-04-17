@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / implementation
 
 ## Branch
 
@@ -26,16 +26,22 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
 - 00 - milestone coordination.md
 - Milestone 00 core baseline outputs complete enough to unblock Milestone 01
+
+## Required Prior References
+
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/01 - boundary-decision-and-current-state-scan.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
 ## Likely Files Touched
 
@@ -47,6 +53,7 @@ not started
 
 - ADR-001 reviewed
 - milestone coordination reviewed
+- required Milestone 00 references reviewed
 
 ## Background
 
@@ -80,11 +87,12 @@ ADR-001 defines what Milestone 01 should do, but not yet where the change belong
 
 ## Task Steps
 
-1. Scan the current backend and frontend paths that produce asset analysis and news-aware prompts.
-2. Identify where symbol-only context is selected today.
-3. Identify the minimal insertion point for a new context-building step.
-4. Record any existing abstractions that should be reused rather than replaced.
-5. Call out any risky coupling that would cause context selection to bleed into reasoning or execution.
+1. Read the required Milestone 00 references before rescanning code.
+2. Scan the current backend and frontend paths that produce asset analysis and news-aware prompts.
+3. Identify where symbol-only context is selected today.
+4. Identify the minimal insertion point for a new context-building step that preserves the Milestone 00 context/reasoning/execution boundary.
+5. Record any existing abstractions that should be reused rather than replaced.
+6. Call out any risky coupling that would cause context selection to bleed into reasoning or execution.
 
 ## Tests to Add or Update
 
@@ -106,7 +114,19 @@ ADR-001 defines what Milestone 01 should do, but not yet where the change belong
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed the pipeline scan and identified the insertion point.
+
+What was done:
+
+- traced the current per-asset analysis path from frontend and MCP consumers into `AIService.analyze_asset`
+- confirmed the existing news-aware prompt assembly lives in `backend/ai/services.py`
+- identified the smallest safe insertion point as a backend context-pack builder inside the shared AI service
+- verified the frontend only consumes the already-produced analysis output, so Milestone 01 stays on the producer side
+
+Open risks noted:
+
+- symbol-only news selection existed in the shared AI service
+- prompt-building and context selection were coupled in one backend path, so the later implementation task had to add a narrow adapter rather than a second analysis flow
 
 ## Open Follow-Ups
 

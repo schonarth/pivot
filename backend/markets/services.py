@@ -1,18 +1,26 @@
-import uuid
+import logging
+from datetime import date, timedelta
 from decimal import Decimal
-import requests
+from email.utils import parsedate_to_datetime
+from urllib.parse import quote_plus
+
 import feedparser
+import requests
 from bs4 import BeautifulSoup
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
-from django.core.cache import cache
+
+from .ohlcv_provider import is_valid_ohlcv_record
+from .models import Asset, MarketConfig, NewsItem, OHLCV
 
 try:
     from exchange_calendars import get_calendar
 except ImportError:
     get_calendar = None
 
-from .models import Asset, AssetQuote, MarketConfig, OHLCV, NewsItem
+
+logger = logging.getLogger("paper_trader.markets")
 
 
 MARKET_CONFIGS = {
@@ -65,7 +73,13 @@ def is_market_open(market_code: str) -> bool:
         return None
     try:
         cal = get_calendar(cfg["exchange"])
-        return cal.is_session(timezone.now().date())
+        now = timezone.now()
+        if not cal.is_session(now.date()):
+            return False
+
+        open_at = cal.session_open(now.date())
+        close_at = cal.session_close(now.date())
+        return open_at <= now <= close_at
     except Exception:
         return None
 
@@ -127,8 +141,12 @@ def ingest_ohlcv(asset_id: str, ohlcv_list: list[dict], source: str = "yahoo_fin
         return 0
 
     count = 0
+    invalid_dates: list = []
     with transaction.atomic():
         for ohlcv in ohlcv_list:
+            if not is_valid_ohlcv_record(ohlcv):
+                invalid_dates.append(ohlcv.get("date"))
+                continue
             obj, created = OHLCV.objects.update_or_create(
                 asset=asset,
                 date=ohlcv["date"],
@@ -144,7 +162,49 @@ def ingest_ohlcv(asset_id: str, ohlcv_list: list[dict], source: str = "yahoo_fin
             if created:
                 count += 1
 
+    if invalid_dates:
+        logger.warning(
+            "Discarded invalid OHLCV rows for %s from %s: %s",
+            asset.display_symbol,
+            source,
+            ", ".join(str(date) for date in invalid_dates[:5]),
+        )
+
     return count
+
+
+def recent_ohlcv_needs_repair(asset_id: str, lookback_days: int = 5) -> bool:
+    cutoff = timezone.now().date() - timedelta(days=lookback_days)
+    recent_rows = (
+        OHLCV.objects.filter(asset_id=asset_id, date__gte=cutoff)
+        .order_by("-date")
+        .values("date", "open", "high", "low", "close", "volume")
+    )
+    return any(not is_valid_ohlcv_record(row) for row in recent_rows)
+
+
+def invalid_ohlcv_dates(asset_id: str, start_date: date | None = None, end_date: date | None = None) -> list[date]:
+    queryset = OHLCV.objects.filter(asset_id=asset_id)
+    if start_date:
+        queryset = queryset.filter(date__gte=start_date)
+    if end_date:
+        queryset = queryset.filter(date__lte=end_date)
+    return [
+        row["date"]
+        for row in queryset.order_by("date").values("date", "open", "high", "low", "close", "volume")
+        if not is_valid_ohlcv_record(row)
+    ]
+
+
+def delete_invalid_ohlcv_rows(
+    asset_id: str,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list[date]:
+    invalid_dates = invalid_ohlcv_dates(asset_id, start_date=start_date, end_date=end_date)
+    if invalid_dates:
+        OHLCV.objects.filter(asset_id=asset_id, date__in=invalid_dates).delete()
+    return invalid_dates
 
 
 class NewsService:
@@ -152,6 +212,7 @@ class NewsService:
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
     }
     CACHE_TTL = 4 * 3600
+    EMPTY_CACHE_TTL = 15 * 60
 
     @classmethod
     def fetch_and_store_news(cls, asset: Asset) -> int:
@@ -161,6 +222,7 @@ class NewsService:
             return 0
 
         news_items = []
+        news_items.extend(cls._fetch_google_news_rss(asset))
         news_items.extend(cls._fetch_yahoo_finance(asset))
         news_items.extend(cls._fetch_marketwatch(asset))
         if asset.market == "BR":
@@ -170,8 +232,77 @@ class NewsService:
             news_items.extend(cls._fetch_rss_fallback(asset))
 
         count = cls._store_news_items(asset, news_items)
-        cache.set(f"news:{asset.id}", True, cls.CACHE_TTL)
+        cache.set(f"news:{asset.id}", True, cls.CACHE_TTL if news_items else cls.EMPTY_CACHE_TTL)
         return count
+
+    @classmethod
+    def _google_news_locale(cls, asset: Asset) -> tuple[str, str, str]:
+        locales = {
+            "BR": ("pt-BR", "BR", "BR:pt-419"),
+            "US": ("en-US", "US", "US:en"),
+            "UK": ("en-GB", "GB", "GB:en"),
+            "EU": ("en", "FR", "FR:en"),
+        }
+        return locales.get(asset.market, ("en-US", "US", "US:en"))
+
+    @classmethod
+    def _google_news_queries(cls, asset: Asset) -> list[str]:
+        queries = [asset.provider_symbol, asset.display_symbol]
+        if asset.name and asset.name.lower() not in {
+            asset.display_symbol.lower(),
+            asset.provider_symbol.lower(),
+        }:
+            queries.append(f'"{asset.name}"')
+            queries.append(f'{asset.display_symbol} OR "{asset.name}"')
+
+        seen = set()
+        result = []
+        for query in queries:
+            normalized = query.strip().lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            result.append(query)
+        return result[:3]
+
+    @classmethod
+    def _fetch_google_news_rss(cls, asset: Asset) -> list[dict]:
+        hl, gl, ceid = cls._google_news_locale(asset)
+        items = []
+        seen_urls = set()
+
+        for query in cls._google_news_queries(asset):
+            url = (
+                "https://news.google.com/rss/search?"
+                f"q={quote_plus(query)}&hl={hl}&gl={gl}&ceid={ceid}"
+            )
+            try:
+                feed = feedparser.parse(url)
+            except Exception:
+                continue
+
+            for entry in feed.entries[:8]:
+                link = entry.get("link", "")
+                headline = entry.get("title", "").strip()
+                if not link or not headline or link in seen_urls:
+                    continue
+                seen_urls.add(link)
+                published_at = None
+                published_value = entry.get("published") or entry.get("updated")
+                if published_value:
+                    try:
+                        published_at = parsedate_to_datetime(published_value)
+                    except (TypeError, ValueError, IndexError, OverflowError):
+                        published_at = None
+                items.append({
+                    "headline": headline[:500],
+                    "url": link,
+                    "source": "google_news_rss",
+                    "summary": entry.get("summary", "")[:1000] or None,
+                    "published_at": published_at,
+                })
+
+        return items
 
     @classmethod
     def _fetch_yahoo_finance(cls, asset: Asset) -> list[dict]:
@@ -192,6 +323,7 @@ class NewsService:
                         "url": href if href.startswith("http") else f"https://finance.yahoo.com{href}",
                         "source": "yahoo_finance",
                         "summary": None,
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -218,6 +350,7 @@ class NewsService:
                         "url": href if href.startswith("http") else f"https://www.marketwatch.com{href}",
                         "source": "marketwatch",
                         "summary": None,
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -242,6 +375,7 @@ class NewsService:
                         "url": href if href.startswith("http") else f"https://www.valor.com.br{href}",
                         "source": "valor_economico",
                         "summary": None,
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -270,6 +404,7 @@ class NewsService:
                         "url": entry.get("link", ""),
                         "source": "rss_feed",
                         "summary": entry.get("summary", "")[:1000],
+                        "published_at": None,
                     })
             return items
         except Exception:
@@ -278,19 +413,44 @@ class NewsService:
     @classmethod
     def _store_news_items(cls, asset: Asset, news_items: list[dict]) -> int:
         """Store news items in database, skip duplicates."""
+        created_items = []
         count = 0
         for item in news_items:
             if not item.get("url"):
                 continue
-            _, created = NewsItem.objects.update_or_create(
+            news_item, created = NewsItem.objects.update_or_create(
                 asset=asset,
-                url=item["url"],
+                url=item["url"][:500],
                 defaults={
                     "headline": item["headline"],
                     "summary": item.get("summary"),
                     "source": item["source"],
+                    "published_at": item.get("published_at"),
                 },
             )
             if created:
                 count += 1
+                created_items.append(news_item)
+        cls._attach_sentiment_scores(created_items)
         return count
+
+    @classmethod
+    def _attach_sentiment_scores(cls, news_items: list[NewsItem]) -> None:
+        if not news_items:
+            return
+
+        from ai.services import AIService
+
+        headlines = [item.headline for item in news_items if item.headline]
+        sentiments = AIService.analyze_news_sentiment(headlines)
+        if not sentiments:
+            return
+
+        for news_item in news_items:
+            score = sentiments.get(news_item.headline)
+            if score is None:
+                continue
+            score_decimal = Decimal(str(score)) if not isinstance(score, Decimal) else score
+            score_decimal = max(Decimal("-1.0"), min(Decimal("1.0"), score_decimal))
+            news_item.sentiment_score = score_decimal
+            news_item.save(update_fields=["sentiment_score"])

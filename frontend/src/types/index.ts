@@ -38,6 +38,8 @@ export interface PortfolioSummary {
   trading_pnl: string
   is_simulating: boolean
   positions: PositionDetail[]
+  watch_assets: MonitoredAssetSummary[]
+  scope_insights?: PortfolioScopeInsights
 }
 
 export interface PositionDetail {
@@ -50,6 +52,34 @@ export interface PositionDetail {
   market_value: string
   unrealized_pnl: string
   currency: string
+}
+
+export interface MonitoredScopeInsight {
+  scope_type: 'portfolio' | 'watch'
+  scope_label: string
+  asset_count: number
+  recommendation: 'BUY' | 'HOLD' | 'SELL'
+  confidence: number
+  summary: string
+  technical_summary: string
+  news_context: string
+  reasoning: string
+  model_used: string
+  generated_at: string
+}
+
+export interface PortfolioScopeInsights {
+  portfolio: MonitoredScopeInsight | null
+  watch: MonitoredScopeInsight | null
+}
+
+export interface MonitoredAssetSummary {
+  asset_id: string
+  symbol: string
+  name: string
+  market: string
+  currency: string
+  current_price: string | null
 }
 
 export interface Trade {
@@ -100,8 +130,14 @@ export interface AssetQuote {
 
 export interface AssetAIInsightNewsItem {
   headline: string
+  url?: string
   source: string
   published_at: string | null
+  bucket?: 'symbol' | 'company' | 'sector' | 'industry' | 'macro' | 'theme'
+  provenance?: string
+  relevance_basis?: string
+  asset_symbol?: string | null
+  market?: string | null
 }
 
 export interface AssetAIInsight {
@@ -109,6 +145,7 @@ export interface AssetAIInsight {
   market: string
   recommendation: 'BUY' | 'HOLD' | 'SELL'
   confidence: number
+  summary: string
   technical_summary: string
   news_context: string
   reasoning: string
@@ -176,6 +213,67 @@ export interface CashTransaction {
 
 export interface MarketStatus {
   [key: string]: { open: boolean }
+}
+
+export interface OhlcvBackfillProcessedAsset {
+  symbol: string
+  status: 'completed' | 'failed'
+  rows_ingested?: number
+  error?: string
+  timestamp: string
+}
+
+export interface OhlcvBackfillStatus {
+  state: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
+  source: string | null
+  initiated_by: string | null
+  total_assets: number
+  processed_assets_count: number
+  successful_assets: number
+  failed_assets: number
+  current_asset: {
+    symbol: string
+    index: number
+    total_assets: number
+  } | null
+  processed_assets: OhlcvBackfillProcessedAsset[]
+  started_at: string | null
+  updated_at: string
+  completed_at: string | null
+  queued?: boolean
+}
+
+export interface OhlcvRepairProcessedAsset {
+  symbol: string
+  status: 'completed' | 'failed'
+  invalid_rows_deleted?: number
+  rows_ingested?: number
+  error?: string
+  timestamp: string
+}
+
+export interface OhlcvRepairStatus {
+  state: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
+  source: string | null
+  initiated_by: string | null
+  symbol: string | null
+  date_from: string | null
+  date_to: string | null
+  total_assets: number
+  processed_assets_count: number
+  invalid_rows_found: number
+  invalid_rows_deleted: number
+  repaired_rows: number
+  current_asset: {
+    symbol: string
+    index: number
+    total_assets: number
+  } | null
+  processed_assets: OhlcvRepairProcessedAsset[]
+  started_at: string | null
+  updated_at: string
+  completed_at: string | null
+  queued?: boolean
 }
 
 export interface WSMessage {

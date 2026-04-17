@@ -1,18 +1,22 @@
-from django.db.models import Q, Avg
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
+from datetime import date
 
-from .models import Asset, AssetQuote, MarketConfig, OHLCV, TechnicalIndicators, NewsItem
+from django.db.models import Avg, Q
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .backfill_progress import get_backfill_status, queue_ohlcv_backfill
+from .repair_progress import get_repair_status, queue_ohlcv_repair
+from .models import Asset, AssetQuote, MarketConfig, NewsItem, OHLCV
 from .serializers import (
     AssetQuoteSerializer,
     AssetSerializer,
     MarketConfigSerializer,
     OHLCVSerializer,
-    TechnicalIndicatorsSerializer,
 )
-from .services import is_market_open, seed_market_configs, NewsService
+from .services import NewsService, is_market_open
 
 
 class MarketConfigViewSet(viewsets.ReadOnlyModelViewSet):
@@ -83,8 +87,8 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError:
             days = 90
 
-        from django.utils import timezone
         from datetime import timedelta
+        from django.utils import timezone
 
         start_date = timezone.now().date() - timedelta(days=days)
         ohlcv_data = OHLCV.objects.filter(asset=asset, date__gte=start_date).order_by("date")
@@ -110,7 +114,11 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({
             "asset_id": str(asset.id),
             "symbol": asset.display_symbol,
-            "average_sentiment": float(avg_sentiment["sentiment_score__avg"]) if avg_sentiment["sentiment_score__avg"] else None,
+            "average_sentiment": (
+                float(avg_sentiment["sentiment_score__avg"])
+                if avg_sentiment["sentiment_score__avg"]
+                else None
+            ),
             "news_items": [
                 {
                     "headline": item.headline,
@@ -134,10 +142,11 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError:
             days = 90
 
-        from django.utils import timezone
-        from datetime import timedelta
-        import pandas as pd
         import logging
+        from datetime import timedelta
+
+        import pandas as pd
+        from django.utils import timezone
 
         logger = logging.getLogger("paper_trader.markets")
 
@@ -211,10 +220,14 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
                     "ma_20": series_value(ma_20, idx_pos),
                     "ma_50": series_value(ma_50, idx_pos),
                     "ma_200": series_value(ma_200, idx_pos),
-                    "bb_upper": frame_value(bb, idx_pos, 0),
+                    "bb_upper": frame_value(bb, idx_pos, 2),
                     "bb_middle": frame_value(bb, idx_pos, 1),
-                    "bb_lower": frame_value(bb, idx_pos, 2),
-                    "volume_20d_avg": int(volume_20d_avg.iloc[idx_pos]) if pd.notna(volume_20d_avg.iloc[idx_pos]) else None,
+                    "bb_lower": frame_value(bb, idx_pos, 0),
+                    "volume_20d_avg": (
+                        int(volume_20d_avg.iloc[idx_pos])
+                        if pd.notna(volume_20d_avg.iloc[idx_pos])
+                        else None
+                    ),
                 })
 
             return Response(result)
@@ -257,11 +270,58 @@ class MarketStatusView(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        from .services import MARKET_CONFIGS
         from rest_framework.response import Response
+
+        from .services import MARKET_CONFIGS
 
         statuses = {}
         for code in MARKET_CONFIGS:
             status = is_market_open(code)
             statuses[code] = {"open": status if status is not None else False}
         return Response(statuses)
+
+
+class OhlcvBackfillView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_backfill_status())
+
+    def post(self, request):
+        queued, status_data = queue_ohlcv_backfill(
+            source="manual",
+            initiated_by=str(request.user.id),
+        )
+        status_data["queued"] = queued
+        return Response(status_data, status=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK)
+
+
+class OhlcvRepairView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_repair_status())
+
+    def post(self, request):
+        symbol = request.data.get("symbol")
+        date_from = request.data.get("date_from")
+        date_to = request.data.get("date_to")
+        try:
+            if date_from:
+                date.fromisoformat(date_from)
+            if date_to:
+                date.fromisoformat(date_to)
+        except ValueError:
+            return Response(
+                {"error": {"code": "invalid_date", "message": "Dates must use YYYY-MM-DD format."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queued, status_data = queue_ohlcv_repair(
+            source="manual",
+            initiated_by=str(request.user.id),
+            symbol=symbol or None,
+            date_from=date_from or None,
+            date_to=date_to or None,
+        )
+        status_data["queued"] = queued
+        return Response(status_data, status=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK)

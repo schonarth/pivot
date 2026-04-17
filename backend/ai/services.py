@@ -1,13 +1,27 @@
-import logging
-from decimal import Decimal
-from datetime import datetime, timedelta
+import hashlib
 import json
+import logging
+import re
+from datetime import timedelta
+from decimal import Decimal
+
+from django.core.cache import cache
 from django.db.models import Sum
 from django.utils import timezone
-from django.core.cache import cache
 
-from .models import AIAuth, AICost
 from .encryption import KeyEncryption
+from .models import AIAuth, AICost
+from .news_context_policy import (
+    ASSET_METADATA_OVERRIDES,
+    BUCKET_LIMITS,
+    BUCKET_ORDER,
+    CORPORATE_SUFFIXES,
+    HEADLINE_STOPWORDS,
+    RAW_BUCKET_LIMITS,
+    SOURCE_QUALITY,
+    THEME_RULES,
+    TOTAL_CONTEXT_LIMIT,
+)
 
 logger = logging.getLogger("paper_trader.ai")
 
@@ -19,6 +33,53 @@ class AIBudgetError(Exception):
 
 class AIService:
     """Manage AI API calls with budget enforcement and usage tracking."""
+
+    CONTINUITY_LOOKBACK_DAYS = 5
+    CONTINUITY_PROMPT_LIMIT = 5
+    CONTINUITY_TOPIC_OVERLAP = 2
+    CONTINUITY_SENTIMENT_THRESHOLD = Decimal("0.2")
+    POSITIVE_HEADLINE_MARKERS = {
+        "beats",
+        "beat",
+        "growth",
+        "gains",
+        "gain",
+        "rises",
+        "rise",
+        "rally",
+        "rallies",
+        "raises",
+        "raise",
+        "approval",
+        "approved",
+        "expands",
+        "expansion",
+        "wins",
+        "win",
+        "upgrade",
+        "upgrades",
+    }
+    NEGATIVE_HEADLINE_MARKERS = {
+        "misses",
+        "miss",
+        "cuts",
+        "cut",
+        "falls",
+        "fall",
+        "slump",
+        "slumps",
+        "drops",
+        "drop",
+        "lawsuit",
+        "probe",
+        "probes",
+        "downgrade",
+        "downgrades",
+        "delays",
+        "delay",
+        "loss",
+        "losses",
+    }
 
     def __init__(self, user):
         self.user = user
@@ -171,56 +232,495 @@ class AIService:
         return "Reply with OK"
 
     @staticmethod
-    def build_indicator_insight_prompt(asset, indicators: dict, news_items: list[dict]) -> str:
-        return f"""You are analyzing one asset for a paper trading app.
+    def _normalize_text(text: str) -> str:
+        cleaned = re.sub(r"[^a-z0-9]+", " ", (text or "").lower())
+        return " ".join(cleaned.split())
 
-Return ONLY valid JSON with this exact shape:
-{{
-  "recommendation": "BUY" | "HOLD" | "SELL",
-  "confidence": integer from 0 to 100,
-  "technical_summary": "plain-English paragraph about the technical setup",
-  "news_context": "plain-English paragraph about the market or news context, or empty string if there is no meaningful context",
-  "price_target": number or null
-}}
+    @classmethod
+    def _headline_signature(cls, text: str) -> str:
+        tokens = []
+        for token in cls._normalize_text(text).split():
+            if token in HEADLINE_STOPWORDS or token in CORPORATE_SUFFIXES:
+                continue
+            tokens.append(token)
+        if not tokens:
+            return cls._normalize_text(text)
+        return " ".join(sorted(set(tokens)))
 
-Asset:
-- Symbol: {asset.display_symbol}
-- Name: {asset.name}
-- Market: {asset.market}
-- Currency: {asset.currency}
+    @classmethod
+    def _headline_terms(cls, text: str) -> set[str]:
+        tokens = set()
+        for token in cls._normalize_text(text).split():
+            if token in HEADLINE_STOPWORDS or token in CORPORATE_SUFFIXES:
+                continue
+            if token in cls.POSITIVE_HEADLINE_MARKERS or token in cls.NEGATIVE_HEADLINE_MARKERS:
+                continue
+            tokens.add(token)
+        return tokens
 
-Technical indicators:
-- RSI 14: {indicators.get("rsi_14")}
-- MACD: {indicators.get("macd")}
-- MACD signal: {indicators.get("macd_signal")}
-- MACD histogram: {indicators.get("macd_histogram")}
-- MA 20: {indicators.get("ma_20")}
-- MA 50: {indicators.get("ma_50")}
-- MA 200: {indicators.get("ma_200")}
-- Bollinger upper: {indicators.get("bb_upper")}
-- Bollinger middle: {indicators.get("bb_middle")}
-- Bollinger lower: {indicators.get("bb_lower")}
-- 20 day average volume: {indicators.get("volume_20d_avg")}
+    @classmethod
+    def _headline_direction(cls, text: str) -> str:
+        normalized = cls._normalize_text(text)
+        positive = sum(1 for marker in cls.POSITIVE_HEADLINE_MARKERS if marker in normalized)
+        negative = sum(1 for marker in cls.NEGATIVE_HEADLINE_MARKERS if marker in normalized)
+        if positive > negative:
+            return "positive"
+        if negative > positive:
+            return "negative"
+        return "neutral"
 
-Recent headlines:
-{chr(10).join(f"- {item['headline']} ({item['source']})" for item in news_items) if news_items else "- None"}
+    @classmethod
+    def _sentiment_label(cls, sentiment_score) -> str | None:
+        if sentiment_score is None:
+            return None
+        score = Decimal(str(sentiment_score))
+        if score >= cls.CONTINUITY_SENTIMENT_THRESHOLD:
+            return "positive"
+        if score <= -cls.CONTINUITY_SENTIMENT_THRESHOLD:
+            return "negative"
+        return "neutral"
 
-Writing rules:
-- Be useful to an everyday investor, not only a technical analyst.
-- First paragraph: explain what the indicators suggest in plain English.
-- Second paragraph: explain what broader news or market context may be influencing the asset right now.
-- If the headlines are weak, generic, or missing, set "news_context" to an empty string.
-- Do not mention every indicator mechanically.
-- No markdown."""
+    @classmethod
+    def _continuity_label(cls, current_item: dict, prior_item) -> str:
+        current_terms = cls._headline_terms(current_item["headline"])
+        prior_terms = cls._headline_terms(prior_item.headline)
+        overlap = len(current_terms & prior_terms)
+        if overlap < cls.CONTINUITY_TOPIC_OVERLAP:
+            return "new"
+
+        current_sentiment = cls._sentiment_label(current_item.get("sentiment_score"))
+        prior_sentiment = cls._sentiment_label(prior_item.sentiment_score)
+        if current_sentiment and prior_sentiment and current_sentiment != prior_sentiment:
+            return "shifted"
+
+        current_direction = cls._headline_direction(current_item["headline"])
+        prior_direction = cls._headline_direction(prior_item.headline)
+        if current_direction != "neutral" and prior_direction != "neutral" and current_direction != prior_direction:
+            return "shifted"
+
+        return "continuing"
+
+    @classmethod
+    def _best_prior_continuity_match(cls, asset, current_item: dict):
+        from markets.models import NewsItem
+
+        if not current_item.get("published_at"):
+            return None
+
+        window_start = current_item["published_at"] - timedelta(days=cls.CONTINUITY_LOOKBACK_DAYS)
+        excluded_id = current_item.get("news_item_id")
+        prior_items = (
+            NewsItem.objects.select_related("asset")
+            .filter(
+                asset=asset,
+                published_at__gte=window_start,
+                published_at__lt=current_item["published_at"],
+            )
+            .order_by("-published_at", "-fetched_at")
+        )
+        if excluded_id:
+            prior_items = prior_items.exclude(id=excluded_id)
+
+        current_terms = cls._headline_terms(current_item["headline"])
+        best_item = None
+        best_overlap = 0
+        for prior_item in prior_items:
+            overlap = len(current_terms & cls._headline_terms(prior_item.headline))
+            if overlap > best_overlap:
+                best_item = prior_item
+                best_overlap = overlap
+            if best_overlap >= cls.CONTINUITY_TOPIC_OVERLAP and overlap == best_overlap:
+                break
+
+        if best_overlap < cls.CONTINUITY_TOPIC_OVERLAP:
+            return None
+
+        return best_item
+
+    @classmethod
+    def build_story_so_far(cls, asset, context_items: list[dict]) -> list[dict]:
+        story_items = []
+        for item in context_items:
+            prior_item = cls._best_prior_continuity_match(asset, item)
+            label = "new" if prior_item is None else cls._continuity_label(item, prior_item)
+            story_items.append({
+                "label": label,
+                "news_item_id": item.get("news_item_id"),
+                "headline": item["headline"],
+                "source": item["source"],
+                "published_at": item.get("published_at"),
+                "sentiment": cls._sentiment_label(item.get("sentiment_score")),
+            })
+
+        label_rank = {"shifted": 0, "continuing": 1, "new": 2}
+        def sort_key(item: dict) -> tuple[int, float, str]:
+            published_at = item["published_at"] or timezone.now()
+            if timezone.is_naive(published_at):
+                published_at = timezone.make_aware(published_at, timezone=timezone.get_current_timezone())
+            return (
+                label_rank.get(item["label"], 3),
+                -published_at.timestamp(),
+                item["headline"].lower(),
+            )
+
+        ordered = sorted(
+            story_items,
+            key=sort_key,
+        )
+        return ordered[:cls.CONTINUITY_PROMPT_LIMIT]
+
+    @classmethod
+    def _matches_alias(cls, headline: str, alias: str) -> bool:
+        normalized_headline = f" {cls._normalize_text(headline)} "
+        normalized_alias = cls._normalize_text(alias)
+        if not normalized_alias:
+            return False
+        return f" {normalized_alias} " in normalized_headline
+
+    @classmethod
+    def _asset_aliases(cls, asset) -> list[str]:
+        names = [asset.display_symbol, asset.provider_symbol, asset.name]
+        base_name = cls._normalize_text(asset.name)
+        if base_name:
+            stripped_name = " ".join(
+                token for token in base_name.split()
+                if token not in CORPORATE_SUFFIXES
+            )
+            if stripped_name and stripped_name != base_name:
+                names.append(stripped_name)
+        return [name for name in names if name]
+
+    @classmethod
+    def _resolved_asset_metadata(cls, asset) -> tuple[str, str]:
+        override = ASSET_METADATA_OVERRIDES.get(asset.display_symbol, {})
+        sector = asset.sector or override.get("sector") or ""
+        industry = asset.industry or override.get("industry") or ""
+        return sector, industry
+
+    @staticmethod
+    def _source_quality(source: str) -> int:
+        return SOURCE_QUALITY.get((source or "").lower(), 1)
+
+    @staticmethod
+    def _impact_score(headline: str) -> int:
+        impact_keywords = (
+            "beats",
+            "misses",
+            "guidance",
+            "raises",
+            "cuts",
+            "merger",
+            "acquisition",
+            "lawsuit",
+            "tariff",
+            "opec",
+            "oil",
+            "rates",
+            "inflation",
+            "fed",
+            "cpi",
+            "earnings",
+            "dividend",
+        )
+        normalized = AIService._normalize_text(headline)
+        score = 0
+        for keyword in impact_keywords:
+            if keyword in normalized:
+                score += 2
+        if any(char.isdigit() for char in headline):
+            score += 1
+        if len(normalized.split()) >= 8:
+            score += 1
+        return score
+
+    @staticmethod
+    def _recency_score(published_at) -> int:
+        if not published_at:
+            return 0
+        if timezone.is_naive(published_at):
+            published_at = timezone.make_aware(published_at, timezone=timezone.get_current_timezone())
+        hours_old = max(0, (timezone.now() - published_at).total_seconds() / 3600)
+        if hours_old <= 6:
+            return 4
+        if hours_old <= 24:
+            return 3
+        if hours_old <= 72:
+            return 2
+        if hours_old <= 168:
+            return 1
+        return 0
+
+    @classmethod
+    def _ranking_score(cls, item: dict) -> tuple[int, int, int, int, str]:
+        directness = {
+            "symbol": 5,
+            "company": 4,
+            "sector": 3,
+            "industry": 3,
+            "macro": 2,
+            "theme": 2,
+        }.get(item["bucket"], 1)
+        return (
+            directness,
+            cls._impact_score(item["headline"]),
+            cls._source_quality(item["source"]),
+            cls._recency_score(item.get("published_at")),
+            item["headline"].lower(),
+        )
+
+    @classmethod
+    def _theme_match(cls, headline: str, asset_sector: str, asset_industry: str) -> dict | None:
+        normalized = cls._normalize_text(headline)
+        for rule in THEME_RULES:
+            if rule["sector_names"] and asset_sector not in rule["sector_names"]:
+                continue
+            if rule["industry_names"] and asset_industry not in rule["industry_names"]:
+                continue
+            if any(keyword in normalized for keyword in rule["keywords"]):
+                return rule
+        return None
+
+    @classmethod
+    def _classify_context_item(cls, item, asset, asset_sector: str, asset_industry: str) -> tuple[str | None, str, str]:
+        headline = item.headline or ""
+        if item.asset_id == asset.id:
+            if any(cls._matches_alias(headline, alias) for alias in (asset.display_symbol, asset.provider_symbol)):
+                return "symbol", f"asset:{asset.display_symbol}", "headline explicitly mentions the symbol"
+            if any(cls._matches_alias(headline, alias) for alias in cls._asset_aliases(asset)):
+                return "company", f"asset:{asset.display_symbol}", "headline explicitly mentions the company"
+            return "company", f"asset:{asset.display_symbol}", "current asset news"
+
+        if item.asset and asset_sector and item.asset.sector == asset_sector:
+            return "sector", f"sector:{asset_sector}", f"same sector asset: {item.asset.display_symbol}"
+
+        if item.asset and asset_industry and item.asset.industry == asset_industry:
+            return "industry", f"industry:{asset_industry}", f"same industry asset: {item.asset.display_symbol}"
+
+        matched_rule = cls._theme_match(headline, asset_sector, asset_industry)
+        if matched_rule:
+            provenance = f"{matched_rule['bucket']}:{matched_rule['name']}"
+            relevance_basis = f"keyword match: {matched_rule['name']}"
+            return matched_rule["bucket"], provenance, relevance_basis
+
+        return None, "", ""
+
+    @classmethod
+    def build_asset_context_pack(cls, asset, max_items: int = TOTAL_CONTEXT_LIMIT) -> list[dict]:
+        from markets.models import NewsItem
+
+        asset_sector, asset_industry = cls._resolved_asset_metadata(asset)
+        candidates: list[dict] = []
+
+        news_items = (
+            NewsItem.objects.select_related("asset")
+            .order_by("-published_at", "-fetched_at")[:200]
+        )
+
+        bucket_raw_counts: dict[str, int] = {bucket: 0 for bucket in BUCKET_ORDER}
+
+        for item in news_items:
+            bucket, provenance, relevance_basis = cls._classify_context_item(item, asset, asset_sector, asset_industry)
+            if bucket is None:
+                continue
+
+            if bucket_raw_counts[bucket] >= RAW_BUCKET_LIMITS[bucket]:
+                continue
+            bucket_raw_counts[bucket] += 1
+
+            candidates.append({
+                "news_item_id": str(item.id),
+                "headline": item.headline,
+                "url": item.url,
+                "source": item.source,
+                "published_at": item.published_at or item.fetched_at,
+                "bucket": bucket,
+                "provenance": provenance,
+                "relevance_basis": relevance_basis,
+                "asset_symbol": item.asset.display_symbol if item.asset_id else None,
+                "market": item.asset.market if item.asset_id else None,
+                "sentiment_score": item.sentiment_score,
+                "dedupe_key": cls._headline_signature(item.headline),
+            })
+
+        deduped: dict[str, dict] = {}
+        for candidate in candidates:
+            key = candidate["dedupe_key"]
+            existing = deduped.get(key)
+            if existing is None or cls._ranking_score(candidate) > cls._ranking_score(existing):
+                deduped[key] = candidate
+
+        selected_by_bucket: dict[str, list[dict]] = {bucket: [] for bucket in BUCKET_ORDER}
+        for candidate in deduped.values():
+            selected_by_bucket[candidate["bucket"]].append(candidate)
+
+        selected: list[dict] = []
+        for bucket in BUCKET_ORDER:
+            ranked = sorted(
+                selected_by_bucket[bucket],
+                key=cls._ranking_score,
+                reverse=True,
+            )[:BUCKET_LIMITS[bucket]]
+            selected.extend(ranked)
+
+        selected = sorted(selected, key=cls._ranking_score, reverse=True)[:max_items]
+
+        return [
+            {
+                "news_item_id": item["news_item_id"],
+                "headline": item["headline"],
+                "url": item["url"],
+                "source": item["source"],
+                "published_at": item["published_at"],
+                "bucket": item["bucket"],
+                "provenance": item["provenance"],
+                "relevance_basis": item["relevance_basis"],
+                "asset_symbol": item["asset_symbol"],
+                "market": item["market"],
+                "sentiment_score": item["sentiment_score"],
+            }
+            for item in selected
+        ]
+
+    @classmethod
+    def build_scope_context_pack(cls, assets, max_items: int = TOTAL_CONTEXT_LIMIT) -> list[dict]:
+        candidates: list[dict] = []
+        for asset in assets:
+            candidates.extend(cls.build_asset_context_pack(asset, max_items=max_items))
+
+        deduped: dict[str, dict] = {}
+        for candidate in candidates:
+            key = cls._headline_signature(candidate["headline"])
+            existing = deduped.get(key)
+            if existing is None or cls._ranking_score(candidate) > cls._ranking_score(existing):
+                deduped[key] = candidate
+
+        return sorted(deduped.values(), key=cls._ranking_score, reverse=True)[:max_items]
+
+    @staticmethod
+    def _format_news_line(item: dict) -> str:
+        return (
+            f"- [{item.get('bucket', 'news')}] {item['headline']} "
+            f"({item['source']}; {item.get('provenance', 'unclassified')})"
+        )
+
+    @staticmethod
+    def build_indicator_insight_prompt(
+        asset,
+        indicators: dict,
+        news_items: list[dict],
+        story_so_far: list[dict] | None = None,
+    ) -> str:
+        if story_so_far:
+            story_section = "\n".join(
+                "- [{label}] {headline} ({source}{sentiment})".format(
+                    label=item["label"],
+                    headline=item["headline"],
+                    source=item["source"],
+                    sentiment=f"; {item['sentiment']}" if item.get("sentiment") else "",
+                )
+                for item in story_so_far
+            )
+        else:
+            story_section = "- None"
+
+        news_lines = "\n".join(
+            AIService._format_news_line(item) for item in news_items
+        ) if news_items else "- None"
+
+        return (
+            "You are analyzing one asset for a paper trading app.\n\n"
+            "Return ONLY valid JSON with this exact shape:\n"
+            "{\n"
+            '  "recommendation": "BUY" | "HOLD" | "SELL",\n'
+            '  "confidence": integer from 0 to 100,\n'
+            '  "summary": "plain-English paragraph about the overall setup for an everyday investor",\n'
+            '  "technical_summary": "plain-English paragraph about the technical setup",\n'
+            '  "news_context": "plain-English paragraph about the market or news context, or '
+            'empty string if there is no meaningful context",\n'
+            '  "price_target": number or null\n'
+            "}\n\n"
+            f"Asset:\n"
+            f"- Symbol: {asset.display_symbol}\n"
+            f"- Name: {asset.name}\n"
+            f"- Market: {asset.market}\n"
+            f"- Currency: {asset.currency}\n\n"
+            "Technical indicators:\n"
+            f"- RSI 14: {indicators.get('rsi_14')}\n"
+            f"- MACD: {indicators.get('macd')}\n"
+            f"- MACD signal: {indicators.get('macd_signal')}\n"
+            f"- MACD histogram: {indicators.get('macd_histogram')}\n"
+            f"- MA 20: {indicators.get('ma_20')}\n"
+            f"- MA 50: {indicators.get('ma_50')}\n"
+            f"- MA 200: {indicators.get('ma_200')}\n"
+            f"- Bollinger upper: {indicators.get('bb_upper')}\n"
+            f"- Bollinger middle: {indicators.get('bb_middle')}\n"
+            f"- Bollinger lower: {indicators.get('bb_lower')}\n"
+            f"- 20 day average volume: {indicators.get('volume_20d_avg')}\n\n"
+            "Context pack:\n"
+            f"{news_lines}\n\n"
+            "Story so far:\n"
+            f"{story_section}\n\n"
+            "Writing rules:\n"
+            "- Write the summary as the main takeaway for an everyday investor.\n"
+            "- Keep the summary free of technical jargon and do not repeat the technical paragraph.\n"
+            "- Technical summary should only describe the indicators and chart setup.\n"
+            "- News context should only describe the broader news or market context.\n"
+            '- If the headlines are weak, generic, or missing, set "news_context" to an empty string.\n'
+            "- Do not mention every indicator mechanically.\n"
+            "- No markdown."
+        )
+
+    @staticmethod
+    def build_scope_insight_prompt(
+        scope_type: str,
+        scope_label: str,
+        holdings: list[dict],
+        news_items: list[dict],
+    ) -> str:
+        holdings_lines = "\n".join(
+            f"- {item['symbol']} | {item['name']} | {item.get('position_detail', item.get('current_price', '-'))}"
+            for item in holdings
+        ) if holdings else "- None"
+        news_lines = "\n".join(
+            AIService._format_news_line(item) for item in news_items
+        ) if news_items else "- None"
+
+        return (
+            "You are analyzing one monitored set for a paper trading app.\n\n"
+            "Return ONLY valid JSON with this exact shape:\n"
+            "{\n"
+            '  "recommendation": "BUY" | "HOLD" | "SELL",\n'
+            '  "confidence": integer from 0 to 100,\n'
+            '  "summary": "plain-English paragraph about the monitored set overall",\n'
+            '  "technical_summary": "plain-English paragraph about the scope\'s technical posture",\n'
+            '  "news_context": "plain-English paragraph about the broader news or market context, or '
+            'empty string if there is no meaningful context"\n'
+            "}\n\n"
+            f"Scope:\n"
+            f"- Type: {scope_type}\n"
+            f"- Label: {scope_label}\n"
+            f"- Asset count: {len(holdings)}\n\n"
+            "Holdings:\n"
+            f"{holdings_lines}\n\n"
+            "Context pack:\n"
+            f"{news_lines}\n\n"
+            "Writing rules:\n"
+            "- Focus on the monitored set as a whole, not one asset at a time.\n"
+            "- Explain how the holdings relate to each other and what the combined setup suggests.\n"
+            '- If the headlines are weak, generic, or missing, set "news_context" to an empty string.\n'
+            "- Do not mention every holding mechanically.\n"
+            "- No markdown."
+        )
 
     @staticmethod
     def build_sentiment_prompt(headlines: list[str]) -> str:
-        return f"""Analyze the sentiment of each headline and return a JSON object mapping each headline to a sentiment score from -1.0 (most negative) to 1.0 (most positive).
-
-Headlines:
-{chr(10).join(f'- {h}' for h in headlines)}
-
-Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
+        return (
+            "Analyze the sentiment of each headline and return a JSON object mapping each headline "
+            "to a sentiment score from -1.0 (most negative) to 1.0 (most positive).\n\n"
+            "Headlines:\n"
+            f"{chr(10).join(f'- {h}' for h in headlines)}\n\n"
+            'Return ONLY valid JSON object, e.g. {"headline1": -0.5, "headline2": 0.3}'
+        )
 
     @staticmethod
     def _estimate_openai_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
@@ -311,16 +811,20 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
         raise ValueError(f"Unsupported provider: {provider}")
 
     def analyze_asset(self, asset) -> dict:
-        from markets.models import NewsItem
         from markets.services import NewsService
         from trading.technical import IndicatorCalculator
 
         if not self.ai_auth or not self.get_api_key():
             raise ValueError("AI is not configured for this user")
 
-        cache_key = f"ai_insight:{self.user.id}:{asset.id}"
+        cache_key = f"ai_insight:v2:{self.user.id}:{asset.id}"
+        legacy_cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cached = cache.get(cache_key)
         if cached:
+            return cached
+        cached = cache.get(legacy_cache_key)
+        if cached:
+            cache.set(cache_key, cached, timeout=86400)
             return cached
 
         self.check_budget()
@@ -330,17 +834,14 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
             raise ValueError("Not enough historical data to generate AI insight")
 
         NewsService.fetch_and_store_news(asset)
-        news_items = list(
-            NewsItem.objects.filter(asset=asset)
-            .order_by("-published_at", "-fetched_at")[:5]
-            .values("headline", "source", "published_at")
-        )
+        news_items = self.build_asset_context_pack(asset)
+        story_so_far = self.build_story_so_far(asset, news_items)
 
         provider = self.ai_auth.provider_name
         model = self.ai_auth.get_model_for_task("indicator_insight")
         api_key = self.get_api_key()
 
-        prompt = self.build_indicator_insight_prompt(asset, indicators, news_items)
+        prompt = self.build_indicator_insight_prompt(asset, indicators, news_items, story_so_far)
 
         response_text = ""
         prompt_tokens = 0
@@ -400,30 +901,133 @@ Return ONLY valid JSON object, e.g. {{"headline1": -0.5, "headline2": 0.3}}"""
             "market": asset.market,
             "recommendation": parsed.get("recommendation", "HOLD"),
             "confidence": int(parsed.get("confidence", 50)),
+            "summary": parsed.get("summary", parsed.get("reasoning", "")),
             "technical_summary": parsed.get("technical_summary", ""),
             "news_context": parsed.get("news_context", ""),
-            "reasoning": "\n\n".join(
-                part for part in [
-                    parsed.get("technical_summary", ""),
-                    parsed.get("news_context", ""),
-                ] if part
-            ),
+            "reasoning": parsed.get("reasoning", ""),
             "price_target": parsed.get("price_target"),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
             "news_items": [
                 {
                     "headline": item["headline"],
+                    "url": item["url"],
                     "source": item["source"],
                     "published_at": item["published_at"].isoformat() if item["published_at"] else None,
+                    "bucket": item["bucket"],
+                    "provenance": item["provenance"],
+                    "relevance_basis": item["relevance_basis"],
+                    "asset_symbol": item["asset_symbol"],
+                    "market": item["market"],
                 }
                 for item in news_items
             ],
         }
 
-        cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cache.set(cache_key, result, timeout=86400)
 
+        return result
+
+    def analyze_scope(self, scope_type: str, scope_label: str, assets, holdings: list[dict]) -> dict:
+        if scope_type not in {"portfolio", "watch"}:
+            raise ValueError(f"Unsupported scope type: {scope_type}")
+        if not assets:
+            raise ValueError("No assets available for monitored set insight")
+        if not self.ai_auth or not self.get_api_key():
+            raise ValueError("AI is not configured for this user")
+
+        news_items = self.build_scope_context_pack(assets)
+        scope_signature = hashlib.sha256(
+            json.dumps(
+                {
+                    "scope_type": scope_type,
+                    "scope_label": scope_label,
+                    "holdings": holdings,
+                    "news_items": news_items,
+                },
+                sort_keys=True,
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()
+        cache_key = f"ai_scope_insight:v2:{self.user.id}:{scope_type}:{scope_signature}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
+        self.check_budget()
+
+        provider = self.ai_auth.provider_name
+        model = self.ai_auth.get_model_for_task("indicator_insight")
+        api_key = self.get_api_key()
+        prompt = self.build_scope_insight_prompt(scope_type, scope_label, holdings, news_items)
+
+        response_text = ""
+        prompt_tokens = 0
+        completion_tokens = 0
+
+        if provider == "anthropic":
+            import anthropic
+
+            client = anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model=model,
+                max_tokens=300,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            response_text = message.content[0].text if message.content else ""
+            if getattr(message, "usage", None):
+                prompt_tokens = getattr(message.usage, "input_tokens", 0) or 0
+                completion_tokens = getattr(message.usage, "output_tokens", 0) or 0
+        elif provider == "openai":
+            import openai
+
+            response = openai.OpenAI(api_key=api_key).responses.create(
+                model=model,
+                max_output_tokens=300,
+                input=prompt,
+            )
+            response_text = response.output_text
+            if getattr(response, "usage", None):
+                prompt_tokens = getattr(response.usage, "input_tokens", 0) or 0
+                completion_tokens = getattr(response.usage, "output_tokens", 0) or 0
+        elif provider == "google":
+            import google.generativeai as genai
+
+            genai.configure(api_key=api_key)
+            response = genai.GenerativeModel(model).generate_content(prompt)
+            response_text = response.text
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+        cost_usd = self._estimate_provider_cost(provider, model, prompt_tokens, completion_tokens)
+
+        parsed = self._extract_json_object(response_text)
+        if not parsed:
+            raise ValueError("AI returned an invalid response")
+
+        self.log_call(
+            model_name=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cost_usd=cost_usd,
+            task_type=f"{scope_type}_insight",
+        )
+
+        result = {
+            "scope_type": scope_type,
+            "scope_label": scope_label,
+            "asset_count": len(holdings),
+            "recommendation": parsed.get("recommendation", "HOLD"),
+            "confidence": int(parsed.get("confidence", 50)),
+            "summary": parsed.get("summary", ""),
+            "technical_summary": parsed.get("technical_summary", ""),
+            "news_context": parsed.get("news_context", ""),
+            "reasoning": parsed.get("reasoning", ""),
+            "model_used": model,
+            "generated_at": timezone.now().isoformat(),
+        }
+
+        cache.set(cache_key, result, timeout=900)
         return result
 
     @staticmethod

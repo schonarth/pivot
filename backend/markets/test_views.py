@@ -1,9 +1,10 @@
-import pytest
-from decimal import Decimal
 from datetime import timedelta
+from decimal import Decimal
+from unittest.mock import ANY, patch
+
+import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
-from unittest.mock import patch
 
 from ai.services import AIBudgetError
 from markets.models import NewsItem, OHLCV
@@ -60,7 +61,11 @@ class TestMarketEndpoints:
     def test_market_config_list(self, authenticated_client):
         response = authenticated_client.get("/api/markets/")
         assert response.status_code == 200
-        data = response.data["results"] if isinstance(response.data, dict) and "results" in response.data else response.data
+        data = (
+            response.data["results"]
+            if isinstance(response.data, dict) and "results" in response.data
+            else response.data
+        )
         assert isinstance(data, list)
 
     def test_asset_refresh_price_returns_quote(self, authenticated_client, asset_with_quote):
@@ -130,9 +135,10 @@ class TestMarketEndpoints:
             "market": asset.market,
             "recommendation": "BUY",
             "confidence": 78,
+            "summary": "Trend remains constructive.",
             "technical_summary": "Trend remains constructive.",
             "news_context": "Recent coverage is supportive.",
-            "reasoning": "Trend remains constructive.\n\nRecent coverage is supportive.",
+            "reasoning": "",
             "price_target": 145.5,
             "model_used": "gpt-4o-mini",
             "generated_at": timezone.now().isoformat(),
@@ -153,3 +159,52 @@ class TestMarketEndpoints:
 
         assert response.status_code == 402
         assert response.data["error"]["code"] == "budget_exceeded"
+
+
+@pytest.mark.django_db
+class TestOhlcvBackfillEndpoints:
+    @patch("markets.views.get_backfill_status")
+    def test_ohlcv_backfill_status_returns_status(self, mock_status, authenticated_client):
+        mock_status.return_value = {
+            "state": "running",
+            "source": "startup",
+            "initiated_by": None,
+            "total_assets": 3,
+            "processed_assets_count": 1,
+            "successful_assets": 1,
+            "failed_assets": 0,
+            "current_asset": {"symbol": "AAA", "index": 2, "total_assets": 3},
+            "processed_assets": [],
+            "started_at": "2026-04-16T00:00:00Z",
+            "updated_at": "2026-04-16T00:00:01Z",
+            "completed_at": None,
+        }
+
+        response = authenticated_client.get("/api/markets/ohlcv-backfill/")
+
+        assert response.status_code == 200
+        assert response.data["state"] == "running"
+        mock_status.assert_called_once()
+
+    @patch("markets.views.queue_ohlcv_backfill")
+    def test_ohlcv_backfill_start_queues_task(self, mock_queue, authenticated_client):
+        mock_queue.return_value = (True, {
+            "state": "queued",
+            "source": "manual",
+            "initiated_by": "user-id",
+            "total_assets": 3,
+            "processed_assets_count": 0,
+            "successful_assets": 0,
+            "failed_assets": 0,
+            "current_asset": None,
+            "processed_assets": [],
+            "started_at": "2026-04-16T00:00:00Z",
+            "updated_at": "2026-04-16T00:00:01Z",
+            "completed_at": None,
+        })
+
+        response = authenticated_client.post("/api/markets/ohlcv-backfill/")
+
+        assert response.status_code == 202
+        assert response.data["queued"] is True
+        mock_queue.assert_called_once_with(source="manual", initiated_by=ANY)

@@ -14,11 +14,11 @@ ADR-001 Open News Context Expansion
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4-Mini / implementation
 
 ## Branch
 
@@ -26,16 +26,21 @@ feat/autonomous/01-asset-context
 
 ## Date Started
 
-not started
+2026-04-15
 
 ## Date Completed
 
-not started
+2026-04-15
 
 ## Dependencies
 
 - 00 - milestone coordination.md
 - 01 - existing-pipeline-scan-and-insertion-point.md
+
+## Required Prior References
+
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
+- `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
 ## Likely Files Touched
 
@@ -47,6 +52,7 @@ not started
 
 - insertion point identified
 - current asset metadata sources reviewed
+- required Milestone 00 references reviewed
 
 ## Background
 
@@ -85,18 +91,19 @@ ADR-001 expands context selection from symbol-only headlines to a broader determ
 
 ## Task Steps
 
-1. Define the source buckets for Milestone 01:
+1. Reuse the Milestone 00 vocabulary and storage boundaries as constraints.
+2. Define the source buckets for Milestone 01:
    - symbol
    - company
    - sector
    - industry
    - macro
    - theme
-2. Decide what project data should seed sector and industry lookup first.
-3. Decide what should be configuration versus code for thematic keyword mappings.
-4. Define the tag set and the minimum metadata each context item should carry.
-5. Keep the design deterministic and compact.
-6. Exclude temporal continuity and sentiment trajectory from this task.
+3. Decide what project data should seed sector and industry lookup first.
+4. Decide what should be configuration versus code for thematic keyword mappings.
+5. Define the tag set and the minimum metadata each context item should carry in a way that matches the Milestone 00 interface contract.
+6. Keep the design deterministic and compact.
+7. Exclude temporal continuity and sentiment trajectory from this task.
 
 ## Tests to Add or Update
 
@@ -119,7 +126,18 @@ ADR-001 expands context selection from symbol-only headlines to a broader determ
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Defined the Milestone 01 source model and tagging policy.
+
+What was done:
+
+- fixed the source buckets as `symbol`, `company`, `sector`, `industry`, `macro`, and `theme`
+- established deterministic fallback behavior for incomplete metadata using existing asset data first, then explicit overrides
+- defined the minimum context-item metadata needed for tagged asset analysis
+- kept thematic mappings in code as a small versioned policy artifact instead of a database-backed structure
+
+Open follow-ups:
+
+- populate `ASSET_METADATA_OVERRIDES` only if a real seeded-data gap appears
 
 ## Open Follow-Ups
 

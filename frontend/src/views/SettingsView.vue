@@ -98,6 +98,7 @@
             </button>
           </div>
         </div>
+        <OhlcvBackfillSettings />
       </div>
       <div class="settings-right">
         <AISettings />
@@ -113,6 +114,7 @@ import { useToast } from '@/composables/useToast'
 import { useNotifications } from '@/composables/useNotifications'
 import MCPSettings from '@/components/MCPSettings.vue'
 import AISettings from '@/components/AISettings.vue'
+import OhlcvBackfillSettings from '@/components/OhlcvBackfillSettings.vue'
 
 const settings = useSettingsStore()
 const toast = useToast()
