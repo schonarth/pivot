@@ -76,17 +76,26 @@ describe('AssetAnalysisTab', () => {
       market: 'US',
       recommendation: 'HOLD',
       confidence: 55,
+      summary: 'Summary first',
       technical_summary: 'Technical summary',
-      news_context: 'News context',
-      reasoning: 'Reasoning',
+      news_context: 'Legacy news context',
+      reasoning: '',
       price_target: null,
       model_used: 'gpt-test',
       generated_at: '2025-04-02T00:00:00.000Z',
-      news_items: [],
+      news_items: [
+        { headline: 'Headline one', source: 'Source A', published_at: null },
+        { headline: 'Headline two', source: 'Source B', published_at: null },
+      ],
     })
   })
 
   it('renders split chart panels and keeps the price pane logarithmic', async () => {
+    let resolveInsight: ((value: any) => void) | undefined
+    vi.mocked(getAssetAIInsight).mockImplementation(() => new Promise((resolve) => {
+      resolveInsight = resolve
+    }))
+
     const wrapper = mount(AssetAnalysisTab, {
       props: {
         assetId: 'asset-1',
@@ -100,6 +109,35 @@ describe('AssetAnalysisTab', () => {
 
     await flushPromises()
 
+    await wrapper.findAll('button').find((button) => button.text() === 'Generate Insight')?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('button').find((button) => button.text() === 'Generating...')).toBeTruthy()
+    expect(wrapper.find('.asset-insight-loading').exists()).toBe(true)
+    expect(wrapper.find('.asset-insight-loading-box').exists()).toBe(true)
+
+    if (resolveInsight) {
+      resolveInsight({
+        symbol: 'TEST',
+        market: 'US',
+        recommendation: 'HOLD',
+        confidence: 55,
+        summary: 'Summary first',
+        technical_summary: 'Technical summary',
+        news_context: 'Legacy news context',
+        reasoning: '',
+        price_target: null,
+        model_used: 'gpt-test',
+        generated_at: '2025-04-02T00:00:00.000Z',
+        news_items: [
+          { headline: 'Headline one', source: 'Source A', published_at: null },
+          { headline: 'Headline two', source: 'Source B', published_at: null },
+        ],
+      })
+    }
+
+    await flushPromises()
+
     const indicatorGroups = wrapper.findAll('.indicator-pills')
     expect(indicatorGroups).toHaveLength(2)
     expect(indicatorGroups[0].text()).toContain('Moving Averages')
@@ -109,6 +147,11 @@ describe('AssetAnalysisTab', () => {
 
     expect(wrapper.find('.chart-container-main').exists()).toBe(true)
     expect(wrapper.find('.chart-container-oscillator').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Summary first')
+    expect(wrapper.text()).toContain('Technical summary')
+    expect(wrapper.text()).toContain('Headline one')
+    expect(wrapper.text()).toContain('Headline two')
+    expect(wrapper.text()).not.toContain('Legacy news context')
 
     expect(apexChartsState.instances).toHaveLength(2)
 

@@ -631,6 +631,7 @@ class AIService:
             "{\n"
             '  "recommendation": "BUY" | "HOLD" | "SELL",\n'
             '  "confidence": integer from 0 to 100,\n'
+            '  "summary": "plain-English paragraph about the overall setup for an everyday investor",\n'
             '  "technical_summary": "plain-English paragraph about the technical setup",\n'
             '  "news_context": "plain-English paragraph about the market or news context, or '
             'empty string if there is no meaningful context",\n'
@@ -658,9 +659,10 @@ class AIService:
             "Story so far:\n"
             f"{story_section}\n\n"
             "Writing rules:\n"
-            "- Be useful to an everyday investor, not only a technical analyst.\n"
-            "- First paragraph: explain what the indicators suggest in plain English.\n"
-            "- Second paragraph: explain what broader news or market context may be influencing the asset right now.\n"
+            "- Write the summary as the main takeaway for an everyday investor.\n"
+            "- Keep the summary free of technical jargon and do not repeat the technical paragraph.\n"
+            "- Technical summary should only describe the indicators and chart setup.\n"
+            "- News context should only describe the broader news or market context.\n"
             '- If the headlines are weak, generic, or missing, set "news_context" to an empty string.\n'
             "- Do not mention every indicator mechanically.\n"
             "- No markdown."
@@ -813,7 +815,7 @@ class AIService:
         if not self.ai_auth or not self.get_api_key():
             raise ValueError("AI is not configured for this user")
 
-        cache_key = f"ai_insight:{self.user.id}:{asset.id}"
+        cache_key = f"ai_insight:v2:{self.user.id}:{asset.id}"
         cached = cache.get(cache_key)
         if cached:
             return cached
@@ -892,14 +894,10 @@ class AIService:
             "market": asset.market,
             "recommendation": parsed.get("recommendation", "HOLD"),
             "confidence": int(parsed.get("confidence", 50)),
+            "summary": parsed.get("summary", parsed.get("reasoning", "")),
             "technical_summary": parsed.get("technical_summary", ""),
             "news_context": parsed.get("news_context", ""),
-            "reasoning": "\n\n".join(
-                part for part in [
-                    parsed.get("technical_summary", ""),
-                    parsed.get("news_context", ""),
-                ] if part
-            ),
+            "reasoning": parsed.get("reasoning", ""),
             "price_target": parsed.get("price_target"),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
@@ -944,7 +942,7 @@ class AIService:
                 default=str,
             ).encode("utf-8")
         ).hexdigest()
-        cache_key = f"ai_scope_insight:{self.user.id}:{scope_type}:{scope_signature}"
+        cache_key = f"ai_scope_insight:v2:{self.user.id}:{scope_type}:{scope_signature}"
         cached = cache.get(cache_key)
         if cached:
             return cached
@@ -1017,13 +1015,7 @@ class AIService:
             "summary": parsed.get("summary", ""),
             "technical_summary": parsed.get("technical_summary", ""),
             "news_context": parsed.get("news_context", ""),
-            "reasoning": "\n\n".join(
-                part for part in [
-                    parsed.get("summary", ""),
-                    parsed.get("technical_summary", ""),
-                    parsed.get("news_context", ""),
-                ] if part
-            ),
+            "reasoning": parsed.get("reasoning", ""),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
         }

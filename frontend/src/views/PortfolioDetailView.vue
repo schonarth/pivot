@@ -1,8 +1,19 @@
 <template>
   <div
-    v-if="summary"
-    :style="summary.is_simulating ? { backgroundColor: 'rgba(255, 193, 7, 0.03)', minHeight: '100vh' } : {}"
+    v-if="loading"
+    class="portfolio-loading"
   >
+    <span class="spinner" />
+  </div>
+  <div
+    v-else-if="summary"
+    class="portfolio-detail"
+    :class="{ 'portfolio-detail-simulating': summary.is_simulating }"
+  >
+    <div
+      v-if="summary.is_simulating"
+      class="portfolio-detail-simulating-overlay"
+    />
     <div class="page-header">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <h1>{{ summary.name }}</h1>
@@ -124,26 +135,6 @@
     </div>
 
     <div
-      class="grid grid-2"
-      style="margin-top: 1rem;"
-    >
-      <ScopeInsightCard
-        title="Portfolio AI Summary"
-        scope-label="Portfolio positions"
-        :asset-count="positionAssessments.length"
-        empty-message="No positions to analyze yet."
-        :insight="portfolioInsight"
-      />
-      <ScopeInsightCard
-        title="Watch AI Summary"
-        scope-label="Portfolio watch"
-        :asset-count="watchAssessments.length"
-        empty-message="No watch assets to analyze yet."
-        :insight="watchInsight"
-      />
-    </div>
-
-    <div
       class="tabs"
       style="margin-top: 2rem;"
     >
@@ -188,6 +179,13 @@
     </div>
 
     <div v-if="activeTab === 'positions'">
+      <ScopeInsightCard
+        title="Portfolio AI Summary"
+        scope-label="Portfolio positions"
+        :asset-count="positionAssessments.length"
+        empty-message="No positions to analyze yet."
+        :insight="portfolioInsight"
+      />
       <div
         v-if="summary.positions.length"
         class="card"
@@ -250,7 +248,14 @@
       </div>
     </div>
 
-      <div v-if="activeTab === 'watch'">
+    <div v-if="activeTab === 'watch'">
+      <ScopeInsightCard
+        title="Watch AI Summary"
+        scope-label="Portfolio watch"
+        :asset-count="watchAssessments.length"
+        empty-message="No watch assets to analyze yet."
+        :insight="watchInsight"
+      />
       <div class="card" style="margin-bottom: 1rem;">
         <h3 style="margin-bottom: 0.75rem;">
           Add to Watch
@@ -815,6 +820,7 @@ const getPortfolioId = () => {
 const portfolioId = ref(getPortfolioId())
 
 const summary = ref<PortfolioSummary | null>(null)
+const loading = ref(true)
 const timeline = ref<any[]>([])
 const refreshing = ref(false)
 const showDeposit = ref(false)
@@ -904,12 +910,17 @@ watch(
 
 async function load() {
   if (!portfolioId.value || portfolioId.value === 'undefined') {
-    await router.replace('/portfolios')
+    await router.replace('/')
     return
   }
-  summary.value = await getPortfolioSummary(portfolioId.value)
-  timeline.value = await getPortfolioTimeline(portfolioId.value)
-  await loadAlerts()
+  loading.value = true
+  try {
+    summary.value = await getPortfolioSummary(portfolioId.value)
+    timeline.value = await getPortfolioTimeline(portfolioId.value)
+    await loadAlerts()
+  } finally {
+    loading.value = false
+  }
 }
 
 async function loadAlerts() {
@@ -1188,6 +1199,40 @@ function outcomeLabel(outcome: string): string {
   return labels[outcome] ?? outcome
 }
 </script>
+
+<style scoped>
+.portfolio-loading {
+  min-height: calc(100vh - 3.5rem);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: calc((100vh - 3.5rem) / 3);
+}
+
+.portfolio-detail {
+  min-height: calc(100vh - 3.5rem);
+}
+
+.portfolio-detail-simulating {
+  position: relative;
+}
+
+.portfolio-detail-simulating > * {
+  position: relative;
+  z-index: 1;
+}
+
+.portfolio-detail-simulating-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 193, 7, 0.03);
+  pointer-events: none;
+  z-index: 0;
+}
+</style>
 
 <style scoped>
 .modal-overlay {

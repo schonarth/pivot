@@ -89,7 +89,7 @@ const trades = ref<Trade[]>([])
 
 onMounted(async () => {
   if (!portfolioId) {
-    await router.replace('/portfolios')
+    await router.replace('/')
     return
   }
   trades.value = await getTrades(portfolioId)
