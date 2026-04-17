@@ -144,6 +144,7 @@ export interface AssetAIInsight {
   market: string
   recommendation: 'BUY' | 'HOLD' | 'SELL'
   confidence: number
+  summary: string
   technical_summary: string
   news_context: string
   reasoning: string

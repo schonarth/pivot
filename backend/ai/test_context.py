@@ -190,6 +190,7 @@ class TestAssetInsightPrompt:
         fake_response = SimpleNamespace(
             output_text=(
                 '{"recommendation":"HOLD","confidence":55,'
+                '"summary":"The setup is balanced.",'
                 '"technical_summary":"Trend is steady.",'
                 '"news_context":"Rates matter.",'
                 '"price_target":null}'

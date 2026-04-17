@@ -23,13 +23,6 @@
           <h2 style="margin-bottom: 0.25rem;">
             AI Insight
           </h2>
-          <div
-            v-if="insight"
-            class="text-muted"
-            style="font-size: 0.75rem;"
-          >
-            {{ insight.model_used }} · {{ formatDate(insight.generated_at) }}
-          </div>
         </div>
         <button
           class="btn btn-secondary btn-sm"
@@ -47,53 +40,28 @@
         {{ insightError }}
       </div>
 
+      <div
+        v-else-if="loadingInsight"
+        class="asset-insight-loading"
+      >
+        <div class="asset-insight-loading-box">
+          <span class="spinner" />
+        </div>
+      </div>
+
       <div v-else-if="insight">
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
-          <span class="badge" :class="recommendationBadgeClass(insight.recommendation)">
-            {{ insight.recommendation }}
-          </span>
-          <span class="badge badge-secondary">
-            Confidence {{ insight.confidence }}%
-          </span>
-          <span
-            v-if="insight.price_target !== null"
-            class="badge badge-secondary"
-          >
-            Target {{ insight.price_target }}
-          </span>
-        </div>
-
-        <p
-          v-if="insight.technical_summary"
-          style="margin-bottom: 0.75rem; line-height: 1.5;"
-        >
-          {{ insight.technical_summary }}
-        </p>
-
-        <p
-          v-if="insight.news_context"
-          style="margin-bottom: 1rem; line-height: 1.5;"
-        >
-          {{ insight.news_context }}
-        </p>
-
-        <div v-if="insight.news_items.length">
-          <div
-            class="text-muted"
-            style="font-size: 0.75rem; margin-bottom: 0.5rem;"
-          >
-            Headlines used
-          </div>
-          <ul style="margin: 0; padding-left: 1rem;">
-            <li
-              v-for="item in insight.news_items"
-              :key="`${item.source}-${item.headline}`"
-              style="margin-bottom: 0.35rem;"
-            >
-              {{ item.headline }} <span class="text-muted">({{ item.source }})</span>
-            </li>
-          </ul>
-        </div>
+        <AIInsightNarrative
+          :recommendation="insight.recommendation"
+          :confidence="insight.confidence"
+          :summary-text="insight.summary"
+          :technical-text="insight.technical_summary"
+          footer-label="Headlines used"
+          :footer-text="insight.news_items.length ? '' : insight.news_context"
+          :footnotes="insight.news_items"
+          :price-target="insight.price_target"
+          :model-used="insight.model_used"
+          :generated-at="insight.generated_at"
+        />
       </div>
 
       <div
@@ -257,6 +225,7 @@ import ApexCharts from 'apexcharts'
 import { getAssetAIInsight, getAssetOHLCV, getAssetIndicators } from '@/api/assets'
 import { useNotifications } from '@/composables/useNotifications'
 import type { AssetAIInsight } from '@/types'
+import AIInsightNarrative from './AIInsightNarrative.vue'
 
 interface Props {
   assetId: string
@@ -361,16 +330,6 @@ async function loadInsight() {
   } finally {
     loadingInsight.value = false
   }
-}
-
-function recommendationBadgeClass(recommendation: string): string {
-  if (recommendation === 'BUY') return 'badge-success'
-  if (recommendation === 'SELL') return 'badge-danger'
-  return 'badge-warning'
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleString()
 }
 
 function destroyCharts() {
@@ -805,6 +764,26 @@ onBeforeUnmount(() => {
   destroyCharts()
 })
 </script>
+
+<style scoped>
+.asset-insight-loading {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-insight-loading-box {
+  width: 5rem;
+  height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+</style>
 
 <style scoped>
 .chart-panel + .chart-panel {
