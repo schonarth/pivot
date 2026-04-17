@@ -1,5 +1,5 @@
 import { mount, flushPromises } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MarketStatusPanel from '../MarketStatusPanel.vue'
 
 vi.mock('@/api/markets', () => ({
@@ -11,13 +11,27 @@ const { getMarketStatus } = await import('@/api/markets')
 describe('MarketStatusPanel', () => {
   beforeEach(() => {
     vi.mocked(getMarketStatus).mockReset()
+    vi.useFakeTimers()
   })
 
-  it('renders a loading skeleton and then loaded market cards', async () => {
-    let resolveStatus: ((value: any) => void) | undefined
-    vi.mocked(getMarketStatus).mockImplementation(() => new Promise((resolve) => {
-      resolveStatus = resolve
-    }))
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('renders a loading skeleton and refreshes every hour', async () => {
+    vi.mocked(getMarketStatus)
+      .mockResolvedValueOnce({
+        BR: { open: true },
+        US: { open: false },
+        UK: { open: true },
+        EU: { open: false },
+      })
+      .mockResolvedValueOnce({
+        BR: { open: false },
+        US: { open: true },
+        UK: { open: false },
+        EU: { open: true },
+      })
 
     const wrapper = mount(MarketStatusPanel, {
       global: {
@@ -31,18 +45,15 @@ describe('MarketStatusPanel', () => {
     expect(wrapper.findAll('.market-status-skeleton')).toHaveLength(4)
     expect(wrapper.find('.spinner').exists()).toBe(true)
 
-    if (resolveStatus) {
-      resolveStatus({
-        BR: { open: true },
-        US: { open: false },
-        UK: { open: true },
-        EU: { open: false },
-      })
-    }
-
     await flushPromises()
 
     expect(wrapper.text()).toContain('Open')
     expect(wrapper.text()).toContain('Closed')
+    expect(vi.mocked(getMarketStatus)).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    await flushPromises()
+
+    expect(vi.mocked(getMarketStatus)).toHaveBeenCalledTimes(2)
   })
 })

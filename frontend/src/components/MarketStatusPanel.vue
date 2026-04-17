@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <div v-else-if="loadError" class="text-muted">
+    <div v-else-if="loadError && !hasStatus" class="text-muted">
       {{ loadError }}
     </div>
 
@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
 import { getMarketStatus } from '@/api/markets'
 import type { MarketStatus } from '@/types'
@@ -61,14 +61,36 @@ const markets = ['BR', 'US', 'UK', 'EU']
 const loading = ref(true)
 const loadError = ref('')
 const statusByMarket = ref<MarketStatus>({})
+const refreshIntervalMs = 60 * 60 * 1000
+const hasStatus = computed(() => markets.some((market) => market in statusByMarket.value))
+let refreshTimer: number | null = null
 
-onMounted(async () => {
+async function loadStatus(showLoading = false) {
+  if (showLoading) {
+    loading.value = true
+  }
   try {
+    loadError.value = ''
     statusByMarket.value = await getMarketStatus()
   } catch {
-    loadError.value = 'Market status is unavailable right now.'
+    if (!hasStatus.value) {
+      loadError.value = 'Market status is unavailable right now.'
+    }
   } finally {
     loading.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadStatus(true)
+  refreshTimer = window.setInterval(() => {
+    void loadStatus()
+  }, refreshIntervalMs)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer !== null) {
+    window.clearInterval(refreshTimer)
   }
 })
 </script>

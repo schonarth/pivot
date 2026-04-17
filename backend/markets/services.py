@@ -73,7 +73,13 @@ def is_market_open(market_code: str) -> bool:
         return None
     try:
         cal = get_calendar(cfg["exchange"])
-        return cal.is_session(timezone.now().date())
+        now = timezone.now()
+        if not cal.is_session(now.date()):
+            return False
+
+        open_at = cal.session_open(now.date())
+        close_at = cal.session_close(now.date())
+        return open_at <= now <= close_at
     except Exception:
         return None
 

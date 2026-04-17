@@ -1,10 +1,10 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>Dashboard</h1>
       <router-link
         to="/portfolios/new"
         class="btn"
+        style="margin-left: auto;"
       >
         New Portfolio
       </router-link>
