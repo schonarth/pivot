@@ -21,9 +21,6 @@
         <router-link to="/">
           Dashboard
         </router-link>
-        <router-link to="/portfolios">
-          Portfolios
-        </router-link>
         <router-link to="/assets">
           Assets
         </router-link>

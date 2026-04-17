@@ -910,7 +910,7 @@ watch(
 
 async function load() {
   if (!portfolioId.value || portfolioId.value === 'undefined') {
-    await router.replace('/portfolios')
+    await router.replace('/')
     return
   }
   loading.value = true

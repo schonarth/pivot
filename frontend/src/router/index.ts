@@ -11,7 +11,7 @@ function isValidPortfolioId(value: string | string[] | undefined): boolean {
 
 function requireValidPortfolioId(to: { params: { id?: string | string[] } }) {
   if (!isValidPortfolioId(to.params.id)) {
-    return '/portfolios'
+    return '/'
   }
 }
 
@@ -36,9 +36,7 @@ const router = createRouter({
     },
     {
       path: '/portfolios',
-      name: 'portfolios',
-      component: () => import('@/views/PortfoliosView.vue'),
-      meta: { requiresAuth: true },
+      redirect: '/',
     },
     {
       path: '/portfolios/new',

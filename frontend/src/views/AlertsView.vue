@@ -298,7 +298,7 @@ const triggeredAlerts = computed(() => alerts.value.filter((a) => a.status === '
 
 onMounted(async () => {
   if (!portfolioId) {
-    await router.replace('/portfolios')
+    await router.replace('/')
     return
   }
   alerts.value = await getAlerts(portfolioId)
