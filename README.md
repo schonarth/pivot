@@ -113,7 +113,7 @@ Test your strategies when markets are closed:
 The simulator updates prices in real-time—watch your portfolio and strategies react on the dashboard.
 
 > [!IMPORTANT]
-> To enable alerts for simaulated market, you must turn on the **simulation toggle** on your portfolios.
+> To enable alerts for simulated market, you must turn on the **simulation toggle** on your portfolios.
 
 > [!TIP]
 > Use different portfolios to run simulations and for actual market tracking, to prevent distortions.
