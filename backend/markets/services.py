@@ -1,3 +1,5 @@
+import logging
+from datetime import date, timedelta
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote_plus
@@ -9,12 +11,16 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
+from .ohlcv_provider import is_valid_ohlcv_record
 from .models import Asset, MarketConfig, NewsItem, OHLCV
 
 try:
     from exchange_calendars import get_calendar
 except ImportError:
     get_calendar = None
+
+
+logger = logging.getLogger("paper_trader.markets")
 
 
 MARKET_CONFIGS = {
@@ -129,8 +135,12 @@ def ingest_ohlcv(asset_id: str, ohlcv_list: list[dict], source: str = "yahoo_fin
         return 0
 
     count = 0
+    invalid_dates: list = []
     with transaction.atomic():
         for ohlcv in ohlcv_list:
+            if not is_valid_ohlcv_record(ohlcv):
+                invalid_dates.append(ohlcv.get("date"))
+                continue
             obj, created = OHLCV.objects.update_or_create(
                 asset=asset,
                 date=ohlcv["date"],
@@ -146,7 +156,49 @@ def ingest_ohlcv(asset_id: str, ohlcv_list: list[dict], source: str = "yahoo_fin
             if created:
                 count += 1
 
+    if invalid_dates:
+        logger.warning(
+            "Discarded invalid OHLCV rows for %s from %s: %s",
+            asset.display_symbol,
+            source,
+            ", ".join(str(date) for date in invalid_dates[:5]),
+        )
+
     return count
+
+
+def recent_ohlcv_needs_repair(asset_id: str, lookback_days: int = 5) -> bool:
+    cutoff = timezone.now().date() - timedelta(days=lookback_days)
+    recent_rows = (
+        OHLCV.objects.filter(asset_id=asset_id, date__gte=cutoff)
+        .order_by("-date")
+        .values("date", "open", "high", "low", "close", "volume")
+    )
+    return any(not is_valid_ohlcv_record(row) for row in recent_rows)
+
+
+def invalid_ohlcv_dates(asset_id: str, start_date: date | None = None, end_date: date | None = None) -> list[date]:
+    queryset = OHLCV.objects.filter(asset_id=asset_id)
+    if start_date:
+        queryset = queryset.filter(date__gte=start_date)
+    if end_date:
+        queryset = queryset.filter(date__lte=end_date)
+    return [
+        row["date"]
+        for row in queryset.order_by("date").values("date", "open", "high", "low", "close", "volume")
+        if not is_valid_ohlcv_record(row)
+    ]
+
+
+def delete_invalid_ohlcv_rows(
+    asset_id: str,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list[date]:
+    invalid_dates = invalid_ohlcv_dates(asset_id, start_date=start_date, end_date=end_date)
+    if invalid_dates:
+        OHLCV.objects.filter(asset_id=asset_id, date__in=invalid_dates).delete()
+    return invalid_dates
 
 
 class NewsService:
