@@ -77,6 +77,28 @@ class AIAuth(models.Model):
         return TASK_MODELS.get(task_type, {}).get(self.provider_name, "gpt-4o-mini")
 
 
+class AIInstanceKey(models.Model):
+    id = models.SmallIntegerField(primary_key=True, default=1, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    provider_name = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default="openai")
+    api_key_encrypted = models.BinaryField(null=True, blank=True)
+    allow_other_users = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "ai_instance_keys"
+
+    def __str__(self):
+        return f"Instance default AI key ({self.provider_name})"
+
+
 class AICost(models.Model):
     """Track each AI API call and its cost."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

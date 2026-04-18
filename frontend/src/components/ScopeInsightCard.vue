@@ -43,6 +43,7 @@
         :confidence="insight.confidence"
         :summary-text="insight.summary"
         :technical-text="insight.technical_summary"
+        :trajectory-items="insight.sentiment_trajectory?.entries ?? []"
         footer-label="News digest"
         :footer-text="insight.news_context"
         :model-used="insight.model_used"

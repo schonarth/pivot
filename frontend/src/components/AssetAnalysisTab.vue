@@ -55,6 +55,7 @@
           :confidence="insight.confidence"
           :summary-text="insight.summary"
           :technical-text="insight.technical_summary"
+          :trajectory-items="insight.sentiment_trajectory?.entries ?? []"
           footer-label="Headlines used"
           :footer-text="insight.news_items.length ? '' : insight.news_context"
           :footnotes="insight.news_items"

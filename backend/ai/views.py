@@ -52,6 +52,8 @@ class AISettingsViewSet(viewsets.ViewSet):
     def set_api_key(self, request):
         """Store encrypted API key."""
         api_key = request.data.get("api_key")
+        use_as_instance_default = bool(request.data.get("use_as_instance_default"))
+        allow_other_users = bool(request.data.get("allow_other_users"))
         if not api_key:
             return Response(
                 {"error": "api_key is required"},
@@ -59,7 +61,26 @@ class AISettingsViewSet(viewsets.ViewSet):
             )
 
         service = AIService(request.user)
+        provider_name = request.data.get("provider_name") or service.ai_auth.provider_name
+        if use_as_instance_default:
+            instance_default_key = AIService.get_instance_default_key()
+            if instance_default_key and instance_default_key.owner_id not in (None, request.user.id):
+                return Response(
+                    {"error": "instance default key is managed by another user"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        service.ai_auth.provider_name = provider_name
+        service.ai_auth.save(update_fields=["provider_name"])
         service.set_api_key(api_key)
+        if use_as_instance_default:
+            service.set_instance_default_api_key(
+                api_key,
+                provider_name=provider_name,
+                allow_other_users=allow_other_users,
+            )
+        else:
+            service.clear_instance_default_api_key_if_owned()
 
         return Response(
             {"status": "API key updated"},
@@ -71,6 +92,7 @@ class AISettingsViewSet(viewsets.ViewSet):
         """Remove stored API key."""
         service = AIService(request.user)
         service.clear_api_key()
+        service.clear_instance_default_api_key_if_owned()
 
         return Response(
             {"status": "API key removed"},
