@@ -81,6 +81,17 @@ describe('AssetAnalysisTab', () => {
       news_context: 'Legacy news context',
       reasoning: '',
       price_target: null,
+      sentiment_trajectory: {
+        entries: [
+          {
+            subject_type: 'asset',
+            subject: 'TEST',
+            state: 'improving',
+            summary: 'Asset TEST is turning more positive across 3 retained items.',
+            evidence_count: 3,
+          },
+        ],
+      },
       model_used: 'gpt-test',
       generated_at: '2025-04-02T00:00:00.000Z',
       news_items: [
@@ -127,6 +138,17 @@ describe('AssetAnalysisTab', () => {
         news_context: 'Legacy news context',
         reasoning: '',
         price_target: null,
+        sentiment_trajectory: {
+          entries: [
+            {
+              subject_type: 'asset',
+              subject: 'TEST',
+              state: 'improving',
+              summary: 'Asset TEST is turning more positive across 3 retained items.',
+              evidence_count: 3,
+            },
+          ],
+        },
         model_used: 'gpt-test',
         generated_at: '2025-04-02T00:00:00.000Z',
         news_items: [
@@ -149,6 +171,8 @@ describe('AssetAnalysisTab', () => {
     expect(wrapper.find('.chart-container-oscillator').exists()).toBe(true)
     expect(wrapper.text()).toContain('Summary first')
     expect(wrapper.text()).toContain('Technical summary')
+    expect(wrapper.text()).toContain('Sentiment trajectory')
+    expect(wrapper.text()).toContain('Asset TEST is turning more positive across 3 retained items.')
     expect(wrapper.text()).toContain('Headline one')
     expect(wrapper.text()).toContain('Headline two')
     expect(wrapper.find('a[href="https://example.com/one"]').exists()).toBe(true)

@@ -12,6 +12,7 @@
         <div style="display: flex; gap: 0.5rem;">
           <select
             :value="form.provider_name"
+            :disabled="isInheritedMode"
             style="flex: 1; padding: 0.5rem; border-radius: 0.25rem; border: 1px solid var(--border);"
             @change="(e) => form.provider_name = (e.target as HTMLSelectElement).value"
           >
@@ -59,6 +60,7 @@
           <button
             v-if="!showKeyInput"
             class="btn btn-secondary"
+            :disabled="isInheritedMode && hasApiKey"
             @click="showKeyInput = true"
           >
             {{ hasApiKey ? 'Update Key' : 'Add Key' }}
@@ -74,17 +76,58 @@
           <button
             v-if="hasApiKey"
             class="btn btn-secondary"
+            :disabled="isInheritedMode"
             @click="removeApiKey"
           >
             Remove
           </button>
           <button
             class="btn btn-secondary"
-            :disabled="testingConnection || (!hasApiKey && !apiKeyInput)"
+            :disabled="testingConnection || (!hasApiKey && !apiKeyInput) || (isInheritedMode && !apiKeyInput)"
             @click="runConnectionTest"
           >
             {{ testingConnection ? 'Testing...' : 'Test Connection' }}
           </button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.75rem; width: 100%;">
+          <label
+            style="display: grid; grid-template-columns: 1.25rem 1fr; column-gap: 0.5rem; align-items: center; width: 100%; font-size: 0.875rem; line-height: 1; text-align: left;"
+            :style="{ opacity: canEditInstanceDefault ? 1 : 0.5 }"
+          >
+            <input
+              v-model="useInstanceDefault"
+              type="checkbox"
+              :disabled="!canEditInstanceDefault"
+              style="width: 1rem; height: 1rem; margin: 0;"
+            />
+            <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Use this key for shared news ingestion on this instance</span>
+          </label>
+          <label
+            style="display: grid; grid-template-columns: 1.25rem 1fr; column-gap: 0.5rem; align-items: center; width: 100%; font-size: 0.875rem; line-height: 1; text-align: left;"
+            :style="{ opacity: canEditInstanceDefault && useInstanceDefault ? 1 : 0.5 }"
+          >
+            <input
+              v-model="allowOtherUsers"
+              type="checkbox"
+              :disabled="!canEditInstanceDefault || !useInstanceDefault"
+              style="width: 1rem; height: 1rem; margin: 0;"
+            />
+            <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Allow other users to reuse this key</span>
+          </label>
+          <div
+            v-if="instanceDefaultOwnerUsername"
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            {{ instanceDefaultOwnershipNote }}
+          </div>
+          <div
+            v-if="isInheritedMode"
+            class="text-muted"
+            style="font-size: 0.75rem;"
+          >
+            Add your own API key to edit provider, budget, and model settings.
+          </div>
         </div>
       </div>
 
@@ -95,6 +138,7 @@
           type="number"
           min="1"
           step="0.01"
+          :disabled="isInheritedMode"
           style="width: 100%; padding: 0.5rem; border-radius: 0.25rem; border: 1px solid var(--border);"
         />
       </div>
@@ -106,6 +150,7 @@
           type="number"
           min="1"
           max="99"
+          :disabled="isInheritedMode"
           style="width: 100%; padding: 0.5rem; border-radius: 0.25rem; border: 1px solid var(--border);"
         />
         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
@@ -128,6 +173,7 @@
             </div>
             <select
               :value="form.task_models[taskName] || getDefaultModel(taskName)"
+              :disabled="isInheritedMode"
               style="width: 100%; padding: 0.5rem; border-radius: 0.25rem; border: 1px solid var(--border); font-size: 0.875rem;"
               @change="(e) => updateTaskModel(taskName, (e.target as HTMLSelectElement).value)"
             >
@@ -141,7 +187,7 @@
 
       <button
         class="btn"
-        :disabled="saving"
+        :disabled="saving || isInheritedMode"
         @click="saveSettings"
       >
         {{ saving ? 'Saving...' : 'Save Settings' }}
@@ -163,6 +209,11 @@ interface SettingsData {
   has_api_key: boolean
   available_tasks: Record<string, Record<string, string>>
   available_models: Record<string, string[]>
+  instance_default_enabled: boolean
+  instance_default_allow_other_users: boolean
+  instance_default_owned_by_current_user: boolean
+  instance_default_owner_username: string | null
+  can_use_instance_default: boolean
 }
 
 interface AISettings {
@@ -182,6 +233,12 @@ const showAdvancedModels = ref(false)
 const showKeyInput = ref(false)
 const apiKeyInput = ref('')
 const hasApiKey = ref(false)
+const instanceDefaultEnabled = ref(false)
+const canUseInstanceDefault = ref(false)
+const useInstanceDefault = ref(false)
+const allowOtherUsers = ref(false)
+const instanceDefaultOwnedByCurrentUser = ref(false)
+const instanceDefaultOwnerUsername = ref<string | null>(null)
 const budget = reactive<aiApi.AIBudget>({
   enabled: false,
   monthly_budget_usd: '0.00',
@@ -214,6 +271,12 @@ async function loadSettings() {
     form.alert_threshold_pct = data.alert_threshold_pct
     form.task_models = data.task_models || {}
     hasApiKey.value = data.has_api_key
+    instanceDefaultEnabled.value = data.instance_default_enabled
+    canUseInstanceDefault.value = data.can_use_instance_default
+    instanceDefaultOwnedByCurrentUser.value = data.instance_default_owned_by_current_user
+    instanceDefaultOwnerUsername.value = data.instance_default_owner_username
+    useInstanceDefault.value = !data.instance_default_enabled || data.instance_default_owned_by_current_user
+    allowOtherUsers.value = data.instance_default_owned_by_current_user && data.instance_default_allow_other_users
 
     availableTasks.value = data.available_tasks
     availableModels.value = data.available_models
@@ -254,6 +317,14 @@ const budgetColor = computed(() => {
   return '#22c55e'
 })
 
+const canEditInstanceDefault = computed(() => {
+  return !instanceDefaultEnabled.value || instanceDefaultOwnedByCurrentUser.value
+})
+
+const isInheritedMode = computed(() => {
+  return !hasApiKey.value && canUseInstanceDefault.value
+})
+
 function getModelsForProvider(): string[] {
   return availableModels.value[form.provider_name] || []
 }
@@ -279,10 +350,14 @@ async function saveApiKey() {
 
   savingKey.value = true
   try {
-    await aiApi.setApiKey(apiKeyInput.value)
-    hasApiKey.value = true
+    await aiApi.setApiKey(apiKeyInput.value, {
+      provider_name: form.provider_name,
+      use_as_instance_default: useInstanceDefault.value,
+      allow_other_users: allowOtherUsers.value,
+    })
     apiKeyInput.value = ''
     showKeyInput.value = false
+    await loadSettings()
     await loadBudget()
     notifyBudgetChanged()
     toast.success('API key saved successfully')
@@ -298,7 +373,7 @@ async function removeApiKey() {
 
   try {
     await aiApi.removeApiKey()
-    hasApiKey.value = false
+    await loadSettings()
     await loadBudget()
     notifyBudgetChanged()
     toast.success('API key removed')
@@ -308,6 +383,11 @@ async function removeApiKey() {
 }
 
 async function saveSettings() {
+  if (isInheritedMode.value) {
+    toast.error('Add your own API key to edit settings')
+    return
+  }
+
   saving.value = true
   try {
     await aiApi.updateSettings({
@@ -327,6 +407,11 @@ async function saveSettings() {
 }
 
 async function runConnectionTest() {
+  if (isInheritedMode.value && !apiKeyInput.value) {
+    toast.error('Add your own API key to test connection')
+    return
+  }
+
   testingConnection.value = true
   try {
     const response = await aiApi.testConnection(form.provider_name, apiKeyInput.value || undefined)
@@ -337,4 +422,12 @@ async function runConnectionTest() {
     testingConnection.value = false
   }
 }
+
+const instanceDefaultOwnershipNote = computed(() => {
+  if (!instanceDefaultOwnerUsername.value) return ''
+  if (instanceDefaultOwnedByCurrentUser.value) {
+    return 'This account is using the instance default key.'
+  }
+  return `Shared instance default key is currently owned by ${instanceDefaultOwnerUsername.value}.`
+})
 </script>

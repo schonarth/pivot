@@ -22,6 +22,17 @@ describe('ScopeInsightCard', () => {
           confidence: 84,
           summary: 'The monitored set is constructive.',
           technical_summary: 'Momentum is steady.',
+          sentiment_trajectory: {
+            entries: [
+              {
+                subject_type: 'asset',
+                subject: 'AAA',
+                state: 'improving',
+                summary: 'Asset AAA is turning more positive across 3 retained items.',
+                evidence_count: 3,
+              },
+            ],
+          },
           news_context: 'News remains supportive.',
           reasoning: 'The monitored set is constructive.',
           model_used: 'gpt-4o-mini',
@@ -42,6 +53,8 @@ describe('ScopeInsightCard', () => {
     expect(wrapper.text()).toContain('BUY')
     expect(wrapper.text()).toContain('The monitored set is constructive.')
     expect(wrapper.text()).toContain('Momentum is steady.')
+    expect(wrapper.text()).toContain('Sentiment trajectory')
+    expect(wrapper.text()).toContain('Asset AAA is turning more positive across 3 retained items.')
     expect(wrapper.text()).toContain('News remains supportive.')
     expect(wrapper.text()).toContain('gpt-4o-mini')
 
@@ -61,6 +74,17 @@ describe('ScopeInsightCard', () => {
           confidence: 84,
           summary: 'The monitored set is constructive.',
           technical_summary: 'Momentum is steady.',
+          sentiment_trajectory: {
+            entries: [
+              {
+                subject_type: 'asset',
+                subject: 'AAA',
+                state: 'improving',
+                summary: 'Asset AAA is turning more positive across 3 retained items.',
+                evidence_count: 3,
+              },
+            ],
+          },
           news_context: 'News remains supportive.',
           reasoning: 'The monitored set is constructive.',
           model_used: 'gpt-4o-mini',
@@ -72,6 +96,8 @@ describe('ScopeInsightCard', () => {
     expect(remounted.text()).toContain('BUY')
     expect(remounted.text()).toContain('The monitored set is constructive.')
     expect(remounted.text()).toContain('Momentum is steady.')
+    expect(remounted.text()).toContain('Sentiment trajectory')
+    expect(remounted.text()).toContain('Asset AAA is turning more positive across 3 retained items.')
     expect(remounted.text()).toContain('News remains supportive.')
     expect(remounted.text()).toContain('gpt-4o-mini')
 

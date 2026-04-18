@@ -14,11 +14,11 @@ ADR-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -115,7 +115,19 @@ Milestone 04 is only auditable if the underlying state is determined by explicit
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed deterministic state implementation and validation.
+
+What was done:
+
+- implemented a bounded ordinal sentiment model over `positive`, `neutral`, and `negative`
+- added deterministic classification for `improving`, `deteriorating`, `conflicting`, and `reversal`
+- kept continuity labels out of scoring while leaving room for explanatory reuse
+- enforced the short retention window so expired items do not affect trajectory
+- added regression tests for the four required states, weak evidence handling, and retention expiry
+
+## Open Follow-Ups
+
+- none
 
 ## Open Follow-Ups
 

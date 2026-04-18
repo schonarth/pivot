@@ -64,6 +64,7 @@ export interface MonitoredScopeInsight {
   technical_summary: string
   news_context: string
   reasoning: string
+  sentiment_trajectory?: SentimentTrajectory | null
   model_used: string
   generated_at: string
 }
@@ -140,6 +141,18 @@ export interface AssetAIInsightNewsItem {
   market?: string | null
 }
 
+export interface SentimentTrajectoryEntry {
+  subject_type: 'asset' | 'theme'
+  subject: string
+  state: 'improving' | 'deteriorating' | 'conflicting' | 'reversal'
+  summary: string
+  evidence_count: number
+}
+
+export interface SentimentTrajectory {
+  entries: SentimentTrajectoryEntry[]
+}
+
 export interface AssetAIInsight {
   symbol: string
   market: string
@@ -150,6 +163,7 @@ export interface AssetAIInsight {
   news_context: string
   reasoning: string
   price_target: number | null
+  sentiment_trajectory?: SentimentTrajectory | null
   model_used: string
   generated_at: string
   news_items: AssetAIInsightNewsItem[]

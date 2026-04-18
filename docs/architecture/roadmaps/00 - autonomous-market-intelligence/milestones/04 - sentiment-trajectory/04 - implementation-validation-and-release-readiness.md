@@ -14,11 +14,11 @@ ADR-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -149,7 +149,20 @@ This is the milestone integration task. Earlier Milestone 04 files define where 
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed Milestone 04 integration and release validation.
+
+What was done:
+
+- integrated deterministic trajectory computation into `AIService.analyze_asset` and `AIService.analyze_scope`
+- preserved existing asset-analysis and monitored-set behavior when trajectory evidence is absent
+- reused the same compact trajectory contract for asset and monitored-set consumers
+- added frontend rendering for the new trajectory section in asset and scope AI summaries
+- validated the four required states plus a retention-window regression
+- confirmed monitored-set consumers were implementation-ready and did not require a separate scoring path
+
+## Open Follow-Ups
+
+- none
 
 ## Open Follow-Ups
 

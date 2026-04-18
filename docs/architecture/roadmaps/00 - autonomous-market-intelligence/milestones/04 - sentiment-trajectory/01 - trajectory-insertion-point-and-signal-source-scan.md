@@ -14,11 +14,11 @@ ADR-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -118,7 +118,20 @@ The current repo scan suggests monitored-set surfaces now exist in code, includi
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed trajectory insertion-point validation and implementation alignment.
+
+What was done:
+
+- confirmed `AIService.analyze_asset` as the narrow asset-analysis insertion point
+- confirmed `AIService.analyze_scope` as the monitored-set reuse point
+- verified retained selected items and per-item sentiment labels already coexist in the shared context pack
+- verified monitored-set consumers were implementation-ready and could reuse the same trajectory contract without a separate scoring path
+- identified `asset_symbol`, `provenance`, `sentiment_score`, `published_at`, and existing continuity labels as the live input surface for deterministic trajectory
+
+Monitored-set status:
+
+- implementation-ready
+- reused the same trajectory contract from the shared analysis path
 
 ## Open Follow-Ups
 

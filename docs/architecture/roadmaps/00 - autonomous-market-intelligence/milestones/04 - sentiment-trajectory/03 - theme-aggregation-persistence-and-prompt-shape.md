@@ -14,11 +14,11 @@ ADR-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
 
 ## Branch
 
@@ -112,14 +112,16 @@ ADR-004 now fixes the milestone-level policy for theme aggregation, compute-on-r
 
 ## Implementation Notes / What Was Done
 
-Not started.
+Completed theme aggregation and prompt-shape wiring.
+
+What was done:
+
+- kept asset-level trajectory as the baseline and allowed theme-level entries only for explicit normalized theme tags
+- required cross-asset evidence before emitting theme trajectory
+- kept derived trajectory compute-on-read and out of persistent storage
+- added a compact `sentiment_trajectory` shape to asset and monitored-set analysis output
+- reused the same prompt section for both asset and monitored-set analysis paths
 
 ## Open Follow-Ups
 
-- default decision captured for implementation:
-  - theme-level trajectory requires the same explicit normalized theme tag on retained items
-  - theme-level trajectory requires cross-asset evidence from more than one asset inside the bounded window
-  - single-asset evidence is asset trajectory only, not theme trajectory
-  - trajectory is computed on read from retained items and per-item sentiment labels
-  - derived trajectory is not persisted in Milestone 04
-  - ephemeral non-canonical caching is allowed only as a thin optimization layer if later profiling justifies it
+- none
