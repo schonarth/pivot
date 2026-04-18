@@ -306,11 +306,14 @@ Scope:
 
 - define expected direction from technical + context inputs
 - compare to actual move
-- classify common divergence patterns:
-  - no material follow-through
-  - competing macro priority
+- classify deterministic Milestone 05 outcomes:
+  - no_divergence
+  - insufficient_signal
+  - no_material_follow_through
+  - competing_macro_priority
   - reversal
-  - uncertainty/conflict
+  - uncertainty_conflict
+- extend the same divergence contract to monitored-set consumers when shared evidence is available, without requiring a separate scoring path
 - render divergence assessment with a compact UI disclosure explaining that cross-asset reasoning only considers the current asset plus assets explicitly present in the relevant portfolio or watch scope
 
 Out of scope:
@@ -329,6 +332,8 @@ Exit criteria:
 
 - analysis can produce a bounded divergence explanation for selected examples
 - divergence labels are auditable from stored inputs
+- asset-level divergence is implemented end to end
+- monitored-set consumers either reuse the same divergence contract or their exact blocking gap is documented explicitly
 - UI disclosure is present where divergence analysis is shown so users understand that broader cross-asset reasoning only uses the current asset and explicitly monitored assets in the relevant portfolio or watch scope
 - explanation quality is reviewed against a small hand-picked set of concrete divergence examples, such as:
   - oil prices falling after a blockade headline because de-escalation signals dominated
