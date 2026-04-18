@@ -264,3 +264,45 @@ Milestone 03 now has a true portfolio-level and watch-level AI summary UI, but t
 - the current UI may feel busy or confusing even though the underlying capability is correct
 - users may miss the scope-level summary because the drill-down remains prominent
 - the new monitored-set experience may feel more like a convenience feature than the primary portfolio/watch analysis surface
+
+---
+
+## 007 - Specialized Watch Lists for Close Tracking vs Breadth
+
+### Context
+
+Milestone 03 chose the smallest safe watch-scope shape: one named default watch scope per user unless multiple named sets were nearly free. That was appropriate when watch scope mainly needed to support one monitored-set summary. Milestone 05 raises a new pressure: divergence assessment becomes stronger when users monitor a broader peer set, but many users will still want a much smaller set of assets they follow closely day to day.
+
+### Current Safe Policy
+
+- keep the current single watch-scope behavior intact
+- continue treating watch membership as explicit and user-controlled
+- use UI disclosure to explain that divergence reasoning only considers the current asset plus explicitly monitored assets in the relevant portfolio or watch scope
+
+### Why Deferred
+
+- the current single-list model is still sufficient to keep Milestone 03 and Milestone 05 honest
+- adding multiple watch lists introduces naming, navigation, empty-state, and migration questions that are not required to prove divergence reasoning itself
+- broadening watch management too early risks turning a focused analysis milestone into a larger product-surface change
+
+### Earliest Revisit
+
+- after Milestone 05 acceptance
+- before or alongside any later work that depends more heavily on cross-asset monitored breadth
+
+### Future Direction
+
+- allow at least two user-managed watch lists or equivalent watch modes
+- support one narrow list for close tracking and one broader list for context enrichment
+- keep membership explicit rather than inferred
+- preserve a simple default setup for users who do not want to manage multiple lists
+- possible product framing:
+  - close watch vs context watch
+  - primary watch vs broader watch
+  - fully user-managed named watch lists if that proves cleaner than fixed two-list semantics
+
+### Risk If Deferred Too Long
+
+- users may hesitate to add helpful peer assets because doing so pollutes the one list they actually use for close monitoring
+- Milestone 05 divergence explanations may stay thinner than they need to be because users keep their watch scope artificially small
+- the product may push users toward a behavior that improves analysis quality while making their everyday watch workflow worse

@@ -307,11 +307,11 @@ Scope:
 - define expected direction from technical + context inputs
 - compare to actual move
 - classify common divergence patterns:
-  - priced in
-  - ignored signal
+  - no material follow-through
   - competing macro priority
   - reversal
   - uncertainty/conflict
+- render divergence assessment with a compact UI disclosure explaining that cross-asset reasoning only considers the current asset plus assets explicitly present in the relevant portfolio or watch scope
 
 Out of scope:
 
@@ -329,9 +329,10 @@ Exit criteria:
 
 - analysis can produce a bounded divergence explanation for selected examples
 - divergence labels are auditable from stored inputs
+- UI disclosure is present where divergence analysis is shown so users understand that broader cross-asset reasoning only uses the current asset and explicitly monitored assets in the relevant portfolio or watch scope
 - explanation quality is reviewed against a small hand-picked set of concrete divergence examples, such as:
   - oil prices falling after a blockade headline because de-escalation signals dominated
-  - an asset failing to rise after positive company news because the good news was already priced in
+  - an asset failing to rise after positive company news because the expected reaction showed no material follow-through inside the bounded window
   - a market index rising despite geopolitical risk because investors focused on the more probable near-term outcome
 
 ## Milestone 6: Opportunity Discovery
