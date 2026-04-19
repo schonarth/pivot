@@ -72,4 +72,17 @@ class Command(BaseCommand):
             },
         )
 
+        discovery_interval, _ = IntervalSchedule.objects.get_or_create(
+            every=86400,
+            period=IntervalSchedule.SECONDS,
+        )
+
+        PeriodicTask.objects.update_or_create(
+            name="generate_all_opportunity_discoveries",
+            defaults={
+                "task": "ai.tasks.generate_all_opportunity_discoveries",
+                "interval": discovery_interval,
+            },
+        )
+
         self.stdout.write(self.style.SUCCESS("Periodic tasks configured."))

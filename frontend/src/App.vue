@@ -24,6 +24,9 @@
         <router-link to="/assets">
           Assets
         </router-link>
+        <router-link to="/discovery">
+          Discovery
+        </router-link>
         <router-link to="/settings">
           Settings
         </router-link>

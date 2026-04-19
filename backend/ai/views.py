@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import AIAuth
 from .serializers import AIAuthSettingsSerializer, AIBudgetSerializer
 from .services import AIService
+from .discovery import OpportunityDiscoveryService
 
 
 class AISettingsViewSet(viewsets.ViewSet):
@@ -139,3 +140,23 @@ class AISettingsViewSet(viewsets.ViewSet):
             {"status": "ok", **result},
             status=status.HTTP_200_OK,
         )
+
+
+class OpportunityDiscoveryViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        market = request.query_params.get("market")
+        refine = str(request.query_params.get("refine", "")).lower() in {"1", "true", "yes"}
+        refresh = str(request.query_params.get("refresh", "")).lower() in {"1", "true", "yes"}
+
+        service = OpportunityDiscoveryService(request.user)
+        try:
+            result = service.discover(market, refine=refine, force_refresh=refresh)
+        except ValueError as exc:
+            return Response(
+                {"error": {"code": "invalid_market", "message": str(exc)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(result)

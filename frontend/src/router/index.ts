@@ -91,6 +91,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/discovery',
+      name: 'discovery',
+      component: () => import('@/views/DiscoveryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/assets/:symbol',
       name: 'asset-detail',
       component: () => import('@/views/AssetDetailView.vue'),

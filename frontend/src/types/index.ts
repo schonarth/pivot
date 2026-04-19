@@ -258,6 +258,40 @@ export interface OhlcvBackfillProcessedAsset {
   timestamp: string
 }
 
+export interface DiscoveryShortlistItem {
+  asset_id: string
+  symbol: string
+  market: string
+  rank: number
+  score: string
+  score_breakdown: {
+    technical_setup: number
+    breakout: number
+    context_support: number
+    freshness: number
+  }
+  technical_signals: Record<string, unknown>
+  context_summary: Record<string, unknown>
+  discovery_reason: string
+  watch_action_ready: boolean
+  refined_reason?: string | null
+}
+
+export interface DiscoveryResult {
+  market: string
+  universe_size: number
+  survivor_count: number
+  shortlist_count: number
+  shortlist: DiscoveryShortlistItem[]
+  refinement: {
+    requested: boolean
+    applied: boolean
+    cache_hit: boolean
+    fingerprint: string | null
+  }
+  generated_at: string
+}
+
 export interface OhlcvBackfillStatus {
   state: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
   source: string | null
