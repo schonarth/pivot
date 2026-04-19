@@ -19,7 +19,7 @@ class OTPSerializer(serializers.ModelSerializer):
 class AgentTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgentToken
-        fields = ['id', 'name', 'origin', 'created_at', 'last_used_at']
+        fields = ['id', 'name', 'origin', 'llm_provider', 'llm_model', 'created_at', 'last_used_at']
         read_only_fields = ['id', 'created_at', 'last_used_at']
 
 

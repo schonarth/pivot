@@ -4,6 +4,8 @@ export interface MCPAgent {
   id: string
   name: string
   origin: string
+  llm_provider: string
+  llm_model: string
   created_at: string
 }
 
@@ -46,11 +48,20 @@ export async function generateOTP(): Promise<OTPResponse> {
   return data
 }
 
-export async function exchangeOTPForToken(userID: string, code: string, name?: string, origin?: string) {
+export async function exchangeOTPForToken(
+  userID: string,
+  code: string,
+  name: string,
+  llmProvider: string,
+  llmModel: string,
+  origin?: string,
+) {
   const { data } = await api.post('/mcp/token/exchange/', {
     user_id: userID,
     otp: code,
-    name: name || 'Unknown Agent',
+    name,
+    llm_provider: llmProvider,
+    llm_model: llmModel,
     origin: origin || 'unknown',
   })
   return data
@@ -69,6 +80,15 @@ export async function getAssetInsight(agentToken: string, assetId: string) {
   const { data } = await api.post('/mcp/asset-insight/', {
     agent_token: agentToken,
     asset_id: assetId,
+  })
+  return data
+}
+
+export async function lookupAssetSymbol(agentToken: string, symbol: string, market?: string) {
+  const { data } = await api.post('/mcp/assets/lookup-symbol/', {
+    agent_token: agentToken,
+    symbol,
+    market,
   })
   return data
 }
