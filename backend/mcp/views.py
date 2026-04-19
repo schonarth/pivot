@@ -27,8 +27,28 @@ class TokenExchangeView(APIView):
         """Exchange OTP for an agent token. Public endpoint—OTP is the authentication."""
         user_id = request.data.get('user_id')
         code = request.data.get('otp')
-        name = request.data.get('name', 'Unknown Agent')
+        name = request.data.get('name', '').strip()
         origin = request.data.get('origin', 'unknown')
+        llm_model = request.data.get('llm_model', '').strip()
+        llm_provider = request.data.get('llm_provider', '').strip()
+
+        if not name:
+            return Response(
+                {'error': 'Missing name', 'detail': 'Provide the agent name so the UI can identify the connected agent.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not llm_model:
+            return Response(
+                {'error': 'Missing llm_model', 'detail': 'Provide the LLM model used by the agent (e.g. openai/gpt-5.4-mini).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not llm_provider:
+            return Response(
+                {'error': 'Missing llm_provider', 'detail': 'Provide the LLM provider used by the agent (e.g. openai, anthropic, google).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if not user_id or not code:
             return Response(
@@ -53,13 +73,13 @@ class TokenExchangeView(APIView):
             )
 
         # Generate agent token
-        token = generate_agent_token(user, name, origin)
+        token = generate_agent_token(user, name, origin, llm_provider=llm_provider, llm_model=llm_model)
 
         # Notify user via websocket that agent connected
         publish_event(
             f"user_{user.id}",
             "agent_connected",
-            {"agent_name": name, "agent_origin": origin}
+            {"agent_name": name, "agent_origin": origin, "llm_provider": llm_provider, "llm_model": llm_model}
         )
 
         return Response({
@@ -151,7 +171,7 @@ class MCPAssetInsightView(APIView):
             )
 
         try:
-            agent = AgentToken.objects.get(token=agent_token)
+            AgentToken.objects.get(token=agent_token)
         except AgentToken.DoesNotExist:
             return Response(
                 {'error': 'Invalid agent token'},
@@ -186,6 +206,50 @@ class MCPAssetInsightView(APIView):
             )
 
         return Response(insight)
+
+
+class MCPAssetLookupView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Look up an asset by symbol and create it from trusted sources when missing."""
+        from markets.models import MarketConfig
+        from markets.serializers import AssetSerializer
+        from markets.services import search_asset_symbols
+
+        agent_token = request.data.get('agent_token')
+        symbol = request.data.get('symbol')
+        market = str(request.data.get('market') or '').strip().upper() or None
+
+        if not agent_token or not symbol:
+            return Response(
+                {'error': 'Missing agent_token or symbol'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            agent = AgentToken.objects.get(token=agent_token)
+        except AgentToken.DoesNotExist:
+            return Response(
+                {'error': 'Invalid agent token'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if market and not MarketConfig.objects.filter(code=market).exists():
+            return Response(
+                {'error': 'Invalid market'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        assets = search_asset_symbols(symbol, market=market)
+        if not assets:
+            return Response(
+                {'error': 'Symbol not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = AssetSerializer(assets, many=True)
+        return Response(serializer.data)
 
 
 class AISettingsView(APIView):
@@ -530,6 +594,32 @@ class MCPSchemaView(APIView):
                 'response': {'summary': 'string', 'technical_analysis': 'object', 'sentiment': 'object', 'recommendation': 'string'}
             },
             {
+                'name': 'Asset Lookup',
+                'method': 'POST',
+                'path': '/api/mcp/assets/lookup-symbol/',
+                'description': 'Look up an asset symbol and create it from trusted sources when missing',
+                'auth': 'Agent token',
+                'params': [
+                    {'name': 'agent_token', 'type': 'string', 'required': True},
+                    {'name': 'symbol', 'type': 'string', 'required': True},
+                    {'name': 'market', 'type': 'string', 'required': False}
+                ],
+                'response': [{'id': 'UUID', 'display_symbol': 'string', 'provider_symbol': 'string', 'market': 'string'}]
+            },
+            {
+                'name': 'Discovery Search',
+                'method': 'GET',
+                'path': '/api/ai/discovery/',
+                'description': 'Surface a bounded discovery shortlist for a selected market',
+                'auth': 'User session (authenticated)',
+                'params': [
+                    {'name': 'market', 'type': 'string', 'required': True, 'location': 'query'},
+                    {'name': 'refine', 'type': 'boolean', 'required': False, 'location': 'query'},
+                    {'name': 'refresh', 'type': 'boolean', 'required': False, 'location': 'query'}
+                ],
+                'response': {'market': 'string', 'shortlist': 'array', 'refined': 'boolean', 'cache_key': 'string'}
+            },
+            {
                 'name': 'AI Settings',
                 'method': 'GET',
                 'path': '/api/mcp/ai-settings/',
@@ -621,6 +711,7 @@ class MCPSchemaView(APIView):
             'caching': {
                 'asset_insights': '24 hours',
                 'news_sentiment': '24 hours',
-                'strategy_data': 'No cache (real-time)'
+                'strategy_data': 'No cache (real-time)',
+                'discovery_refinement': '24 hours'
             }
         })

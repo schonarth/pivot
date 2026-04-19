@@ -64,6 +64,10 @@ export interface MonitoredScopeInsight {
   technical_summary: string
   news_context: string
   reasoning: string
+  sentiment_trajectory?: SentimentTrajectory | null
+  divergence_analysis?: DivergenceAnalysis | null
+  divergence_summary?: string
+  divergence_disclosure?: string
   model_used: string
   generated_at: string
 }
@@ -140,6 +144,33 @@ export interface AssetAIInsightNewsItem {
   market?: string | null
 }
 
+export interface SentimentTrajectoryEntry {
+  subject_type: 'asset' | 'theme'
+  subject: string
+  state: 'improving' | 'deteriorating' | 'conflicting' | 'reversal'
+  summary: string
+  evidence_count: number
+}
+
+export interface SentimentTrajectory {
+  entries: SentimentTrajectoryEntry[]
+}
+
+export interface DivergenceAnalysis {
+  label: 'no_divergence' | 'insufficient_signal' | 'no_material_follow_through' | 'competing_macro_priority' | 'reversal' | 'uncertainty_conflict'
+  expected_direction: 'up' | 'down' | 'none'
+  actual_direction: 'up' | 'down' | 'flat'
+  actual_percent_move: string
+  flat_threshold_percent: string
+  signal_votes: {
+    technical: 'positive' | 'negative' | 'neutral'
+    context: 'positive' | 'negative' | 'neutral'
+    trajectory: 'positive' | 'negative' | 'neutral'
+    shared_context: 'positive' | 'negative' | 'neutral'
+  }
+  macro_confirmation: boolean
+}
+
 export interface AssetAIInsight {
   symbol: string
   market: string
@@ -150,6 +181,10 @@ export interface AssetAIInsight {
   news_context: string
   reasoning: string
   price_target: number | null
+  sentiment_trajectory?: SentimentTrajectory | null
+  divergence_analysis?: DivergenceAnalysis | null
+  divergence_summary?: string
+  divergence_disclosure?: string
   model_used: string
   generated_at: string
   news_items: AssetAIInsightNewsItem[]
@@ -221,6 +256,40 @@ export interface OhlcvBackfillProcessedAsset {
   rows_ingested?: number
   error?: string
   timestamp: string
+}
+
+export interface DiscoveryShortlistItem {
+  asset_id: string
+  symbol: string
+  market: string
+  rank: number
+  score: string
+  score_breakdown: {
+    technical_setup: number
+    breakout: number
+    context_support: number
+    freshness: number
+  }
+  technical_signals: Record<string, unknown>
+  context_summary: Record<string, unknown>
+  discovery_reason: string
+  watch_action_ready: boolean
+  refined_reason?: string | null
+}
+
+export interface DiscoveryResult {
+  market: string
+  universe_size: number
+  survivor_count: number
+  shortlist_count: number
+  shortlist: DiscoveryShortlistItem[]
+  refinement: {
+    requested: boolean
+    applied: boolean
+    cache_hit: boolean
+    fingerprint: string | null
+  }
+  generated_at: string
 }
 
 export interface OhlcvBackfillStatus {

@@ -33,3 +33,32 @@ def analyze_news_sentiment():
             news_item.save(update_fields=["sentiment_score"])
 
     logger.info(f"Updated sentiment scores for {len(sentiments)} news items")
+
+
+@shared_task
+def generate_opportunity_discovery(market: str):
+    from .discovery import OpportunityDiscoveryService
+
+    service = OpportunityDiscoveryService()
+    result = service.discover(market, refine=False)
+    logger.info(
+        "Generated opportunity discovery for %s with %s shortlist items",
+        market,
+        result["shortlist_count"],
+    )
+    return result
+
+
+@shared_task
+def generate_all_opportunity_discoveries():
+    from markets.services import MARKET_CONFIGS
+    from .discovery import OpportunityDiscoveryService
+
+    service = OpportunityDiscoveryService()
+    results = {}
+    for market in MARKET_CONFIGS:
+        try:
+            results[market] = service.discover(market, refine=False)
+        except Exception:
+            logger.exception("Failed to generate opportunity discovery for %s", market)
+    return results

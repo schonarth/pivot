@@ -31,7 +31,7 @@
             :title="m.label"
             @click="toggleMarket(m.code)"
           >
-            {{ m.flag }}
+            <MarketBadge :market="m.code" mode="flag" />
           </button>
         </div>
       </div>
@@ -133,21 +133,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { searchAssets } from '@/api/assets'
+import { storeToRefs } from 'pinia'
+import { lookupAssetSymbol, searchAssets } from '@/api/assets'
 import type { Asset } from '@/types'
 import MarketBadge from '@/components/MarketBadge.vue'
+import { useAssetStore, type AssetSortKey } from '@/stores/assets'
 
 const ROW_HEIGHT = 48
 const OVERSCAN = 5
 
-type SortKey = 'display_symbol' | 'name' | 'market' | 'currency' | 'sector'
-
 const columns = [
-  { key: 'display_symbol' as SortKey, label: 'Symbol',   index: 0 },
-  { key: 'name'           as SortKey, label: 'Name',     index: 1 },
-  { key: 'market'         as SortKey, label: 'Market',   index: 2 },
-  { key: 'currency'       as SortKey, label: 'Currency', index: 3 },
-  { key: 'sector'         as SortKey, label: 'Sector',   index: 4 },
+  { key: 'display_symbol' as AssetSortKey, label: 'Symbol',   index: 0 },
+  { key: 'name'           as AssetSortKey, label: 'Name',     index: 1 },
+  { key: 'market'         as AssetSortKey, label: 'Market',   index: 2 },
+  { key: 'currency'       as AssetSortKey, label: 'Currency', index: 3 },
+  { key: 'sector'         as AssetSortKey, label: 'Sector',   index: 4 },
 ]
 
 const colWidths = ref([100, 320, 80, 90, 160])
@@ -161,18 +161,17 @@ const markets = [
   { code: 'UK', flag: '🇬🇧', label: 'UK' },
 ]
 
+const assetStore = useAssetStore()
+const { marketFilter, sortDir, sortKey } = storeToRefs(assetStore)
+
 const search = ref('')
-const marketFilter = ref('')
 
 function toggleMarket(code: string) {
-  marketFilter.value = marketFilter.value === code ? '' : code
+  assetStore.toggleMarket(code)
   doSearch()
 }
 const assets = ref<Asset[]>([])
 const loading = ref(false)
-
-const sortKey = ref<SortKey>('market')
-const sortDir = ref<'asc' | 'desc'>('asc')
 
 const sortedAssets = computed(() => {
   const key = sortKey.value
@@ -184,18 +183,13 @@ const sortedAssets = computed(() => {
   })
 })
 
-function setSort(key: SortKey) {
-  if (sortKey.value === key) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortKey.value = key
-    sortDir.value = 'asc'
-  }
+function setSort(key: AssetSortKey) {
+  assetStore.setSort(key)
   scrollTop.value = 0
   if (scrollEl.value) scrollEl.value.scrollTop = 0
 }
 
-function sortIcon(key: SortKey): string {
+function sortIcon(key: AssetSortKey): string {
   if (sortKey.value !== key) return ' ⇅'
   return sortDir.value === 'asc' ? ' ↑' : ' ↓'
 }
@@ -275,9 +269,23 @@ function debouncedSearch() {
 async function doSearch() {
   loading.value = true
   try {
-    assets.value = await searchAssets(search.value, marketFilter.value || undefined)
+    const symbol = search.value.trim()
+    if (!symbol) {
+      assets.value = await searchAssets('', marketFilter.value || undefined)
+    } else {
+      assets.value = await lookupAssetSymbol(symbol, marketFilter.value || undefined)
+    }
+
     scrollTop.value = 0
     if (scrollEl.value) scrollEl.value.scrollTop = 0
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      assets.value = []
+      scrollTop.value = 0
+      if (scrollEl.value) scrollEl.value.scrollTop = 0
+      return
+    }
+    throw error
   } finally {
     loading.value = false
   }

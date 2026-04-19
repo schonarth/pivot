@@ -1492,6 +1492,7 @@ CREATE INDEX idx_ai_picks_date_score ON ai_picks(date DESC, opportunity_score DE
 - `GET /api/ai/daily-picks` - Today's AI-recommended assets
 - `POST /api/ai/analyze-asset` - Get AI analysis for specific asset
 - `POST /api/ai/analyze-news` - Summarize news articles
+- `python manage.py inspect_divergence` - Print deterministic short-window divergence inputs, labels, and presentation text for an asset or monitored set
 
 **MLP / Post-MVP Authentication:**
 - `POST /api/auth/api-keys` - Generate MCP API key

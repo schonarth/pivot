@@ -1,7 +1,7 @@
 # ![Pivot logo](./frontend/public/pivot-logo.png) Pivot
 
 
-**An AI-powered paper trading simulator** for developing and testing investment strategies across global markets without risking real capital. Build strategies, get AI-generated insights with broad market context, track how the story changes over time, and compare portfolio or watchlist summaries, all risk-free — or let your AI agent do it for you with MCP support!
+**An AI-powered paper trading simulator** for developing and testing investment strategies across global markets without risking real capital. Build strategies, get AI-generated insights with broad market context, track how the story changes over time, compare portfolio or watchlist summaries, and surface new assets worth watching, all risk-free — or let your AI agent do it for you with MCP support!
 
 ---
 
@@ -14,6 +14,7 @@
 - **Set smart alerts** that trigger trades automatically when conditions are met
 - **Simulate market prices** to test strategies when markets are closed
 - **Manage multiple portfolios** and watchlists for different investment goals and risk profiles, with AI summaries that can cover the whole set
+- **Discover new opportunities** with ranked assets that are worth watching before you own them
 - **Bring your AI agent** to trade with you with our simple to setup MCP server
 
 Perfect for developing trading strategies, testing alert logic, learning portfolio management, and experimenting with automated trading — all without risking real capital.
@@ -64,9 +65,11 @@ The application will be ready at `http://localhost:3000` in about 30 seconds.
 - **Monitor execution** — Track autonomous trades triggered by your strategies
 - **Test and iterate** — Refine rules before deploying to live trading
 
-### AI-Powered Insights
+### AI-Powered Market Intelligence
 - **Generate technical analysis** — Claude, GPT, and Gemini supported now for market insights, with recent headlines tied back to the original source articles
 - **Follow the narrative** — news digest is kept short and readable, so the insight can explain what changed instead of treating each run like a blank slate
+- **Compare scope-level context** — portfolio and watchlist summaries help you see whether the whole set is moving together or diverging
+- **Spot opportunities earlier** — discovery surfaces a capped shortlist of assets worth watching, with a concise reason for each one
 - **Budget tracking** — Monitor AI provider costs and set spending limits (API key required — sorry, no flat rate support 😅)
 
 ### Portfolios
@@ -74,10 +77,12 @@ The application will be ready at `http://localhost:3000` in about 30 seconds.
 - Track cash, invested value, and profit/loss
 - View performance history and returns
 - See AI summaries for portfolios and watchlists when you want a quick read on the whole group
+- Use divergence-style comparisons to see how a holding or watch item differs from the surrounding context
 - Deposit or withdraw funds anytime
 
 ### Trading
 - Buy and sell stocks/ETFs with automatic fee calculation
+  - (no real money transactions, this is for study)
 - Track your positions and average costs
 - View current prices and unrealized gains/losses
 
@@ -113,7 +118,7 @@ Test your strategies when markets are closed:
 The simulator updates prices in real-time—watch your portfolio and strategies react on the dashboard.
 
 > [!IMPORTANT]
-> To enable alerts for simaulated market, you must turn on the **simulation toggle** on your portfolios.
+> To enable alerts for simulated market, you must turn on the **simulation toggle** on your portfolios.
 
 > [!TIP]
 > Use different portfolios to run simulations and for actual market tracking, to prevent distortions.
@@ -130,12 +135,13 @@ Use AI agents to automate trading, backtest strategies, generate insights, and m
 - Generate technical analysis and trading insights
 - Monitor strategy execution and autonomous trades
 - Manage AI provider settings and cost budgets
+- Look up assets through trusted sources when a symbol is missing locally
 
 **To set up agent access:**
 1. Go to Settings
-2. Get your User UUID
-3. Generate a one-time password (OTP)
-4. Your agent will have full access to manage trading, backtesting, and insights
+2. Copy the prompt template with your User UUID
+3. Generate a one-time password (OTP) and give it to your agent
+4. Your agent will have full access to manage trading, backtesting, discovery, and insights
 
 ---
 

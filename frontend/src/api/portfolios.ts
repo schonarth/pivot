@@ -1,5 +1,5 @@
 import api from './client'
-import type { Portfolio, PortfolioSummary, CashTransaction } from '@/types'
+import type { MonitoredScopeInsight, Portfolio, PortfolioSummary, CashTransaction } from '@/types'
 
 export async function getPortfolios(): Promise<Portfolio[]> {
   const { data } = await api.get('/portfolios/')
@@ -28,6 +28,13 @@ export async function deletePortfolio(id: string): Promise<void> {
 export async function getPortfolioSummary(id: string): Promise<PortfolioSummary> {
   const { data } = await api.get(`/portfolios/${id}/summary/`)
   return data
+}
+
+export async function getPortfolioScopeInsight(id: string, scope: 'portfolio' | 'watch'): Promise<MonitoredScopeInsight | null> {
+  const { data } = await api.get(`/portfolios/${id}/scope_insight/`, {
+    params: { scope },
+  })
+  return data.insight
 }
 
 export async function addPortfolioWatchAsset(id: string, assetId: string) {

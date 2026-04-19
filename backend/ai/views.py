@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import AIAuth
 from .serializers import AIAuthSettingsSerializer, AIBudgetSerializer
 from .services import AIService
+from .discovery import OpportunityDiscoveryService
 
 
 class AISettingsViewSet(viewsets.ViewSet):
@@ -41,6 +42,9 @@ class AISettingsViewSet(viewsets.ViewSet):
         if "provider_name" in request.data:
             ai_auth.provider_name = request.data["provider_name"]
 
+        if "enabled" in request.data:
+            ai_auth.enabled = request.data["enabled"]
+
         if "task_models" in request.data:
             ai_auth.task_models = request.data["task_models"]
 
@@ -52,6 +56,8 @@ class AISettingsViewSet(viewsets.ViewSet):
     def set_api_key(self, request):
         """Store encrypted API key."""
         api_key = request.data.get("api_key")
+        use_as_instance_default = bool(request.data.get("use_as_instance_default"))
+        allow_other_users = bool(request.data.get("allow_other_users"))
         if not api_key:
             return Response(
                 {"error": "api_key is required"},
@@ -59,7 +65,26 @@ class AISettingsViewSet(viewsets.ViewSet):
             )
 
         service = AIService(request.user)
+        provider_name = request.data.get("provider_name") or service.ai_auth.provider_name
+        if use_as_instance_default:
+            instance_default_key = AIService.get_instance_default_key()
+            if instance_default_key and instance_default_key.owner_id not in (None, request.user.id):
+                return Response(
+                    {"error": "instance default key is managed by another user"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        service.ai_auth.provider_name = provider_name
+        service.ai_auth.save(update_fields=["provider_name"])
         service.set_api_key(api_key)
+        if use_as_instance_default:
+            service.set_instance_default_api_key(
+                api_key,
+                provider_name=provider_name,
+                allow_other_users=allow_other_users,
+            )
+        else:
+            service.clear_instance_default_api_key_if_owned()
 
         return Response(
             {"status": "API key updated"},
@@ -71,6 +96,7 @@ class AISettingsViewSet(viewsets.ViewSet):
         """Remove stored API key."""
         service = AIService(request.user)
         service.clear_api_key()
+        service.clear_instance_default_api_key_if_owned()
 
         return Response(
             {"status": "API key removed"},
@@ -81,13 +107,19 @@ class AISettingsViewSet(viewsets.ViewSet):
     def test_connection(self, request):
         provider = request.data.get("provider_name")
         api_key = request.data.get("api_key")
+        service = AIService(request.user)
+
+        if not service.has_ai_enabled():
+            return Response(
+                {"error": "AI features are disabled"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if not provider:
             ai_auth = AIAuth.objects.filter(user=request.user).first()
             provider = ai_auth.provider_name if ai_auth else "openai"
 
         if not api_key:
-            service = AIService(request.user)
             api_key = service.get_api_key()
 
         if not api_key:
@@ -108,3 +140,23 @@ class AISettingsViewSet(viewsets.ViewSet):
             {"status": "ok", **result},
             status=status.HTTP_200_OK,
         )
+
+
+class OpportunityDiscoveryViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        market = request.query_params.get("market")
+        refine = str(request.query_params.get("refine", "")).lower() in {"1", "true", "yes"}
+        refresh = str(request.query_params.get("refresh", "")).lower() in {"1", "true", "yes"}
+
+        service = OpportunityDiscoveryService(request.user)
+        try:
+            result = service.discover(market, refine=refine, force_refresh=refresh)
+        except ValueError as exc:
+            return Response(
+                {"error": {"code": "invalid_market", "message": str(exc)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(result)

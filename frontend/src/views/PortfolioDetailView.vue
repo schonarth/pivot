@@ -180,11 +180,14 @@
 
     <div v-if="activeTab === 'positions'">
       <ScopeInsightCard
+        v-if="aiEnabled"
         title="Portfolio AI Summary"
         scope-label="Portfolio positions"
         :asset-count="positionAssessments.length"
         empty-message="No positions to analyze yet."
-        :insight="portfolioInsight"
+        :insight="null"
+        :load-insight="loadPortfolioInsight"
+        :refresh-key="portfolioInsightKey"
       />
       <div
         v-if="summary.positions.length"
@@ -250,11 +253,14 @@
 
     <div v-if="activeTab === 'watch'">
       <ScopeInsightCard
+        v-if="aiEnabled"
         title="Watch AI Summary"
         scope-label="Portfolio watch"
         :asset-count="watchAssessments.length"
         empty-message="No watch assets to analyze yet."
-        :insight="watchInsight"
+        :insight="null"
+        :load-insight="loadWatchInsight"
+        :refresh-key="watchInsightKey"
       />
       <div class="card" style="margin-bottom: 1rem;">
         <h3 style="margin-bottom: 0.75rem;">
@@ -787,6 +793,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   addPortfolioWatchAsset,
   getPortfolioSummary,
+  getPortfolioScopeInsight,
   getPortfolioTimeline,
   refreshPortfolioPrices,
   deposit,
@@ -800,6 +807,7 @@ import { parseNumericInput, formatCurrency } from '@/utils/numbers'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useNotifications } from '@/composables/useNotifications'
 import { useToast } from '@/composables/useToast'
+import { useAiEnabled } from '@/composables/useAiEnabled'
 import ScopeInsightCard from '@/components/ScopeInsightCard.vue'
 import type { Alert, Asset, PortfolioSummary, MonitoredAssetSummary } from '@/types'
 
@@ -809,6 +817,7 @@ const router = useRouter()
 const ws = useWebSocketStore()
 const { showNotification } = useNotifications()
 const toast = useToast()
+const { aiEnabled } = useAiEnabled()
 
 const getPortfolioId = () => {
   const routePortfolioId = route.params.id as string | string[] | undefined
@@ -876,8 +885,8 @@ const positionAssessments = computed<MonitoredAssetSummary[]>(() => {
   }))
 })
 const watchAssessments = computed<MonitoredAssetSummary[]>(() => summary.value?.watch_assets ?? [])
-const portfolioInsight = computed(() => summary.value?.scope_insights?.portfolio ?? null)
-const watchInsight = computed(() => summary.value?.scope_insights?.watch ?? null)
+const portfolioInsightKey = computed(() => JSON.stringify(summary.value?.positions ?? []))
+const watchInsightKey = computed(() => JSON.stringify(summary.value?.watch_assets ?? []))
 
 watch(showDeposit, (val) => {
   if (val) nextTick(() => depositInput.value?.focus())
@@ -934,6 +943,16 @@ async function loadAlerts() {
     if (result) map[result.id] = result.price
   }
   alertPrices.value = map
+}
+
+async function loadPortfolioInsight() {
+  if (!portfolioId.value) return null
+  return getPortfolioScopeInsight(portfolioId.value, 'portfolio')
+}
+
+async function loadWatchInsight() {
+  if (!portfolioId.value) return null
+  return getPortfolioScopeInsight(portfolioId.value, 'watch')
 }
 
 onMounted(() => {

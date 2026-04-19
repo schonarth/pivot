@@ -8,6 +8,11 @@ export async function searchAssets(q: string, market?: string): Promise<Asset[]>
   return data.results ?? data
 }
 
+export async function lookupAssetSymbol(symbol: string, market?: string): Promise<Asset[]> {
+  const { data } = await api.post('/assets/lookup-symbol/', { symbol, market })
+  return data.results ?? data
+}
+
 export async function getAsset(id: string): Promise<Asset> {
   const { data } = await api.get(`/assets/${id}/`)
   return data

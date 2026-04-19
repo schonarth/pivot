@@ -68,7 +68,7 @@ class TestPortfolioEndpoints:
         assert response.data["watch_assets"][0]["symbol"] == asset.display_symbol
 
     @patch.object(AIService, "analyze_scope")
-    def test_portfolio_summary_includes_scope_insights(
+    def test_portfolio_summary_does_not_compute_scope_insights(
         self,
         mock_analyze_scope,
         authenticated_client,
@@ -112,9 +112,45 @@ class TestPortfolioEndpoints:
         response = authenticated_client.get(f"/api/portfolios/{portfolio.id}/summary/")
 
         assert response.status_code == 200
-        assert response.data["scope_insights"]["portfolio"]["summary"] == "Portfolio level summary."
-        assert response.data["scope_insights"]["watch"]["summary"] == "Watch level summary."
-        assert mock_analyze_scope.call_count == 2
+        assert response.data["scope_insights"]["portfolio"] is None
+        assert response.data["scope_insights"]["watch"] is None
+        assert mock_analyze_scope.call_count == 0
+
+    @patch.object(AIService, "analyze_scope")
+    def test_portfolio_scope_insight_fetches_on_demand(
+        self,
+        mock_analyze_scope,
+        authenticated_client,
+        position,
+        user,
+    ):
+        service = AIService(user)
+        service.set_api_key("test-key")
+        portfolio = position.portfolio
+        asset = position.asset
+        PortfolioWatchMembership.objects.create(portfolio=portfolio, asset=asset)
+        mock_analyze_scope.return_value = {
+            "scope_type": "portfolio",
+            "scope_label": f"{portfolio.name} positions",
+            "asset_count": 1,
+            "recommendation": "BUY",
+            "confidence": 81,
+            "summary": "Portfolio level summary.",
+            "technical_summary": "Portfolio technicals.",
+            "news_context": "Portfolio context.",
+            "reasoning": "",
+            "model_used": "gpt-4o-mini",
+            "generated_at": "2026-04-16T00:00:00Z",
+        }
+
+        response = authenticated_client.get(
+            f"/api/portfolios/{portfolio.id}/scope_insight/",
+            {"scope": "portfolio"},
+        )
+
+        assert response.status_code == 200
+        assert response.data["insight"]["summary"] == "Portfolio level summary."
+        assert mock_analyze_scope.call_count == 1
 
     def test_portfolio_watch_add_and_remove_asset(self, authenticated_client, portfolio, asset):
         add_response = authenticated_client.post(

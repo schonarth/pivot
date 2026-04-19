@@ -22,6 +22,10 @@ except ImportError:
 
 logger = logging.getLogger("paper_trader.markets")
 
+YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search"
+SEARCH_MARKETS = ("BR", "US", "UK", "EU")
+EU_SUFFIXES = (".PA", ".DE", ".AS", ".MI")
+
 
 MARKET_CONFIGS = {
     "BR": {
@@ -119,6 +123,89 @@ def get_or_create_asset(*, display_symbol: str, market: str, **kwargs) -> Asset:
         defaults=defaults,
     )
     return asset
+
+
+def _market_from_provider_symbol(provider_symbol: str) -> str:
+    symbol = provider_symbol.upper()
+    if symbol.endswith(".SA"):
+        return "BR"
+    if symbol.endswith(".L"):
+        return "UK"
+    if symbol.endswith(EU_SUFFIXES):
+        return "EU"
+    return "US"
+
+
+def _display_symbol_from_provider_symbol(provider_symbol: str, market: str) -> str:
+    symbol = provider_symbol.upper()
+    if market == "BR" and symbol.endswith(".SA"):
+        return symbol[:-3]
+    if market == "UK" and symbol.endswith(".L"):
+        return symbol[:-2].replace("-", ".")
+    if market == "EU":
+        return symbol.split(".", 1)[0].replace("-", ".")
+    return symbol
+
+
+def search_asset_symbols(symbol: str, market: str | None = None) -> list[Asset]:
+    query = symbol.strip().upper()
+    if not query:
+        return []
+
+    queryset = Asset.objects.filter(display_symbol__iexact=query)
+    if market:
+        queryset = queryset.filter(market=market)
+    local_assets = list(queryset.order_by("market", "display_symbol"))
+    if local_assets:
+        return local_assets
+
+    try:
+        response = requests.get(
+            YAHOO_SEARCH_URL,
+            params={"q": query, "quotesCount": 10, "newsCount": 0},
+            headers=NewsService.HEADERS,
+            timeout=5,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        logger.exception("Failed to search Yahoo Finance for %s", query)
+        return []
+
+    quotes = payload.get("quotes", [])
+    market_order = [market] if market else list(SEARCH_MARKETS)
+    for current_market in market_order:
+        for quote in quotes:
+            provider_symbol = str(quote.get("symbol") or "").upper()
+            if not provider_symbol:
+                continue
+            quote_market = _market_from_provider_symbol(provider_symbol)
+            if quote_market != current_market:
+                continue
+            if quote.get("quoteType") not in {"EQUITY", "ETF"}:
+                continue
+            if _display_symbol_from_provider_symbol(provider_symbol, quote_market) != query:
+                continue
+
+            market_config = MARKET_CONFIGS.get(quote_market, {})
+            asset = get_or_create_asset(
+                display_symbol=query,
+                market=quote_market,
+                provider_symbol=provider_symbol,
+                name=(quote.get("shortname") or quote.get("longname") or query)[:255],
+                exchange=(quote.get("exchange") or market_config.get("exchange", ""))[:20],
+                currency=(quote.get("currency") or market_config.get("currency", ""))[:3],
+                sector="",
+                industry="",
+                is_seeded=False,
+                last_symbol_sync_at=timezone.now(),
+            )
+            from .tasks import backfill_single_asset_ohlcv
+
+            backfill_single_asset_ohlcv.delay(str(asset.id))
+            return [asset]
+
+    return []
 
 
 def ingest_ohlcv(asset_id: str, ohlcv_list: list[dict], source: str = "yahoo_finance") -> int:

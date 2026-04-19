@@ -31,13 +31,18 @@ def validate_and_use_otp(user: User, code: str) -> bool:
         return False
 
 
-def generate_agent_token(user: User, name: str, origin: str) -> str:
+def generate_agent_token(user: User, name: str, origin: str, llm_provider: str = '', llm_model: str = '') -> str:
     """Generate and store an agent token."""
     token = secrets.token_urlsafe(32)
     AgentToken.objects.update_or_create(
         user=user,
         origin=origin,
-        defaults={'token': token, 'name': name}
+        defaults={
+            'token': token,
+            'name': name,
+            'llm_provider': llm_provider,
+            'llm_model': llm_model,
+        }
     )
     return token
 

@@ -13,7 +13,11 @@ const apexChartsState = vi.hoisted(() => ({
 const showNotification = vi.fn()
 
 vi.mock('apexcharts', () => ({
-  default: vi.fn().mockImplementation(function (this: any, _el: HTMLElement, options: any) {
+  default: vi.fn().mockImplementation(function (
+    this: any,
+    _el: HTMLElement,
+    options: any,
+  ) {
     this.options = options
     this.render = vi.fn()
     this.destroy = vi.fn()
@@ -27,21 +31,55 @@ vi.mock('@/api/assets', () => ({
   getAssetOHLCV: vi.fn(),
 }))
 
+vi.mock('@/api/ai', () => ({
+  getSettings: vi.fn(),
+}))
+
 vi.mock('@/composables/useNotifications', () => ({
   useNotifications: () => ({
     showNotification,
   }),
 }))
 
-const { getAssetOHLCV, getAssetIndicators, getAssetAIInsight } = await import('@/api/assets')
+const { getAssetOHLCV, getAssetIndicators, getAssetAIInsight } =
+  await import('@/api/assets')
+const { getSettings } = await import('@/api/ai')
 
 describe('AssetAnalysisTab', () => {
   beforeEach(() => {
     apexChartsState.instances.length = 0
     showNotification.mockReset()
+    vi.mocked(getSettings).mockResolvedValue({
+      provider_name: 'openai',
+      enabled: true,
+      monthly_budget_usd: 10,
+      alert_threshold_pct: 10,
+      task_models: {},
+      has_api_key: true,
+      available_providers: [],
+      available_models: {},
+      available_tasks: {},
+      instance_default_enabled: false,
+      instance_default_allow_other_users: false,
+      instance_default_owned_by_current_user: false,
+      instance_default_owner_username: null,
+      can_use_instance_default: false,
+    })
     vi.mocked(getAssetOHLCV).mockResolvedValue([
-      { date: '2025-04-01T00:00:00.000Z', open: '100', high: '110', low: '95', close: '108' },
-      { date: '2025-04-02T00:00:00.000Z', open: '108', high: '114', low: '102', close: '111' },
+      {
+        date: '2025-04-01T00:00:00.000Z',
+        open: '100',
+        high: '110',
+        low: '95',
+        close: '108',
+      },
+      {
+        date: '2025-04-02T00:00:00.000Z',
+        open: '108',
+        high: '114',
+        low: '102',
+        close: '111',
+      },
     ])
     vi.mocked(getAssetIndicators).mockResolvedValue([
       {
@@ -81,20 +119,62 @@ describe('AssetAnalysisTab', () => {
       news_context: 'Legacy news context',
       reasoning: '',
       price_target: null,
+      sentiment_trajectory: {
+        entries: [
+          {
+            subject_type: 'asset',
+            subject: 'TEST',
+            state: 'improving',
+            summary:
+              'Asset TEST is turning more positive across 3 retained items.',
+            evidence_count: 3,
+          },
+        ],
+      },
+      divergence_analysis: {
+        label: 'no_divergence',
+        expected_direction: 'up',
+        actual_direction: 'up',
+        actual_percent_move: '0.0412',
+        flat_threshold_percent: '0.005',
+        signal_votes: {
+          technical: 'positive',
+          context: 'positive',
+          trajectory: 'positive',
+          shared_context: 'neutral',
+        },
+        macro_confirmation: false,
+      },
+      divergence_summary: 'Expected up, and the move matched.',
+      divergence_disclosure:
+        'Short-window divergence is informational only and does not drive trades.',
       model_used: 'gpt-test',
       generated_at: '2025-04-02T00:00:00.000Z',
       news_items: [
-        { headline: 'Headline one', url: 'https://example.com/one', source: 'Source A', published_at: null },
-        { headline: 'Headline two', url: 'https://example.com/two', source: 'Source B', published_at: null },
+        {
+          headline: 'Headline one',
+          url: 'https://example.com/one',
+          source: 'Source A',
+          published_at: null,
+        },
+        {
+          headline: 'Headline two',
+          url: 'https://example.com/two',
+          source: 'Source B',
+          published_at: null,
+        },
       ],
     })
   })
 
   it('renders split chart panels and keeps the price pane logarithmic', async () => {
     let resolveInsight: ((value: any) => void) | undefined
-    vi.mocked(getAssetAIInsight).mockImplementation(() => new Promise((resolve) => {
-      resolveInsight = resolve
-    }))
+    vi.mocked(getAssetAIInsight).mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveInsight = resolve
+        }),
+    )
 
     const wrapper = mount(AssetAnalysisTab, {
       props: {
@@ -109,10 +189,17 @@ describe('AssetAnalysisTab', () => {
 
     await flushPromises()
 
-    await wrapper.findAll('button').find((button) => button.text() === 'Generate Insight')?.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find(button => button.text() === 'Generate Insight')
+      ?.trigger('click')
     await flushPromises()
 
-    expect(wrapper.findAll('button').find((button) => button.text() === 'Generating...')).toBeTruthy()
+    expect(
+      wrapper
+        .findAll('button')
+        .find(button => button.text() === 'Generating...'),
+    ).toBeTruthy()
     expect(wrapper.find('.asset-insight-loading').exists()).toBe(true)
     expect(wrapper.find('.asset-insight-loading-box').exists()).toBe(true)
 
@@ -127,11 +214,50 @@ describe('AssetAnalysisTab', () => {
         news_context: 'Legacy news context',
         reasoning: '',
         price_target: null,
+        sentiment_trajectory: {
+          entries: [
+            {
+              subject_type: 'asset',
+              subject: 'TEST',
+              state: 'improving',
+              summary:
+                'Asset TEST is turning more positive across 3 retained items.',
+              evidence_count: 3,
+            },
+          ],
+        },
+        divergence_analysis: {
+          label: 'no_divergence',
+          expected_direction: 'up',
+          actual_direction: 'up',
+          actual_percent_move: '0.0412',
+          flat_threshold_percent: '0.005',
+          signal_votes: {
+            technical: 'positive',
+            context: 'positive',
+            trajectory: 'positive',
+            shared_context: 'neutral',
+          },
+          macro_confirmation: false,
+        },
+        divergence_summary: 'Expected up, and the move matched.',
+        divergence_disclosure:
+          'Short-window divergence is informational only and does not drive trades.',
         model_used: 'gpt-test',
         generated_at: '2025-04-02T00:00:00.000Z',
         news_items: [
-          { headline: 'Headline one', url: 'https://example.com/one', source: 'Source A', published_at: null },
-          { headline: 'Headline two', url: 'https://example.com/two', source: 'Source B', published_at: null },
+          {
+            headline: 'Headline one',
+            url: 'https://example.com/one',
+            source: 'Source A',
+            published_at: null,
+          },
+          {
+            headline: 'Headline two',
+            url: 'https://example.com/two',
+            source: 'Source B',
+            published_at: null,
+          },
         ],
       })
     }
@@ -149,10 +275,23 @@ describe('AssetAnalysisTab', () => {
     expect(wrapper.find('.chart-container-oscillator').exists()).toBe(true)
     expect(wrapper.text()).toContain('Summary first')
     expect(wrapper.text()).toContain('Technical summary')
+    expect(wrapper.text()).toContain('Sentiment trajectory')
+    expect(wrapper.text()).toContain('Divergence')
+    expect(wrapper.text()).toContain('Nailed it')
+    expect(wrapper.text()).toContain('MATCH')
+    expect(wrapper.text()).toContain('Expected up, and the move matched.')
+    expect(wrapper.text()).toContain(
+      'Short-window divergence is informational only and does not drive trades.',
+    )
+    expect(wrapper.text()).toContain('Sentiment trajectory')
     expect(wrapper.text()).toContain('Headline one')
     expect(wrapper.text()).toContain('Headline two')
-    expect(wrapper.find('a[href="https://example.com/one"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="https://example.com/two"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="https://example.com/one"]').exists()).toBe(
+      true,
+    )
+    expect(wrapper.find('a[href="https://example.com/two"]').exists()).toBe(
+      true,
+    )
     expect(wrapper.text()).not.toContain('Legacy news context')
 
     expect(apexChartsState.instances).toHaveLength(2)
@@ -167,11 +306,15 @@ describe('AssetAnalysisTab', () => {
     expect(mainChartOptions.yaxis.min).toBe(90)
     expect(mainChartOptions.yaxis.max).toBe(120)
     expect(mainChartOptions.yaxis.tickAmount).toBe(4)
-    expect(mainChartOptions.yaxis.labels.formatter(289.999999999972)).toBe('290')
+    expect(mainChartOptions.yaxis.labels.formatter(289.999999999972)).toBe(
+      '290',
+    )
     expect(mainChartOptions.annotations.yaxis).toHaveLength(5)
     expect(mainChartOptions.grid.position).toBe('back')
     expect(mainChartOptions.grid.yaxis.lines.show).toBe(true)
-    expect(mainChartOptions.plotOptions.candlestick.wick.useFillColor).toBe(true)
+    expect(mainChartOptions.plotOptions.candlestick.wick.useFillColor).toBe(
+      true,
+    )
 
     expect(oscillatorChartOptions.yaxis.min).toBe(0)
     expect(oscillatorChartOptions.yaxis.max).toBe(100)
@@ -181,7 +324,10 @@ describe('AssetAnalysisTab', () => {
     expect(oscillatorChartOptions.colors).toEqual(['#3b82f6'])
     expect(oscillatorChartOptions.stroke.width).toBe(2)
 
-    await wrapper.findAll('button').find((button) => button.text() === 'MACD')?.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find(button => button.text() === 'MACD')
+      ?.trigger('click')
     await flushPromises()
 
     expect(apexChartsState.instances).toHaveLength(4)
@@ -192,11 +338,55 @@ describe('AssetAnalysisTab', () => {
     expect(latestOscillatorOptions.colors).toEqual(['#22c55e', '#3b82f6'])
     expect(latestOscillatorOptions.stroke.width).toEqual([0, 2])
 
-    await wrapper.findAll('button').find((button) => button.text() === 'Bollinger Bands')?.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find(button => button.text() === 'Bollinger Bands')
+      ?.trigger('click')
     await flushPromises()
 
     expect(apexChartsState.instances).toHaveLength(6)
     const latestMainOptions = apexChartsState.instances[4].options
-    expect(latestMainOptions.colors).toEqual(['#ffffff', '#16a34a', '#f59e0b', '#dc2626'])
+    expect(latestMainOptions.colors).toEqual([
+      '#ffffff',
+      '#16a34a',
+      '#f59e0b',
+      '#dc2626',
+    ])
+  })
+
+  it('hides the ai insight panel when ai is disabled', async () => {
+    vi.mocked(getSettings).mockResolvedValue({
+      provider_name: 'openai',
+      enabled: false,
+      monthly_budget_usd: 10,
+      alert_threshold_pct: 10,
+      task_models: {},
+      has_api_key: true,
+      available_providers: [],
+      available_models: {},
+      available_tasks: {},
+      instance_default_enabled: false,
+      instance_default_allow_other_users: false,
+      instance_default_owned_by_current_user: false,
+      instance_default_owner_username: null,
+      can_use_instance_default: false,
+    })
+
+    const wrapper = mount(AssetAnalysisTab, {
+      props: {
+        assetId: 'asset-1',
+      },
+      global: {
+        stubs: {
+          RouterLink: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('AI Insight')
+    expect(wrapper.find('.chart-container-main').exists()).toBe(true)
+    expect(wrapper.find('.chart-container-oscillator').exists()).toBe(true)
   })
 })

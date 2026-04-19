@@ -229,38 +229,177 @@ Milestone 02 now exposes OHLCV backfill status in Settings so operators can star
 - the Settings page could feel heavier than the underlying feature warrants
 - repeated full logs may distract from higher-value configuration controls
 
-## 006 - Portfolio and Watch UI Polish
+---
+
+## 007 - Specialized Watch Lists for Close Tracking vs Breadth
 
 ### Context
 
-Milestone 03 now has a true portfolio-level and watch-level AI summary UI, but the first pass favors capability over finish. The current shape is functional, yet it still needs refinement in layout hierarchy, tab navigation clarity, and overall visual cleanliness.
+Milestone 03 chose the smallest safe watch-scope shape: one named default watch scope per user unless multiple named sets were nearly free. That was appropriate when watch scope mainly needed to support one monitored-set summary. Milestone 05 raises a new pressure: divergence assessment becomes stronger when users monitor a broader peer set, but many users will still want a much smaller set of assets they follow closely day to day.
 
 ### Current Safe Policy
 
-- keep the current monitored-set intelligence behavior intact
-- preserve portfolio summary, watch summary, and asset drill-down
-- defer visual polish until after the milestone is accepted and the user flow is stable
+- keep the current single watch-scope behavior intact
+- continue treating watch membership as explicit and user-controlled
+- use UI disclosure to explain that divergence reasoning only considers the current asset plus explicitly monitored assets in the relevant portfolio or watch scope
 
 ### Why Deferred
 
-- the first pass needed to prove the monitored-set AI summaries and watch binding
-- layout and navigation refinements are valuable, but they are not blockers for the core milestone outcome
-- the current implementation is good enough to use, so the safest next step is a focused UX pass rather than more structural change
+- the current single-list model is still sufficient to keep Milestone 03 and Milestone 05 honest
+- adding multiple watch lists introduces naming, navigation, empty-state, and migration questions that are not required to prove divergence reasoning itself
+- broadening watch management too early risks turning a focused analysis milestone into a larger product-surface change
 
 ### Earliest Revisit
 
-- immediately after Milestone 03 acceptance
-- before starting Milestone 04 work
+- after Milestone 05 acceptance
+- before or alongside any later work that depends more heavily on cross-asset monitored breadth
 
 ### Future Direction
 
-- simplify the portfolio page hierarchy so the AI summary reads as the primary scope result
-- tighten tab navigation and tab labels so positions, watches, and drill-down feel obvious
-- reduce visual clutter in the portfolio detail page and asset detail controls
-- align spacing, card density, and button placement for a cleaner browsing flow
+- allow at least two user-managed watch lists or equivalent watch modes
+- support one narrow list for close tracking and one broader list for context enrichment
+- keep membership explicit rather than inferred
+- preserve a simple default setup for users who do not want to manage multiple lists
+- consider fully user-managed named watch lists, since users may cluster assets more cleanly by theme, such as energy, tech, media, or other cohorts
+- that shape can produce cleaner analyses than forcing everything into a single bucket, even if we offer two buckets
+- possible product framing:
+  - close watch vs context watch
+  - primary watch vs broader watch
+  - fully user-managed named watch lists if that proves cleaner than fixed two-list semantics
 
 ### Risk If Deferred Too Long
 
-- the current UI may feel busy or confusing even though the underlying capability is correct
-- users may miss the scope-level summary because the drill-down remains prominent
-- the new monitored-set experience may feel more like a convenience feature than the primary portfolio/watch analysis surface
+- users may hesitate to add helpful peer assets because doing so pollutes the one list they actually use for close monitoring
+- Milestone 05 divergence explanations may stay thinner than they need to be because users keep their watch scope artificially small
+- the product may push users toward a behavior that improves analysis quality while making their everyday watch workflow worse
+
+---
+
+## 008 - Distinguish No Expectation From Flat Expectation
+
+### Context
+
+The current divergence model uses `expected_direction = none` when it could not form a directional expectation. That works for "no signal" cases, but it becomes ambiguous when the actual move is flat, because `none + flat` can look like an implied match even though no flat expectation was ever made.
+
+### Current Safe Policy
+
+- keep `expected_direction` as the only expectation field for now
+- treat `none` as "no directional expectation formed"
+- keep `flat` as an actual outcome only, not a modeled expectation state
+
+### Why Deferred
+
+- the current model is simple and sufficient for Milestone 05 behavior
+- adding a separate expectation state changes the data model, the analysis logic, and the UI copy
+- the distinction is useful, but not required to prove divergence reasoning itself
+
+### Earliest Revisit
+
+- when we want to make flat outcomes easier to interpret in the UI
+- before adding any richer divergence badges or expectation-state analytics
+
+### Future Direction
+
+- introduce a separate expectation state such as `no_signal`, `flat`, `up`, `down`
+- or add a boolean like `has_directional_expectation`
+- preserve the ability to say "we had no expectation" versus "we expected flat"
+
+### Risk If Deferred Too Long
+
+- users may misread `none + flat` as a positive match instead of a lack of signal
+- the divergence card may stay slightly ambiguous in low-signal cases
+- future copy may need to keep explaining a distinction the model does not encode directly
+
+---
+
+## 009 - Settings-Based Symbol Discovery Expansion
+
+### Context
+
+The current assets page uses a boring, symbol-only exact lookup path. That is the safe default, but it may eventually need a broader discovery surface for operators who want to add more assets than the initial seed without relying on ad hoc manual imports.
+
+### Current Safe Policy
+
+- keep the Assets page search exact and symbol-only
+- import only when an exact symbol lookup succeeds
+- avoid any background discovery or fuzzy matching
+
+### Why Deferred
+
+- a Settings-based scan panel adds source selection, market scoping, and refresh controls
+- the exact lookup flow is enough to validate controlled asset expansion first
+- broader discovery belongs after the simple path proves useful and stable
+
+### Earliest Revisit
+
+- after the symbol-only lookup path has settled in normal use
+- when operators need coverage beyond one-off symbol searches
+
+### Future Direction
+
+- add a Settings panel for on-demand source scans by market
+- let operators choose trusted sources and active windows before importing
+- keep imports explicit, reviewable, and market-scoped
+
+### Risk If Deferred Too Long
+
+- expanding beyond the seed stays manual for longer than necessary
+- operators may need to use the exact lookup path repeatedly for bulk additions
+- the app may remain dependent on the initial seed set until a broader discovery workflow is introduced
+
+---
+
+## 010 - Asset Import Hints from Scanned News
+
+### Context
+
+The discovery roadmap increasingly depends on the stored asset universe being broad enough to catch relevant opportunities. The project now supports adding assets incrementally, but that still depends on someone noticing missing symbols first. News ingestion already processes headlines, and later may process fuller article bodies, so it is a natural place to notice candidate symbols that are not yet in the asset table.
+
+### Current Safe Policy
+
+- keep asset expansion explicit and operator-controlled
+- do not auto-import new assets from ingested news
+- rely on the existing seed plus one-by-one additions for now
+
+### Why Deferred
+
+- symbol extraction rules need care to avoid noisy matches
+- all-caps token heuristics are promising, but exact rules still need validation
+- online lookup introduces source-selection, rate-limit, and trust questions
+- automatic import from news would widen the asset universe through a path that is useful, but not yet audited tightly enough
+
+### Earliest Revisit
+
+- after Milestone 06 acceptance
+- earlier only if the current asset universe proves too thin for discovery quality
+
+### Future Direction
+
+- scan ingested headlines for likely symbol candidates using lightweight deterministic rules
+- likely first pass:
+  - short all-caps words or similar constrained token patterns
+  - search the current asset list first
+  - if a match exists locally, stop there
+  - if no local match exists, try a trusted external lookup
+  - if confirmed externally, allow import into the asset universe
+- start with headline-only extraction if that gives acceptable recall
+- later consider applying the same lightweight logic to full article body text when the added noise is acceptable
+- keep imports reviewable even if detection becomes automatic
+
+### Risk If Deferred Too Long
+
+- discovery quality may stay limited by whatever assets are already present locally
+- relevant symbols appearing repeatedly in news may remain invisible to the product until manually added
+- the system may miss a natural low-cost path for expanding coverage as news flow evolves
+
+
+---
+
+
+# Implemented
+
+The features below have already been implemented, and moved out of the list above.
+
+## 006 - Portfolio and Watch UI Polish
+
+Implemented as part of the Milestone 03 follow-up UX pass.

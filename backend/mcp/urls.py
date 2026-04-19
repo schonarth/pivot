@@ -2,7 +2,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 from .views import (
     OTPGenerateView, TokenExchangeView, TokenValidateView, AgentsListView, AgentRevokeView,
-    MCPAssetInsightView, AISettingsView, StrategyRulesListView,
+    MCPAssetInsightView, MCPAssetLookupView, AISettingsView, StrategyRulesListView,
     StrategyInstancesListView, StrategyTradesListView, AgentTradesListView,
     BacktestCreateView, BacktestResultsView, MCPSchemaView
 )
@@ -16,6 +16,7 @@ urlpatterns = [
     path('agents/', AgentsListView.as_view(), name='agents-list'),
     path('agents/<int:agent_id>/', AgentRevokeView.as_view(), name='agents-revoke'),
     path('asset-insight/', MCPAssetInsightView.as_view(), name='asset-insight'),
+    path('assets/lookup-symbol/', MCPAssetLookupView.as_view(), name='asset-lookup-symbol'),
     path('ai-settings/', AISettingsView.as_view(), name='ai-settings'),
     path('strategy-rules/', StrategyRulesListView.as_view(), name='strategy-rules'),
     path('strategy-instances/', StrategyInstancesListView.as_view(), name='strategy-instances'),
