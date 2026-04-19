@@ -79,7 +79,7 @@ feat/autonomous/06-opportunity-discovery
 2. Confirm the current source of truth for market-scoped asset universes, technical data availability, discovery consumers, and watch insertion points.
 3. Execute Milestone 06 task files in order.
 4. Keep scheduled discovery deterministic and non-LLM.
-5. Use all current stored assets in one explicit market at a time as the first eligible universe.
+5. Use all current stored assets in one explicit market at a time as the first eligible universe, then exclude assets already held in any of the user's portfolios before filtering begins.
 6. Keep the technical pre-filter assertive and small:
    - liquidity floor
    - trend intact
@@ -138,7 +138,7 @@ What was done:
 - reviewed the roadmap, execution model, ADR-006, and Milestone 03 to 05 handoff files before creating the milestone scaffold
 - created the Milestone 06 folder and task sequence for universe and insertion-point scan, deterministic pre-filter and ranking contract, fallback and refinement contract, implementation slice, and watch handoff plus validation
 - aligned the scaffold with the approved Milestone 06 decisions:
-  - all stored assets in one explicit market at a time
+  - all stored assets in one explicit market at a time, excluding assets already held in any user portfolio
   - deterministic non-LLM scheduled preselection
   - liquidity plus trend plus breakout confirmation pre-filter
   - `20` survivors and `5` surfaced candidates
@@ -146,7 +146,9 @@ What was done:
   - structured fallback plus deterministic one-line reason
   - optional refinement only when discovery is actively opened
   - latest-only refined cache tied to shortlist fingerprint with `24h` TTL
+  - explicit discovery page with manual watch handoff through the existing portfolio watch mutation
+  - backend and frontend regression coverage for the shortlist, cache reuse, and watch handoff
 
 ## Open Follow-Ups
 
-- none
+- none. Milestone 07 can proceed directly.

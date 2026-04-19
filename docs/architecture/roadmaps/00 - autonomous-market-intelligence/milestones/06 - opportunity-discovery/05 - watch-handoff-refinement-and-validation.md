@@ -14,11 +14,19 @@ ADR-006 Opportunity Discovery Pipeline
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
+
+## Date Started
+
+2026-04-19
+
+## Date Completed
+
+2026-04-19
 
 ## Branch
 
@@ -63,6 +71,7 @@ Milestone 06 is only fully useful if surfaced candidates can become watched asse
 
 - implement explicit watch insertion from surfaced discovery candidates if the current watch path is implementation-ready
 - keep watch insertion user-visible and explicit
+- preserve the rule that already-held assets are excluded from discovery even when watch handoff is enabled
 - implement or finalize refined-shortlist cache reuse when discovery is reopened
 - preserve deterministic shortlist ordering regardless of refined-cache state
 - validate that users without API keys still get the same fallback-first experience
@@ -82,6 +91,7 @@ Milestone 06 is only fully useful if surfaced candidates can become watched asse
 ## Validation Scenarios
 
 - surfaced candidates can be added to watch without duplicate manual entry
+- already-held assets remain excluded from surfaced discovery candidates
 - watch insertion is explicit and user-visible
 - reopening the same shortlist within `24h` reuses refined output when valid
 - changed shortlist or explicit refresh invalidates cached refinement
@@ -103,6 +113,7 @@ Milestone 06 is only fully useful if surfaced candidates can become watched asse
 ## Tests to Add or Update
 
 - watch insertion regression tests
+- regression tests proving held assets do not reappear in surfaced discovery output
 - refined-cache reuse and invalidation tests
 - frontend flow tests for discovery open and watch handoff if frontend is in scope
 - milestone integration tests for discovery-to-watch behavior
@@ -126,7 +137,13 @@ Milestone 06 is only fully useful if surfaced candidates can become watched asse
 
 ## Implementation Notes / What Was Done
 
-To be filled during execution.
+Completed the discovery-to-watch handoff and validation slice:
+
+- discovery view adds a surfaced asset to watch through the existing portfolio watch endpoint
+- watch insertion remains explicit and user-visible
+- refined shortlist reuse is available through the user-initiated refresh path
+- deterministic ordering remains the source of truth regardless of refinement cache state
+- frontend and backend tests cover the watch handoff path and discovery reuse behavior
 
 ## Open Follow-Ups
 

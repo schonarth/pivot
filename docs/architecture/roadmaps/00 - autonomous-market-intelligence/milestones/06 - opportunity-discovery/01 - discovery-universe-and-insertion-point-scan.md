@@ -14,11 +14,19 @@ ADR-006 Opportunity Discovery Pipeline
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
+
+## Date Started
+
+2026-04-19
+
+## Date Completed
+
+2026-04-19
 
 ## Branch
 
@@ -51,11 +59,12 @@ feat/autonomous/06-opportunity-discovery
 
 ## Background
 
-Milestone 06 assumes the current stored asset set in one explicit market is the eligible universe. Before implementing any filters or ranking, we need the exact insertion points for asset selection, quote or technical data access, surfaced discovery consumers, and explicit watch insertion behavior.
+Milestone 06 assumes the current stored asset set in one explicit market is the starting universe, with assets already held in any user portfolio excluded before filtering. Before implementing any filters or ranking, we need the exact insertion points for asset selection, held-asset exclusion, quote or technical data access, surfaced discovery consumers, and explicit watch insertion behavior.
 
 ## Detailed Requirements
 
 - identify the current source of truth for "all assets in a market"
+- identify the current source of truth for "assets currently held by the user across all portfolios"
 - identify what technical data already exists and what data must be computed or fetched for discovery
 - identify existing surfaces that can display a discovery shortlist
 - identify the explicit watch insertion path that discovery should reuse
@@ -65,6 +74,7 @@ Milestone 06 assumes the current stored asset set in one explicit market is the 
 ## Proposed Approach
 
 - scan backend asset, quote, and AI analysis entry points
+- confirm the safest exclusion point for already-held assets before technical filtering begins
 - scan frontend monitored-set and asset-surface entry points
 - prefer reuse of existing watch insertion flows over new mutation paths
 - document the narrowest viable insertion path for deterministic discovery generation
@@ -72,6 +82,7 @@ Milestone 06 assumes the current stored asset set in one explicit market is the 
 ## Validation Scenarios
 
 - one market-scoped asset universe can be enumerated deterministically
+- already-held assets can be excluded deterministically before pre-filter evaluation
 - technical inputs required for the pre-filter are available or the exact gap is named
 - a surfaced shortlist has an existing or obvious UI/API consumer
 - discovery-to-watch insertion can reuse an explicit existing mutation path or the exact missing piece is documented
@@ -79,10 +90,11 @@ Milestone 06 assumes the current stored asset set in one explicit market is the 
 ## Task Steps
 
 1. Identify the current market-scoped asset universe source.
-2. Confirm the available technical signal inputs for the approved pre-filter.
-3. Confirm the current surfaces that can consume a discovery shortlist.
-4. Confirm the explicit watch insertion path discovery should reuse.
-5. Document any architectural gaps or blockers before moving to rule design.
+2. Identify the current held-asset source across all user portfolios and the safest exclusion point.
+3. Confirm the available technical signal inputs for the approved pre-filter.
+4. Confirm the current surfaces that can consume a discovery shortlist.
+5. Confirm the explicit watch insertion path discovery should reuse.
+6. Document any architectural gaps or blockers before moving to rule design.
 
 ## Tests to Add or Update
 
@@ -97,6 +109,7 @@ Milestone 06 assumes the current stored asset set in one explicit market is the 
 ## Exit Conditions
 
 - market-scoped universe source documented
+- held-asset exclusion source and insertion point documented
 - technical-signal availability documented
 - shortlist consumer surface documented
 - watch insertion point documented
@@ -104,7 +117,15 @@ Milestone 06 assumes the current stored asset set in one explicit market is the 
 
 ## Implementation Notes / What Was Done
 
-To be filled during execution.
+Confirmed the source of truth and insertion points:
+
+- market-scoped asset universe comes from `markets.Asset` filtered by `market`
+- already-held exclusion comes from current portfolio positions across all user portfolios before the discovery filter runs
+- technical discovery inputs come from stored `OHLCV`, `TechnicalIndicators`, and latest `AssetQuote`
+- discovery consumer surface is a new authenticated discovery page in the frontend
+- explicit watch insertion reuses `portfolios.services.add_watch_asset`
+- no new watch mutation path was introduced
+- no blocking architectural gaps remained for the milestone implementation slice
 
 ## Open Follow-Ups
 

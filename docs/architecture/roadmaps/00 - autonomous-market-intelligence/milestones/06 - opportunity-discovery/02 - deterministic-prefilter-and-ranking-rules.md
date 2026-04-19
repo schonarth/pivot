@@ -14,11 +14,19 @@ ADR-006 Opportunity Discovery Pipeline
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
+
+## Date Started
+
+2026-04-19
+
+## Date Completed
+
+2026-04-19
 
 ## Branch
 
@@ -49,11 +57,12 @@ feat/autonomous/06-opportunity-discovery
 
 ## Background
 
-Milestone 06 now fixes the broad product choices: one market-scoped stored asset universe, a small assertive pre-filter, `20 -> 5` caps, and a small blended deterministic ranking score. This task translates those decisions into exact implementation rules, thresholds, and data-shape expectations.
+Milestone 06 now fixes the broad product choices: one market-scoped stored asset universe with already-held assets excluded, a small assertive pre-filter, `20 -> 5` caps, and a small blended deterministic ranking score. This task translates those decisions into exact implementation rules, thresholds, and data-shape expectations.
 
 ## Detailed Requirements
 
 - define the exact liquidity floor rule
+- define the held-asset exclusion rule before any technical filtering
 - define the exact trend-intact rule
 - define the exact breakout or near-breakout confirmation rule
 - define survivor cap behavior and tie handling for the `20` pre-filter outputs
@@ -76,6 +85,7 @@ Milestone 06 now fixes the broad product choices: one market-scoped stored asset
 ## Validation Scenarios
 
 - a candidate with insufficient liquidity never reaches the survivor set
+- an asset already held in any user portfolio never reaches the pre-filter candidate set
 - a candidate with liquidity but no intact trend fails the pre-filter
 - a candidate with intact trend but no breakout or near-breakout signal fails the pre-filter
 - more than `20` eligible survivors are reduced deterministically
@@ -83,15 +93,17 @@ Milestone 06 now fixes the broad product choices: one market-scoped stored asset
 
 ## Task Steps
 
-1. Define the exact deterministic pre-filter thresholds.
-2. Define survivor-cap and tie-break behavior.
-3. Define the small blended ranking dimensions and their score combination.
-4. Define the deterministic inputs for bounded context support and freshness.
-5. Identify the tests needed to lock the rules before implementation.
+1. Define the held-asset exclusion rule and when it executes.
+2. Define the exact deterministic pre-filter thresholds.
+3. Define survivor-cap and tie-break behavior.
+4. Define the small blended ranking dimensions and their score combination.
+5. Define the deterministic inputs for bounded context support and freshness.
+6. Identify the tests needed to lock the rules before implementation.
 
 ## Tests to Add or Update
 
 - pre-filter eligibility tests for pass and fail cases
+- held-asset exclusion tests
 - survivor-cap and tie-break regression tests
 - ranking-order tests for representative candidate sets
 - tests proving context support and freshness do not require LLM calls
@@ -111,7 +123,16 @@ Milestone 06 now fixes the broad product choices: one market-scoped stored asset
 
 ## Implementation Notes / What Was Done
 
-To be filled during execution.
+Implemented the approved deterministic rules in the discovery service:
+
+- held-asset exclusion: drop assets already held in any user portfolio before technical filtering
+- liquidity floor: `50,000` average 20-day volume
+- trend intact: `close >= MA20 > MA50 > MA200`
+- breakout confirmation: latest close at or within `2.5%` of the 20-day recent high
+- survivor cap: top `20`
+- surfaced shortlist cap: top `5`
+- blended deterministic score: technical setup, breakout quality, bounded context support, and freshness
+- deterministic tie-break: score, then symbol
 
 ## Open Follow-Ups
 

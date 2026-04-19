@@ -31,6 +31,11 @@ TASK_MODELS = {
         "anthropic": "claude-opus-4-6",
         "google": "gemini-2.0-flash",
     },
+    "opportunity_discovery": {
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-haiku-4-5-20251001",
+        "google": "gemini-2.0-flash",
+    },
 }
 
 

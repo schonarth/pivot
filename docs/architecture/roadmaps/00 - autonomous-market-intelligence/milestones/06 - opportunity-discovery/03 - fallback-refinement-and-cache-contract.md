@@ -14,11 +14,19 @@ ADR-006 Opportunity Discovery Pipeline
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
+
+## Date Started
+
+2026-04-19
+
+## Date Completed
+
+2026-04-19
 
 ## Branch
 
@@ -114,7 +122,15 @@ Milestone 06 must work in two honest modes: deterministic fallback when no LLM a
 
 ## Implementation Notes / What Was Done
 
-To be filled during execution.
+Implemented the fallback and refinement contract in the discovery service and UI:
+
+- canonical fallback output is the structured shortlist record
+- each item always includes a deterministic one-line reason
+- refinement is only requested when the user opens discovery and AI access is available
+- refined results are cached by deterministic shortlist fingerprint
+- cache is latest-only per market and user
+- cache TTL is `24h`
+- explicit refresh bypasses the cached refinement path
 
 ## Open Follow-Ups
 

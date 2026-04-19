@@ -92,7 +92,8 @@ Approved first implementation:
 Meaning:
 
 - the discovery run is market-scoped
-- the eligible universe is the current stored asset set for that market
+- the eligible universe starts from the current stored asset set for that market
+- assets already held in any of the user's portfolios are excluded before discovery filtering begins
 - as new assets are added to the product, they automatically become eligible for that market's discovery runs
 
 Allowed future variants:
@@ -113,6 +114,7 @@ Reason:
 - performance and cost stay predictable
 - ranking quality is easier to interpret when the input set is explicit
 - the current seeded asset base is small enough that per-market scanning remains comfortably bounded
+- discovery should surface new watch candidates rather than re-suggest assets the user already holds
 
 ### Technical Pre-Filter Comes Before Context Expansion
 

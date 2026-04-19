@@ -21,6 +21,9 @@
         <router-link to="/">
           Dashboard
         </router-link>
+        <router-link to="/discovery">
+          Discovery
+        </router-link>
         <router-link to="/assets">
           Assets
         </router-link>

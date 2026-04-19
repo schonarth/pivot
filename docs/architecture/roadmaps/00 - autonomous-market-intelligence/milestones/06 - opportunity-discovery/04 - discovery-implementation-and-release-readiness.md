@@ -14,11 +14,19 @@ ADR-006 Opportunity Discovery Pipeline
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+GPT-5.4 / implementation
+
+## Date Started
+
+2026-04-19
+
+## Date Completed
+
+2026-04-19
 
 ## Branch
 
@@ -56,11 +64,12 @@ feat/autonomous/06-opportunity-discovery
 
 ## Background
 
-This is the first complete Milestone 06 implementation slice. It applies the deterministic discovery pipeline to one market-scoped asset universe, emits the capped shortlist with useful fallback explanations, and validates the user-visible discovery experience before optional watch insertion and broader polish work continue.
+This is the first complete Milestone 06 implementation slice. It applies the deterministic discovery pipeline to one market-scoped asset universe with already-held assets excluded, emits the capped shortlist with useful fallback explanations, and validates the user-visible discovery experience before optional watch insertion and broader polish work continue.
 
 ## Detailed Requirements
 
 - implement deterministic market-scoped discovery using the approved eligible universe
+- exclude assets already held in any user portfolio before technical filtering begins
 - implement the exact small assertive pre-filter
 - implement deterministic `20 -> 5` reduction and ranking
 - expose the canonical structured fallback record and one-line reason for each surfaced asset
@@ -83,6 +92,7 @@ This is the first complete Milestone 06 implementation slice. It applies the det
 ## Validation Scenarios
 
 - one market can produce a deterministic capped shortlist
+- assets already held in any user portfolio do not appear in discovery output
 - the same input universe produces stable shortlist ordering
 - users without API keys still see useful fallback reasons
 - users do not trigger LLM spend unless they actively open the discovery experience
@@ -90,8 +100,8 @@ This is the first complete Milestone 06 implementation slice. It applies the det
 
 ## Task Steps
 
-1. Implement deterministic discovery generation for one market-scoped asset universe.
-2. Add or update regression coverage for filters, ranking, and fallback output.
+1. Implement deterministic discovery generation for one market-scoped asset universe with held-asset exclusion.
+2. Add or update regression coverage for held-asset exclusion, filters, ranking, and fallback output.
 3. Expose the surfaced shortlist to the chosen user-facing consumer.
 4. Validate fallback-only behavior with no LLM access.
 5. Run lint, typecheck, affected tests, and milestone integration checks.
@@ -103,6 +113,7 @@ This is the first complete Milestone 06 implementation slice. It applies the det
 ## Tests to Add or Update
 
 - deterministic discovery generation tests
+- held-asset exclusion regression tests
 - shortlist-order regression tests
 - fallback output tests
 - integration tests for the selected discovery consumer
@@ -128,7 +139,14 @@ This is the first complete Milestone 06 implementation slice. It applies the det
 
 ## Implementation Notes / What Was Done
 
-To be filled during execution.
+Implemented the end-to-end discovery slice:
+
+- backend discovery service for market-scoped deterministic screening
+- authenticated discovery API at `/api/ai/discovery/`
+- optional refinement gate tied to explicit user discovery open
+- frontend discovery page with shortlist rendering and watch action
+- explicit watch insertion through the existing portfolio watch mutation
+- regression tests for shortlist output, ordering, and refined-cache reuse
 
 ## Open Follow-Ups
 
