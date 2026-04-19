@@ -8,18 +8,6 @@
         </p>
       </div>
       <div class="discovery-actions">
-        <select
-          v-model="selectedMarket"
-          class="market-select"
-        >
-          <option
-            v-for="market in markets"
-            :key="market"
-            :value="market"
-          >
-            {{ market }}
-          </option>
-        </select>
         <button
           class="btn btn-secondary"
           :disabled="loading"
@@ -35,6 +23,21 @@
         >
           {{ loading ? 'Refreshing refined...' : 'Refresh refined' }}
         </button>
+        <div
+          class="market-pills"
+          style="margin-bottom: 0;"
+        >
+          <button
+            v-for="market in markets"
+            :key="market"
+            class="market-pill"
+            :class="{ active: selectedMarket === market }"
+            :title="market"
+            @click="setSelectedMarket(market)"
+          >
+            <MarketBadge :market="market" mode="flag" />
+          </button>
+        </div>
       </div>
     </div>
 
@@ -55,13 +58,6 @@
         <div class="text-muted">Market</div>
         <div class="metric-value">{{ selectedMarket }}</div>
       </div>
-    </div>
-
-    <div
-      v-if="notice"
-      class="card discovery-notice"
-    >
-      {{ notice }}
     </div>
 
     <div
@@ -146,18 +142,21 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import MarketBadge from '@/components/MarketBadge.vue'
 import { useToast } from '@/composables/useToast'
 import { getSettings } from '@/api/ai'
 import { addPortfolioWatchAsset, getPortfolios } from '@/api/portfolios'
 import { getDiscovery, type DiscoveryResult, type DiscoveryShortlistItem } from '@/api/discovery'
+import { DISCOVERY_MARKETS, type DiscoveryMarket, useDiscoveryStore } from '@/stores/discovery'
 import type { Portfolio } from '@/types'
 
-const markets = ['US', 'BR', 'UK', 'EU']
-const selectedMarket = ref('US')
+const discoveryStore = useDiscoveryStore()
+const { selectedMarket } = storeToRefs(discoveryStore)
+const markets = DISCOVERY_MARKETS
 const result = ref<DiscoveryResult | null>(null)
 const loading = ref(false)
-const notice = ref('')
 const canRefine = ref(false)
 const watchingAssetId = ref('')
 const portfolios = ref<Portfolio[]>([])
@@ -166,6 +165,11 @@ const router = useRouter()
 const toast = useToast()
 
 const portfolioId = computed(() => portfolios.value.find((portfolio) => portfolio.is_primary)?.id ?? portfolios.value[0]?.id ?? null)
+
+function setSelectedMarket(market: DiscoveryMarket) {
+  if (selectedMarket.value === market) return
+  discoveryStore.setMarket(market)
+}
 
 onMounted(async () => {
   await loadPortfolios()
@@ -196,15 +200,15 @@ async function loadAiAccess() {
 
 async function loadDiscovery(options: { refine?: boolean; refresh?: boolean } = {}) {
   loading.value = true
-  notice.value = ''
   try {
     result.value = await getDiscovery(selectedMarket.value, {
       refine: options.refine ?? canRefine.value,
       refresh: options.refresh ?? false,
     })
-    notice.value = result.value.refinement.applied
+    const loadNotice = result.value.refinement.applied
       ? (result.value.refinement.cache_hit ? 'Refined shortlist reused from cache.' : 'Refined shortlist loaded.')
       : 'Deterministic shortlist loaded.'
+    console.info(`[discovery] ${loadNotice}`)
   } catch (error) {
     console.error(error)
     toast.error('Failed to load discovery')
@@ -249,14 +253,30 @@ async function addToWatch(item: DiscoveryShortlistItem) {
   flex-wrap: wrap;
 }
 
-.market-select {
-  min-width: 5rem;
-  height: 2.5rem;
-  border-radius: 8px;
+.market-pills {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.market-pill {
+  background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  background: var(--bg-primary);
-  color: var(--text);
-  padding: 0 0.75rem;
+  border-radius: 9999px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.market-pill:hover {
+  border-color: var(--accent);
+}
+
+.market-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .discovery-metrics .card {
@@ -310,7 +330,4 @@ async function addToWatch(item: DiscoveryShortlistItem) {
   flex-wrap: wrap;
 }
 
-.discovery-notice {
-  color: var(--text-muted);
-}
 </style>
