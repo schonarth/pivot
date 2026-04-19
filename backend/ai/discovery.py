@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from .services import AIService, AIBudgetError
 from markets.models import Asset, AssetQuote, OHLCV, TechnicalIndicators
+from trading.models import Position
 
 logger = logging.getLogger("paper_trader.ai.discovery")
 
@@ -101,6 +102,18 @@ class OpportunityDiscoveryService:
     @staticmethod
     def _is_enabled_market(market: str) -> bool:
         return market in {"BR", "US", "UK", "EU"}
+
+    def _held_asset_ids(self, market: str) -> set[str]:
+        if not self.user:
+            return set()
+
+        return {
+            str(asset_id)
+            for asset_id in Position.objects.filter(
+                portfolio__user=self.user,
+                asset__market=market,
+            ).values_list("asset_id", flat=True)
+        }
 
     @staticmethod
     def _freshness_score(quote: AssetQuote | None, latest_close_date) -> tuple[int, int]:
@@ -459,7 +472,12 @@ class OpportunityDiscoveryService:
         if not self._is_enabled_market(market):
             raise ValueError("Invalid market")
 
-        assets = list(Asset.objects.filter(market=market).order_by("display_symbol"))
+        held_asset_ids = self._held_asset_ids(market)
+        assets = list(
+            Asset.objects.filter(market=market)
+            .exclude(id__in=held_asset_ids)
+            .order_by("display_symbol")
+        )
         survivors: list[dict] = []
         for asset in assets:
             bundle = self._technical_bundle(asset)

@@ -1,9 +1,9 @@
-from datetime import timedelta
-from decimal import Decimal
-from types import SimpleNamespace
 import json
 import re
 import sys
+from datetime import timedelta
+from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from django.core.cache import cache
@@ -12,6 +12,8 @@ from django.utils import timezone
 from ai.discovery import OpportunityDiscoveryService
 from ai.services import AIService
 from markets.models import Asset, NewsItem, OHLCV
+from portfolios.models import Portfolio
+from trading.models import Position
 
 
 def build_history(asset, start_close: Decimal, step: Decimal = Decimal("1.00")):
@@ -80,6 +82,67 @@ class TestOpportunityDiscovery:
         assert response.status_code == 200
         assert response.data["shortlist"][0]["symbol"] == asset.display_symbol
         assert response.data["shortlist"][0]["discovery_reason"].endswith("Context is positive.")
+
+    def test_discovery_excludes_assets_already_held_in_any_user_portfolio(self, authenticated_client, user):
+        held_asset = Asset.objects.create(
+            display_symbol="HLD1",
+            provider_symbol="HLD1",
+            name="Held Asset",
+            market="US",
+            exchange="XNYS",
+            currency="USD",
+            sector="Tech",
+            industry="Software",
+            is_seeded=True,
+        )
+        candidate_asset = Asset.objects.create(
+            display_symbol="NEW1",
+            provider_symbol="NEW1",
+            name="New Candidate",
+            market="US",
+            exchange="XNYS",
+            currency="USD",
+            sector="Tech",
+            industry="Software",
+            is_seeded=True,
+        )
+        build_history(held_asset, Decimal("100.00"))
+        build_history(candidate_asset, Decimal("120.00"))
+
+        first_portfolio = Portfolio.objects.create(
+            user=user,
+            name="Core",
+            market="US",
+            initial_capital=Decimal("10000.00"),
+            current_cash=Decimal("5000.00"),
+        )
+        second_portfolio = Portfolio.objects.create(
+            user=user,
+            name="Satellite",
+            market="US",
+            initial_capital=Decimal("10000.00"),
+            current_cash=Decimal("5000.00"),
+        )
+        Position.objects.create(
+            portfolio=first_portfolio,
+            asset=held_asset,
+            quantity=10,
+            average_cost=Decimal("100.00"),
+        )
+        Position.objects.create(
+            portfolio=second_portfolio,
+            asset=held_asset,
+            quantity=5,
+            average_cost=Decimal("105.00"),
+        )
+
+        response = authenticated_client.get("/api/ai/discovery/", {"market": "US"})
+
+        assert response.status_code == 200
+        assert response.data["universe_size"] == 1
+        assert response.data["shortlist_count"] == 1
+        assert response.data["shortlist"][0]["symbol"] == candidate_asset.display_symbol
+        assert all(item["symbol"] != held_asset.display_symbol for item in response.data["shortlist"])
 
     def test_refinement_cache_reuses_and_invalidates_on_shortlist_change(self, user, db, monkeypatch):
         cache.clear()
