@@ -462,7 +462,12 @@ class OpportunityDiscoveryService:
             "Shortlist:\n"
             f"{json.dumps(items, indent=2, default=str)}\n\n"
             "Rules:\n"
-            "- Keep each refined reason to one concise sentence.\n"
+            "- Keep each refined reason to one or two concise sentences.\n"
+            "- The first sentence should summarize the setup clearly.\n"
+            "- When supported by the provided inputs, the second sentence should convey "
+            "why the asset deserves attention now.\n"
+            "- Do not literally start the second sentence with 'Why now:'.\n"
+            "- Use only the provided technical signals, context summary, and discovery reason.\n"
             "- Do not change the ranking or imply execution.\n"
             "- Preserve the deterministic shortlist as source of truth.\n"
         )

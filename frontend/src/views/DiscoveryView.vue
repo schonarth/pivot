@@ -61,13 +61,6 @@
     </div>
 
     <div
-      v-if="notice"
-      class="card discovery-notice"
-    >
-      {{ notice }}
-    </div>
-
-    <div
       v-if="!portfolioId"
       class="card"
     >
@@ -164,7 +157,6 @@ const { selectedMarket } = storeToRefs(discoveryStore)
 const markets = DISCOVERY_MARKETS
 const result = ref<DiscoveryResult | null>(null)
 const loading = ref(false)
-const notice = ref('')
 const canRefine = ref(false)
 const watchingAssetId = ref('')
 const portfolios = ref<Portfolio[]>([])
@@ -208,15 +200,15 @@ async function loadAiAccess() {
 
 async function loadDiscovery(options: { refine?: boolean; refresh?: boolean } = {}) {
   loading.value = true
-  notice.value = ''
   try {
     result.value = await getDiscovery(selectedMarket.value, {
       refine: options.refine ?? canRefine.value,
       refresh: options.refresh ?? false,
     })
-    notice.value = result.value.refinement.applied
+    const loadNotice = result.value.refinement.applied
       ? (result.value.refinement.cache_hit ? 'Refined shortlist reused from cache.' : 'Refined shortlist loaded.')
       : 'Deterministic shortlist loaded.'
+    console.info(`[discovery] ${loadNotice}`)
   } catch (error) {
     console.error(error)
     toast.error('Failed to load discovery')
@@ -338,7 +330,4 @@ async function addToWatch(item: DiscoveryShortlistItem) {
   flex-wrap: wrap;
 }
 
-.discovery-notice {
-  color: var(--text-muted);
-}
 </style>
