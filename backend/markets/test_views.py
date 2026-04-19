@@ -35,6 +35,66 @@ class TestMarketEndpoints:
         assert len(response.data) >= 1
         assert asset.display_symbol in [a["display_symbol"] for a in response.data]
 
+    @patch("markets.services.requests.get")
+    def test_asset_lookup_symbol_returns_local_exact_match(self, mock_get, authenticated_client, asset):
+        response = authenticated_client.post(
+            "/api/assets/lookup-symbol/",
+            {"symbol": asset.display_symbol},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["display_symbol"] == asset.display_symbol
+        mock_get.assert_not_called()
+
+    @patch("markets.services.requests.get")
+    @patch("markets.tasks.backfill_single_asset_ohlcv.delay")
+    def test_asset_lookup_symbol_imports_new_asset_from_yahoo_search(self, mock_backfill, mock_get, authenticated_client):
+        mock_response = type("Response", (), {})()
+        mock_response.raise_for_status = lambda: None
+        mock_response.json = lambda: {
+            "quotes": [
+                {
+                    "symbol": "ZETA4.SA",
+                    "quoteType": "EQUITY",
+                    "shortname": "Zeta Holdings",
+                    "exchange": "SAO",
+                    "currency": "BRL",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        response = authenticated_client.post(
+            "/api/assets/lookup-symbol/",
+            {"symbol": "ZETA4"},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["display_symbol"] == "ZETA4"
+        assert response.data[0]["provider_symbol"] == "ZETA4.SA"
+        assert response.data[0]["market"] == "BR"
+        mock_backfill.assert_called_once()
+
+    @patch("markets.services.requests.get")
+    def test_asset_lookup_symbol_returns_404_when_not_found(self, mock_get, authenticated_client):
+        mock_response = type("Response", (), {})()
+        mock_response.raise_for_status = lambda: None
+        mock_response.json = lambda: {"quotes": []}
+        mock_get.return_value = mock_response
+
+        response = authenticated_client.post(
+            "/api/assets/lookup-symbol/",
+            {"symbol": "NOTREAL"},
+            format="json",
+        )
+
+        assert response.status_code == 404
+        assert response.data["error"]["code"] == "not_found"
+
     def test_asset_detail_retrieves_asset(self, authenticated_client, asset):
         response = authenticated_client.get(f"/api/assets/{asset.id}/")
         assert response.status_code == 200
