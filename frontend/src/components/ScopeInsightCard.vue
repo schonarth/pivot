@@ -38,19 +38,19 @@
         <span class="spinner" />
       </div>
       <AIInsightNarrative
-        v-else-if="insight"
-        :recommendation="insight.recommendation"
-        :confidence="insight.confidence"
-        :summary-text="insight.summary"
-        :technical-text="insight.technical_summary"
-        :trajectory-items="insight.sentiment_trajectory?.entries ?? []"
-        :divergence-analysis="insight.divergence_analysis"
-        :divergence-summary="insight.divergence_summary"
-        :divergence-disclosure="insight.divergence_disclosure"
+        v-else-if="resolvedInsight"
+        :recommendation="resolvedInsight.recommendation"
+        :confidence="resolvedInsight.confidence"
+        :summary-text="resolvedInsight.summary"
+        :technical-text="resolvedInsight.technical_summary"
+        :trajectory-items="resolvedInsight.sentiment_trajectory?.entries ?? []"
+        :divergence-analysis="resolvedInsight.divergence_analysis"
+        :divergence-summary="resolvedInsight.divergence_summary"
+        :divergence-disclosure="resolvedInsight.divergence_disclosure"
         footer-label="News digest"
-        :footer-text="insight.news_context"
-        :model-used="insight.model_used"
-        :generated-at="insight.generated_at"
+        :footer-text="resolvedInsight.news_context"
+        :model-used="resolvedInsight.model_used"
+        :generated-at="resolvedInsight.generated_at"
       />
       <div
         v-else
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import AIInsightNarrative from './AIInsightNarrative.vue'
 import { hasExpandedScopeInsight, markExpandedScopeInsight } from './scopeInsightMemory'
 import type { MonitoredScopeInsight } from '@/types'
@@ -74,33 +74,77 @@ const props = defineProps<{
   assetCount: number
   emptyMessage: string
   insight: MonitoredScopeInsight | null
+  loadInsight?: () => Promise<MonitoredScopeInsight | null>
+  refreshKey?: string
 }>()
 
 const isExpanded = ref(hasExpandedScopeInsight(props.title, props.scopeLabel))
 const isLoading = ref(false)
-const hasLoaded = ref(isExpanded.value)
-let loadTimer: number | null = null
+const resolvedInsight = ref<MonitoredScopeInsight | null>(props.insight)
+const hasLoaded = ref(Boolean(props.insight))
+const pendingRefresh = ref(false)
+
+watch(
+  () => props.insight,
+  (value) => {
+    resolvedInsight.value = value
+    hasLoaded.value = Boolean(value)
+  },
+)
+
+watch(
+  () => props.refreshKey,
+  () => {
+    if (!isExpanded.value || !props.loadInsight) return
+    if (isLoading.value) {
+      pendingRefresh.value = true
+      return
+    }
+    if (hasLoaded.value) {
+      isLoading.value = true
+      void loadInsight()
+    }
+  },
+)
 
 function toggleExpanded() {
   isExpanded.value = !isExpanded.value
 
-  if (isExpanded.value && !hasLoaded.value) {
+  if (isExpanded.value) {
     markExpandedScopeInsight(props.title, props.scopeLabel)
-    isLoading.value = true
-    if (loadTimer !== null) {
-      window.clearTimeout(loadTimer)
-    }
-    loadTimer = window.setTimeout(() => {
+  }
+
+  if (isExpanded.value && !hasLoaded.value) {
+    if (props.loadInsight) {
+      isLoading.value = true
+      void loadInsight()
+    } else {
       hasLoaded.value = true
-      isLoading.value = false
-      loadTimer = null
-    }, 0)
+    }
   }
 }
 
-onBeforeUnmount(() => {
-  if (loadTimer !== null) {
-    window.clearTimeout(loadTimer)
+async function loadInsight() {
+  const refreshKeyAtStart = props.refreshKey
+  try {
+    resolvedInsight.value = await props.loadInsight?.() ?? null
+  } finally {
+    hasLoaded.value = true
+    isLoading.value = false
+    if (pendingRefresh.value && isExpanded.value && props.refreshKey !== refreshKeyAtStart) {
+      pendingRefresh.value = false
+      isLoading.value = true
+      void loadInsight()
+      return
+    }
+    pendingRefresh.value = false
+  }
+}
+
+onMounted(() => {
+  if (isExpanded.value && !hasLoaded.value && props.loadInsight) {
+    isLoading.value = true
+    void loadInsight()
   }
 })
 </script>

@@ -22,6 +22,7 @@ from .services import (
     calculate_twr,
     create_portfolio,
     deposit,
+    get_portfolio_scope_insight,
     get_portfolio_summary,
     remove_watch_asset,
     withdraw,
@@ -62,6 +63,20 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         portfolio = self.get_object()
         summary = get_portfolio_summary(portfolio)
         return Response(summary)
+
+    @action(detail=True, methods=["get"])
+    def scope_insight(self, request, pk=None):
+        portfolio = self.get_object()
+        scope = request.query_params.get("scope")
+
+        if scope not in {"portfolio", "watch"}:
+            return Response(
+                {"error": "Missing or invalid scope"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        insight = get_portfolio_scope_insight(portfolio, scope)
+        return Response({"insight": insight})
 
     @action(detail=True, methods=["post", "delete"])
     def watch(self, request, pk=None):

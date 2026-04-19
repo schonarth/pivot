@@ -162,8 +162,92 @@ def _calculate_net_external_cash_flows(portfolio) -> Decimal:
     return total
 
 
-def get_portfolio_summary(portfolio) -> dict:
+def get_portfolio_scope_insight(portfolio, scope_type: str) -> dict | None:
     from ai.services import AIService
+    from markets.quote_provider import get_latest_quote
+    from .models import PortfolioWatchMembership
+    from trading.models import Position
+
+    service = AIService(portfolio.user)
+    if not service.has_ai_enabled():
+        return None
+
+    if scope_type == "portfolio":
+        positions = Position.objects.filter(portfolio=portfolio).select_related("asset")
+        position_details = []
+        position_assets = []
+
+        for pos in positions:
+            quote = get_latest_quote(str(pos.asset_id))
+            current_price = quote.price if quote else pos.average_cost
+            market_value = pos.quantity * current_price
+            unrealized_pnl = market_value - (pos.quantity * pos.average_cost)
+            position_details.append(
+                {
+                    "asset_id": str(pos.asset_id),
+                    "symbol": pos.asset.display_symbol,
+                    "name": pos.asset.name,
+                    "quantity": pos.quantity,
+                    "average_cost": pos.average_cost,
+                    "current_price": current_price,
+                    "market_value": market_value,
+                    "unrealized_pnl": unrealized_pnl,
+                    "currency": pos.asset.currency,
+                    "position_detail": (
+                        f"{pos.quantity} @ {current_price} | MV {market_value} | U P&L {unrealized_pnl}"
+                    ),
+                }
+            )
+            position_assets.append(pos.asset)
+
+        if not position_assets:
+            return None
+
+        try:
+            return service.analyze_scope(
+                "portfolio",
+                f"{portfolio.name} positions",
+                position_assets,
+                position_details,
+            )
+        except Exception:
+            return None
+
+    if scope_type == "watch":
+        watch_memberships = PortfolioWatchMembership.objects.filter(portfolio=portfolio).select_related("asset")
+        watch_details = []
+        watch_assets = []
+        for membership in watch_memberships:
+            quote = get_latest_quote(str(membership.asset_id))
+            watch_details.append(
+                {
+                    "asset_id": str(membership.asset_id),
+                    "symbol": membership.asset.display_symbol,
+                    "name": membership.asset.name,
+                    "market": membership.asset.market,
+                    "currency": membership.asset.currency,
+                    "current_price": str(quote.price) if quote else None,
+                }
+            )
+            watch_assets.append(membership.asset)
+
+        if not watch_assets:
+            return None
+
+        try:
+            return service.analyze_scope(
+                "watch",
+                f"{portfolio.name} watch",
+                watch_assets,
+                watch_details,
+            )
+        except Exception:
+            return None
+
+    raise ValueError("Unknown scope type")
+
+
+def get_portfolio_summary(portfolio) -> dict:
     from markets.quote_provider import get_latest_quote
     from .models import PortfolioWatchMembership
     from trading.models import Position
@@ -171,7 +255,6 @@ def get_portfolio_summary(portfolio) -> dict:
     positions = Position.objects.filter(portfolio=portfolio).select_related("asset")
     positions_value = Decimal("0")
     position_details = []
-    position_assets = []
 
     for pos in positions:
         quote = get_latest_quote(str(pos.asset_id))
@@ -195,11 +278,9 @@ def get_portfolio_summary(portfolio) -> dict:
                 ),
             }
         )
-        position_assets.append(pos.asset)
 
     watch_memberships = PortfolioWatchMembership.objects.filter(portfolio=portfolio).select_related("asset")
     watch_details = []
-    watch_assets = []
     for membership in watch_memberships:
         quote = get_latest_quote(str(membership.asset_id))
         watch_details.append(
@@ -212,36 +293,10 @@ def get_portfolio_summary(portfolio) -> dict:
                 "current_price": str(quote.price) if quote else None,
             }
         )
-        watch_assets.append(membership.asset)
 
     total_equity = portfolio.current_cash + positions_value
     net_flows = _calculate_net_external_cash_flows(portfolio)
     trading_pnl = total_equity - net_flows
-
-    scope_insights = {"portfolio": None, "watch": None}
-    service = AIService(portfolio.user)
-    if service.has_ai_enabled():
-        try:
-            if position_assets:
-                scope_insights["portfolio"] = service.analyze_scope(
-                    "portfolio",
-                    f"{portfolio.name} positions",
-                    position_assets,
-                    position_details,
-                )
-        except Exception:
-            scope_insights["portfolio"] = None
-
-        try:
-            if watch_assets:
-                scope_insights["watch"] = service.analyze_scope(
-                    "watch",
-                    f"{portfolio.name} watch",
-                    watch_assets,
-                    watch_details,
-                )
-        except Exception:
-            scope_insights["watch"] = None
 
     return {
         "portfolio_id": str(portfolio.id),
@@ -257,7 +312,7 @@ def get_portfolio_summary(portfolio) -> dict:
         "trading_pnl": str(trading_pnl),
         "positions": position_details,
         "watch_assets": watch_details,
-        "scope_insights": scope_insights,
+        "scope_insights": {"portfolio": None, "watch": None},
     }
 
 

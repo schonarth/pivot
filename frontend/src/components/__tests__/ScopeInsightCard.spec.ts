@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ScopeInsightCard from '../ScopeInsightCard.vue'
 import { flushPromises } from '@vue/test-utils'
 import { clearScopeInsightMemory } from '../scopeInsightMemory'
+import type { MonitoredScopeInsight } from '@/types'
 
 describe('ScopeInsightCard', () => {
   it('defaults collapsed on first mount and reopens from in-memory state later', async () => {
@@ -141,5 +142,55 @@ describe('ScopeInsightCard', () => {
     expect(remounted.text()).toContain('gpt-4o-mini')
 
     remounted.unmount()
+  })
+
+  it('lazy loads insight only after expansion when no in-memory insight exists', async () => {
+    clearScopeInsightMemory()
+
+    let callCount = 0
+    const loadInsight = vi.fn(async () => {
+      callCount += 1
+      return {
+        scope_type: 'portfolio',
+        scope_label: 'Portfolio positions',
+        asset_count: 2,
+        recommendation: callCount === 1 ? 'BUY' : 'SELL',
+        confidence: 84,
+        summary: callCount === 1 ? 'Version one' : 'Version two',
+        technical_summary: 'Momentum is steady.',
+        news_context: 'News remains supportive.',
+        reasoning: 'The monitored set is constructive.',
+        model_used: 'gpt-4o-mini',
+        generated_at: '2026-04-16T00:00:00Z',
+      } satisfies MonitoredScopeInsight
+    })
+
+    const wrapper = mount(ScopeInsightCard, {
+      props: {
+        title: 'Portfolio AI Summary',
+        scopeLabel: 'Portfolio positions',
+        assetCount: 2,
+        emptyMessage: 'No positions to analyze yet.',
+        insight: null,
+        loadInsight,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Portfolio AI Summary')
+    expect(wrapper.text()).not.toContain('No positions to analyze yet.')
+
+    await wrapper.find('button').trigger('click')
+    expect(loadInsight).toHaveBeenCalledTimes(1)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Version one')
+    expect(wrapper.text()).toContain('BUY')
+
+    await wrapper.setProps({ refreshKey: 'positions-v2' })
+    await flushPromises()
+
+    expect(loadInsight).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Version two')
+    expect(wrapper.text()).toContain('SELL')
   })
 })
