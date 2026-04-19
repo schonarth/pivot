@@ -31,7 +31,7 @@
             :title="m.label"
             @click="toggleMarket(m.code)"
           >
-            {{ m.flag }}
+            <MarketBadge :market="m.code" mode="flag" />
           </button>
         </div>
       </div>

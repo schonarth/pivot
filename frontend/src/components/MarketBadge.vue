@@ -32,10 +32,11 @@ const flags: Record<Market, string> = {
 
 const props = defineProps<{
   market: Market
+  mode?: 'both' | 'flag' | 'code'
 }>()
 
 const settings = useSettingsStore()
-const preferredBadge = computed(() => settings.marketBadgeStyle)
+const preferredBadge = computed(() => props.mode ?? settings.marketBadgeStyle)
 
 const marketFlag = computed(() => flags[props.market] || props.market)
 </script>
