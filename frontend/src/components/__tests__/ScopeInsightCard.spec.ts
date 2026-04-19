@@ -33,6 +33,22 @@ describe('ScopeInsightCard', () => {
               },
             ],
           },
+          divergence_analysis: {
+            label: 'competing_macro_priority',
+            expected_direction: 'up',
+            actual_direction: 'down',
+            actual_percent_move: '-0.0321',
+            flat_threshold_percent: '0.005',
+            signal_votes: {
+              technical: 'positive',
+              context: 'positive',
+              trajectory: 'positive',
+              shared_context: 'negative',
+            },
+            macro_confirmation: true,
+          },
+          divergence_summary: 'Expected up, but broader context matched the opposite move.',
+          divergence_disclosure: 'Broader-force labels only appear when explicit monitored-set or shared-context evidence exists.',
           news_context: 'News remains supportive.',
           reasoning: 'The monitored set is constructive.',
           model_used: 'gpt-4o-mini',
@@ -54,7 +70,12 @@ describe('ScopeInsightCard', () => {
     expect(wrapper.text()).toContain('The monitored set is constructive.')
     expect(wrapper.text()).toContain('Momentum is steady.')
     expect(wrapper.text()).toContain('Sentiment trajectory')
-    expect(wrapper.text()).toContain('Asset AAA is turning more positive across 3 retained items.')
+    expect(wrapper.text()).toContain('Divergence')
+    expect(wrapper.text()).toContain('Macro won')
+    expect(wrapper.text()).toContain('NO MATCH')
+    expect(wrapper.text()).toContain('Expected up, but broader context matched the opposite move.')
+    expect(wrapper.text()).toContain('Broader-force labels only appear when explicit monitored-set or shared-context evidence exists.')
+    expect(wrapper.text()).toContain('Sentiment trajectory')
     expect(wrapper.text()).toContain('News remains supportive.')
     expect(wrapper.text()).toContain('gpt-4o-mini')
 
@@ -85,6 +106,22 @@ describe('ScopeInsightCard', () => {
               },
             ],
           },
+          divergence_analysis: {
+            label: 'competing_macro_priority',
+            expected_direction: 'up',
+            actual_direction: 'down',
+            actual_percent_move: '-0.0321',
+            flat_threshold_percent: '0.005',
+            signal_votes: {
+              technical: 'positive',
+              context: 'positive',
+              trajectory: 'positive',
+              shared_context: 'negative',
+            },
+            macro_confirmation: true,
+          },
+          divergence_summary: 'Expected up, but broader context matched the opposite move.',
+          divergence_disclosure: 'Broader-force labels only appear when explicit monitored-set or shared-context evidence exists.',
           news_context: 'News remains supportive.',
           reasoning: 'The monitored set is constructive.',
           model_used: 'gpt-4o-mini',
@@ -97,7 +134,9 @@ describe('ScopeInsightCard', () => {
     expect(remounted.text()).toContain('The monitored set is constructive.')
     expect(remounted.text()).toContain('Momentum is steady.')
     expect(remounted.text()).toContain('Sentiment trajectory')
-    expect(remounted.text()).toContain('Asset AAA is turning more positive across 3 retained items.')
+    expect(remounted.text()).toContain('Divergence')
+    expect(remounted.text()).toContain('Macro won')
+    expect(remounted.text()).toContain('Sentiment trajectory')
     expect(remounted.text()).toContain('News remains supportive.')
     expect(remounted.text()).toContain('gpt-4o-mini')
 

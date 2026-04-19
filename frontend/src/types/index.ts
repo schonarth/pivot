@@ -65,6 +65,9 @@ export interface MonitoredScopeInsight {
   news_context: string
   reasoning: string
   sentiment_trajectory?: SentimentTrajectory | null
+  divergence_analysis?: DivergenceAnalysis | null
+  divergence_summary?: string
+  divergence_disclosure?: string
   model_used: string
   generated_at: string
 }
@@ -153,6 +156,21 @@ export interface SentimentTrajectory {
   entries: SentimentTrajectoryEntry[]
 }
 
+export interface DivergenceAnalysis {
+  label: 'no_divergence' | 'insufficient_signal' | 'no_material_follow_through' | 'competing_macro_priority' | 'reversal' | 'uncertainty_conflict'
+  expected_direction: 'up' | 'down' | 'none'
+  actual_direction: 'up' | 'down' | 'flat'
+  actual_percent_move: string
+  flat_threshold_percent: string
+  signal_votes: {
+    technical: 'positive' | 'negative' | 'neutral'
+    context: 'positive' | 'negative' | 'neutral'
+    trajectory: 'positive' | 'negative' | 'neutral'
+    shared_context: 'positive' | 'negative' | 'neutral'
+  }
+  macro_confirmation: boolean
+}
+
 export interface AssetAIInsight {
   symbol: string
   market: string
@@ -164,6 +182,9 @@ export interface AssetAIInsight {
   reasoning: string
   price_target: number | null
   sentiment_trajectory?: SentimentTrajectory | null
+  divergence_analysis?: DivergenceAnalysis | null
+  divergence_summary?: string
+  divergence_disclosure?: string
   model_used: string
   generated_at: string
   news_items: AssetAIInsightNewsItem[]

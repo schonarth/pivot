@@ -5,13 +5,14 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
 from django.core.cache import cache
+from django.core.management import call_command
 from django.utils import timezone
+import pytest
 
 from ai.models import AIAuth
 from ai.services import AIService
-from markets.models import Asset, NewsItem
+from markets.models import Asset, NewsItem, OHLCV, TechnicalIndicators
 
 
 def make_asset(symbol: str, *, market: str = "US", sector: str = "", industry: str = ""):
@@ -43,6 +44,38 @@ def make_news(
         source=source,
         published_at=timezone.now() - timedelta(hours=hours_ago),
         sentiment_score=sentiment_score,
+    )
+
+
+def make_ohlcv(asset, closes: list[Decimal]):
+    start_date = timezone.now().date() - timedelta(days=len(closes) - 1)
+    for index, close in enumerate(closes):
+        OHLCV.objects.create(
+            asset=asset,
+            date=start_date + timedelta(days=index),
+            open=Decimal(str(close)) - Decimal("1.00"),
+            high=Decimal(str(close)) + Decimal("1.00"),
+            low=Decimal(str(close)) - Decimal("2.00"),
+            close=Decimal(str(close)),
+            volume=1000 + index,
+        )
+
+
+def make_indicators(asset, *, date=None):
+    TechnicalIndicators.objects.create(
+        asset=asset,
+        date=date or timezone.now().date(),
+        rsi_14=Decimal("61.00"),
+        macd=Decimal("1.50"),
+        macd_signal=Decimal("1.00"),
+        macd_histogram=Decimal("0.50"),
+        ma_20=Decimal("101.00"),
+        ma_50=Decimal("99.00"),
+        ma_200=Decimal("95.00"),
+        bb_upper=Decimal("110.00"),
+        bb_middle=Decimal("100.00"),
+        bb_lower=Decimal("90.00"),
+        volume_20d_avg=1000,
     )
 
 
@@ -404,6 +437,242 @@ class TestSentimentTrajectory:
 
 
 @pytest.mark.django_db
+class TestDivergenceAnalysis:
+    def test_build_divergence_analysis_detects_no_divergence(self, user):
+        asset = make_asset("AAA")
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("101.00"), Decimal("102.00"), Decimal("104.00"), Decimal("106.00")])
+
+        service = AIService(user)
+        analysis = service.build_divergence_analysis(
+            "asset",
+            [asset],
+            [
+                {
+                    "headline": "AAA shares rise on earnings beat",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.7"),
+                },
+                {
+                    "headline": "AAA momentum strengthens",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.8"),
+                },
+            ],
+            [
+                {
+                    "subject_type": "asset",
+                    "subject": "AAA",
+                    "state": "improving",
+                }
+            ],
+            indicators={
+                "ma_20": Decimal("101.00"),
+                "ma_50": Decimal("99.00"),
+                "macd": Decimal("1.50"),
+                "macd_signal": Decimal("1.00"),
+                "rsi_14": Decimal("61.00"),
+            },
+        )
+
+        assert analysis["label"] == "no_divergence"
+        assert analysis["expected_direction"] == "up"
+        assert analysis["actual_direction"] == "up"
+        assert analysis["macro_confirmation"] is False
+
+    def test_build_divergence_analysis_detects_no_material_follow_through(self, user):
+        asset = make_asset("AAA")
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("100.20"), Decimal("100.10"), Decimal("100.30"), Decimal("100.40")])
+
+        service = AIService(user)
+        analysis = service.build_divergence_analysis(
+            "asset",
+            [asset],
+            [
+                {
+                    "headline": "AAA shares rise on earnings beat",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.7"),
+                },
+                {
+                    "headline": "AAA momentum strengthens",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.8"),
+                },
+            ],
+            [
+                {
+                    "subject_type": "asset",
+                    "subject": "AAA",
+                    "state": "improving",
+                }
+            ],
+            indicators={
+                "ma_20": Decimal("101.00"),
+                "ma_50": Decimal("99.00"),
+                "macd": Decimal("1.50"),
+                "macd_signal": Decimal("1.00"),
+                "rsi_14": Decimal("61.00"),
+            },
+        )
+
+        assert analysis["label"] == "no_material_follow_through"
+        assert analysis["actual_direction"] == "flat"
+
+    def test_build_divergence_analysis_detects_reversal(self, user):
+        asset = make_asset("AAA")
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("99.00"), Decimal("98.00"), Decimal("97.00"), Decimal("96.00")])
+
+        service = AIService(user)
+        analysis = service.build_divergence_analysis(
+            "asset",
+            [asset],
+            [
+                {
+                    "headline": "AAA shares rise on earnings beat",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.7"),
+                },
+                {
+                    "headline": "AAA momentum strengthens",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.8"),
+                },
+            ],
+            [
+                {
+                    "subject_type": "asset",
+                    "subject": "AAA",
+                    "state": "improving",
+                }
+            ],
+            indicators={
+                "ma_20": Decimal("101.00"),
+                "ma_50": Decimal("99.00"),
+                "macd": Decimal("1.50"),
+                "macd_signal": Decimal("1.00"),
+                "rsi_14": Decimal("61.00"),
+            },
+        )
+
+        assert analysis["label"] == "reversal"
+        assert analysis["actual_direction"] == "down"
+
+    def test_build_divergence_analysis_detects_competing_macro_priority(self, user):
+        asset = make_asset("AAA")
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("99.00"), Decimal("98.00"), Decimal("97.00"), Decimal("96.00")])
+
+        service = AIService(user)
+        analysis = service.build_divergence_analysis(
+            "portfolio",
+            [asset],
+            [
+                {
+                    "headline": "AAA shares rise on earnings beat",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.7"),
+                },
+                {
+                    "headline": "AAA momentum strengthens",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("0.8"),
+                },
+                {
+                    "headline": "Macro risk rises on rates and inflation pressure",
+                    "bucket": "macro",
+                    "sentiment_score": Decimal("-0.8"),
+                },
+            ],
+            [
+                {
+                    "subject_type": "asset",
+                    "subject": "AAA",
+                    "state": "improving",
+                }
+            ],
+            indicators={
+                "ma_20": Decimal("101.00"),
+                "ma_50": Decimal("99.00"),
+                "macd": Decimal("1.50"),
+                "macd_signal": Decimal("1.00"),
+                "rsi_14": Decimal("61.00"),
+            },
+        )
+
+        assert analysis["label"] == "competing_macro_priority"
+        assert analysis["macro_confirmation"] is True
+
+    def test_build_divergence_analysis_detects_uncertainty_conflict(self, user):
+        asset = make_asset("AAA")
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("101.00"), Decimal("102.00"), Decimal("103.00"), Decimal("104.00")])
+
+        service = AIService(user)
+        analysis = service.build_divergence_analysis(
+            "asset",
+            [asset],
+            [
+                {
+                    "headline": "AAA shares fall after guidance cut",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("-0.8"),
+                },
+                {
+                    "headline": "AAA outlook weakens on margin pressure",
+                    "bucket": "company",
+                    "sentiment_score": Decimal("-0.7"),
+                },
+            ],
+            [
+                {
+                    "subject_type": "asset",
+                    "subject": "AAA",
+                    "state": "deteriorating",
+                }
+            ],
+            indicators={
+                "ma_20": Decimal("101.00"),
+                "ma_50": Decimal("99.00"),
+                "macd": Decimal("1.50"),
+                "macd_signal": Decimal("1.00"),
+                "rsi_14": Decimal("61.00"),
+            },
+        )
+
+        assert analysis["label"] == "uncertainty_conflict"
+
+    def test_build_divergence_analysis_returns_none_without_recent_move_data(self, user):
+        asset = make_asset("AAA")
+        service = AIService(user)
+
+        assert service.build_divergence_analysis(
+            "asset",
+            [asset],
+            [],
+            [],
+            indicators={
+                "ma_20": Decimal("101.00"),
+                "ma_50": Decimal("99.00"),
+                "macd": Decimal("1.50"),
+                "macd_signal": Decimal("1.00"),
+                "rsi_14": Decimal("61.00"),
+            },
+        ) is None
+
+    def test_inspect_divergence_command_prints_structured_output(self, user, capsys):
+        asset = make_asset("AAA")
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("101.00"), Decimal("102.00"), Decimal("103.00"), Decimal("104.00")])
+        make_indicators(asset)
+        make_news(asset, "AAA shares rise on earnings beat", sentiment_score=0.8)
+        make_news(asset, "AAA momentum strengthens", hours_ago=2, sentiment_score=0.7)
+
+        call_command("inspect_divergence", "--asset-id", str(asset.id))
+
+        captured = capsys.readouterr()
+        assert "Divergence:" in captured.out
+        assert '"label": "no_divergence"' in captured.out
+        assert "Disclosure:" in captured.out
+
+
+@pytest.mark.django_db
 class TestAssetInsightPrompt:
     def test_analyze_asset_uses_tagged_context_pack_in_prompt(self, user):
         asset = make_asset("AAA", sector="Financial", industry="Banks")
@@ -414,6 +683,7 @@ class TestAssetInsightPrompt:
         make_news(asset, "AAA earnings momentum strengthens", hours_ago=2, sentiment_score=0.8)
         make_news(peer, "Regional banks face deposit pressure", sentiment_score=-0.6)
         make_news(macro_peer, "Fed keeps rates higher for longer", sentiment_score=-0.4)
+        make_ohlcv(asset, [Decimal("100.00"), Decimal("101.00"), Decimal("102.00"), Decimal("103.00"), Decimal("104.00")])
 
         AIAuth.objects.create(user=user, provider_name="openai")
         service = AIService(user)
@@ -466,9 +736,12 @@ class TestAssetInsightPrompt:
         assert "Context pack:" in recorded_prompt["input"]
         assert "Story so far:" in recorded_prompt["input"]
         assert "Sentiment trajectory:" in recorded_prompt["input"]
+        assert "Divergence analysis:" in recorded_prompt["input"]
         assert "[symbol]" in recorded_prompt["input"] or "[company]" in recorded_prompt["input"]
         assert result["sentiment_trajectory"]
         assert result["sentiment_trajectory"]["entries"][0]["state"] == "improving"
+        assert result["divergence_analysis"]["label"] == "no_divergence"
+        assert result["divergence_summary"]
 
     def test_analyze_asset_returns_cached_result_on_second_call(self, user):
         cache.clear()
@@ -533,6 +806,8 @@ class TestScopeInsightPrompt:
         make_news(asset_a, "AAA earnings momentum strengthens", hours_ago=2, sentiment_score=0.8)
         make_news(asset_b, "BBB sees steady inflows", sentiment_score=-0.4)
         make_news(asset_b, "BBB outflows accelerate", hours_ago=2, sentiment_score=-0.7)
+        make_ohlcv(asset_a, [Decimal("100.00"), Decimal("100.50"), Decimal("101.00"), Decimal("101.50"), Decimal("102.00")])
+        make_ohlcv(asset_b, [Decimal("100.00"), Decimal("99.80"), Decimal("99.60"), Decimal("99.40"), Decimal("99.20")])
 
         AIAuth.objects.create(user=user, provider_name="openai")
         service = AIService(user)
@@ -589,9 +864,11 @@ class TestScopeInsightPrompt:
         assert "Type: portfolio" in recorded_prompt["input"]
         assert "Asset count: 2" in recorded_prompt["input"]
         assert "Sentiment trajectory:" in recorded_prompt["input"]
+        assert "Divergence analysis:" in recorded_prompt["input"]
         assert "AAA" in recorded_prompt["input"]
         assert "BBB" in recorded_prompt["input"]
         assert result["sentiment_trajectory"]
+        assert result["divergence_analysis"]
 
 
 @pytest.mark.django_db
