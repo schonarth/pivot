@@ -39,6 +39,7 @@ class AIAuth(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_auth")
     provider_name = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default="openai")
+    enabled = models.BooleanField(default=True)
 
     api_key_encrypted = models.BinaryField(null=True, blank=True)
 

@@ -1,12 +1,23 @@
 <template>
   <div class="card">
-    <h3>AI Settings</h3>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+      <h3>AI Settings</h3>
+      <label class="toggle-switch">
+        <input
+          type="checkbox"
+          :checked="form.enabled"
+          :disabled="loading || savingEnabled"
+          @change="toggleEnabled"
+        >
+        <span class="toggle-label">{{ form.enabled ? 'On' : 'Off' }}</span>
+      </label>
+    </div>
 
     <div v-if="loading" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
       Loading...
     </div>
 
-    <template v-else>
+    <template v-else-if="form.enabled">
       <div style="margin-bottom: 1.5rem;">
         <label style="display: block; font-size: 0.875rem; margin-bottom: 0.5rem;">Provider</label>
         <div style="display: flex; gap: 0.5rem;">
@@ -203,6 +214,7 @@ import * as aiApi from '@/api/ai'
 
 interface SettingsData {
   provider_name: string
+  enabled: boolean
   monthly_budget_usd: string
   alert_threshold_pct: number
   task_models: Record<string, string>
@@ -218,6 +230,7 @@ interface SettingsData {
 
 interface AISettings {
   provider_name: string
+  enabled: boolean
   monthly_budget_usd: number
   alert_threshold_pct: number
   task_models: Record<string, string>
@@ -227,6 +240,7 @@ const toast = useToast()
 
 const loading = ref(true)
 const saving = ref(false)
+const savingEnabled = ref(false)
 const savingKey = ref(false)
 const testingConnection = ref(false)
 const showAdvancedModels = ref(false)
@@ -251,6 +265,7 @@ const budget = reactive<aiApi.AIBudget>({
 
 const form = reactive<AISettings>({
   provider_name: 'openai',
+  enabled: true,
   monthly_budget_usd: 10,
   alert_threshold_pct: 10,
   task_models: {},
@@ -267,6 +282,7 @@ async function loadSettings() {
   try {
     const data = await aiApi.getSettings() as unknown as SettingsData
     form.provider_name = data.provider_name
+    form.enabled = data.enabled
     form.monthly_budget_usd = parseFloat(data.monthly_budget_usd)
     form.alert_threshold_pct = data.alert_threshold_pct
     form.task_models = data.task_models || {}
@@ -340,6 +356,26 @@ function getDefaultModel(taskName: string): string {
 
 function updateTaskModel(taskName: string, model: string) {
   form.task_models[taskName] = model
+}
+
+async function toggleEnabled(event: Event) {
+  const input = event.target as HTMLInputElement
+  const nextEnabled = input.checked
+  const previousEnabled = form.enabled
+
+  form.enabled = nextEnabled
+  savingEnabled.value = true
+
+  try {
+    const data = await aiApi.updateSettings({ enabled: nextEnabled })
+    form.enabled = data.enabled
+    notifyBudgetChanged()
+  } catch {
+    form.enabled = previousEnabled
+    toast.error('Failed to update AI settings')
+  } finally {
+    savingEnabled.value = false
+  }
 }
 
 async function saveApiKey() {
@@ -431,3 +467,55 @@ const instanceDefaultOwnershipNote = computed(() => {
   return `Shared instance default key is currently owned by ${instanceDefaultOwnerUsername.value}.`
 })
 </script>
+
+<style scoped>
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+.toggle-switch input {
+  appearance: none;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  margin: 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-switch input::before {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: white;
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch input:checked {
+  background: var(--primary);
+}
+
+.toggle-switch input:checked::before {
+  transform: translateX(1.25rem);
+}
+
+.toggle-switch input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggle-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+</style>

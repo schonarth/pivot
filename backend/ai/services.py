@@ -91,7 +91,9 @@ class AIService:
         self.ai_auth, _ = AIAuth.objects.get_or_create(user=user)
 
     def has_ai_enabled(self) -> bool:
-        """Check if user has AI enabled (has API key configured)."""
+        """Check if user has AI enabled and has a usable API key configured."""
+        if not self.ai_auth.enabled:
+            return False
         _, api_key = self.get_api_credentials()
         return api_key is not None
 
@@ -190,6 +192,9 @@ class AIService:
 
     def get_api_credentials(self) -> tuple[str | None, str | None]:
         """Get the effective provider and API key for this user."""
+        if not self.ai_auth.enabled:
+            return None, None
+
         if self.ai_auth and self.ai_auth.api_key_encrypted:
             api_key = self._decrypt_api_key(self.ai_auth.api_key_encrypted)
             if api_key:

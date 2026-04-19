@@ -31,6 +31,10 @@ vi.mock('@/api/assets', () => ({
   getAssetOHLCV: vi.fn(),
 }))
 
+vi.mock('@/api/ai', () => ({
+  getSettings: vi.fn(),
+}))
+
 vi.mock('@/composables/useNotifications', () => ({
   useNotifications: () => ({
     showNotification,
@@ -39,11 +43,28 @@ vi.mock('@/composables/useNotifications', () => ({
 
 const { getAssetOHLCV, getAssetIndicators, getAssetAIInsight } =
   await import('@/api/assets')
+const { getSettings } = await import('@/api/ai')
 
 describe('AssetAnalysisTab', () => {
   beforeEach(() => {
     apexChartsState.instances.length = 0
     showNotification.mockReset()
+    vi.mocked(getSettings).mockResolvedValue({
+      provider_name: 'openai',
+      enabled: true,
+      monthly_budget_usd: 10,
+      alert_threshold_pct: 10,
+      task_models: {},
+      has_api_key: true,
+      available_providers: [],
+      available_models: {},
+      available_tasks: {},
+      instance_default_enabled: false,
+      instance_default_allow_other_users: false,
+      instance_default_owned_by_current_user: false,
+      instance_default_owner_username: null,
+      can_use_instance_default: false,
+    })
     vi.mocked(getAssetOHLCV).mockResolvedValue([
       {
         date: '2025-04-01T00:00:00.000Z',
@@ -331,5 +352,41 @@ describe('AssetAnalysisTab', () => {
       '#f59e0b',
       '#dc2626',
     ])
+  })
+
+  it('hides the ai insight panel when ai is disabled', async () => {
+    vi.mocked(getSettings).mockResolvedValue({
+      provider_name: 'openai',
+      enabled: false,
+      monthly_budget_usd: 10,
+      alert_threshold_pct: 10,
+      task_models: {},
+      has_api_key: true,
+      available_providers: [],
+      available_models: {},
+      available_tasks: {},
+      instance_default_enabled: false,
+      instance_default_allow_other_users: false,
+      instance_default_owned_by_current_user: false,
+      instance_default_owner_username: null,
+      can_use_instance_default: false,
+    })
+
+    const wrapper = mount(AssetAnalysisTab, {
+      props: {
+        assetId: 'asset-1',
+      },
+      global: {
+        stubs: {
+          RouterLink: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('AI Insight')
+    expect(wrapper.find('.chart-container-main').exists()).toBe(true)
+    expect(wrapper.find('.chart-container-oscillator').exists()).toBe(true)
   })
 })

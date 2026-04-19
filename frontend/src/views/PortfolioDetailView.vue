@@ -180,6 +180,7 @@
 
     <div v-if="activeTab === 'positions'">
       <ScopeInsightCard
+        v-if="aiEnabled"
         title="Portfolio AI Summary"
         scope-label="Portfolio positions"
         :asset-count="positionAssessments.length"
@@ -250,6 +251,7 @@
 
     <div v-if="activeTab === 'watch'">
       <ScopeInsightCard
+        v-if="aiEnabled"
         title="Watch AI Summary"
         scope-label="Portfolio watch"
         :asset-count="watchAssessments.length"
@@ -800,6 +802,7 @@ import { parseNumericInput, formatCurrency } from '@/utils/numbers'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useNotifications } from '@/composables/useNotifications'
 import { useToast } from '@/composables/useToast'
+import { useAiEnabled } from '@/composables/useAiEnabled'
 import ScopeInsightCard from '@/components/ScopeInsightCard.vue'
 import type { Alert, Asset, PortfolioSummary, MonitoredAssetSummary } from '@/types'
 
@@ -809,6 +812,7 @@ const router = useRouter()
 const ws = useWebSocketStore()
 const { showNotification } = useNotifications()
 const toast = useToast()
+const { aiEnabled } = useAiEnabled()
 
 const getPortfolioId = () => {
   const routePortfolioId = route.params.id as string | string[] | undefined

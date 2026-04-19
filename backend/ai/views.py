@@ -41,6 +41,9 @@ class AISettingsViewSet(viewsets.ViewSet):
         if "provider_name" in request.data:
             ai_auth.provider_name = request.data["provider_name"]
 
+        if "enabled" in request.data:
+            ai_auth.enabled = request.data["enabled"]
+
         if "task_models" in request.data:
             ai_auth.task_models = request.data["task_models"]
 
@@ -103,13 +106,19 @@ class AISettingsViewSet(viewsets.ViewSet):
     def test_connection(self, request):
         provider = request.data.get("provider_name")
         api_key = request.data.get("api_key")
+        service = AIService(request.user)
+
+        if not service.has_ai_enabled():
+            return Response(
+                {"error": "AI features are disabled"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if not provider:
             ai_auth = AIAuth.objects.filter(user=request.user).first()
             provider = ai_auth.provider_name if ai_auth else "openai"
 
         if not api_key:
-            service = AIService(request.user)
             api_key = service.get_api_key()
 
         if not api_key:

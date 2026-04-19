@@ -18,6 +18,7 @@ class AIAuthSettingsSerializer(serializers.ModelSerializer):
         model = AIAuth
         fields = (
             "provider_name",
+            "enabled",
             "monthly_budget_usd",
             "alert_threshold_pct",
             "task_models",

@@ -2,6 +2,7 @@ import client from './client'
 
 export interface AISettings {
   provider_name: string
+  enabled: boolean
   monthly_budget_usd: number
   alert_threshold_pct: number
   task_models: Record<string, string>
