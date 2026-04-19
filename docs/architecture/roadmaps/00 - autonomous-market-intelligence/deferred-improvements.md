@@ -382,3 +382,48 @@ The current assets page uses a boring, symbol-only exact lookup path. That is th
 - expanding beyond the seed stays manual for longer than necessary
 - operators may need to use the exact lookup path repeatedly for bulk additions
 - the app may remain dependent on the initial seed set until a broader discovery workflow is introduced
+
+---
+
+## 010 - Asset Import Hints from Scanned News
+
+### Context
+
+The discovery roadmap increasingly depends on the stored asset universe being broad enough to catch relevant opportunities. The project now supports adding assets incrementally, but that still depends on someone noticing missing symbols first. News ingestion already processes headlines, and later may process fuller article bodies, so it is a natural place to notice candidate symbols that are not yet in the asset table.
+
+### Current Safe Policy
+
+- keep asset expansion explicit and operator-controlled
+- do not auto-import new assets from ingested news
+- rely on the existing seed plus one-by-one additions for now
+
+### Why Deferred
+
+- symbol extraction rules need care to avoid noisy matches
+- all-caps token heuristics are promising, but exact rules still need validation
+- online lookup introduces source-selection, rate-limit, and trust questions
+- automatic import from news would widen the asset universe through a path that is useful, but not yet audited tightly enough
+
+### Earliest Revisit
+
+- after Milestone 06 acceptance
+- earlier only if the current asset universe proves too thin for discovery quality
+
+### Future Direction
+
+- scan ingested headlines for likely symbol candidates using lightweight deterministic rules
+- likely first pass:
+  - short all-caps words or similar constrained token patterns
+  - search the current asset list first
+  - if a match exists locally, stop there
+  - if no local match exists, try a trusted external lookup
+  - if confirmed externally, allow import into the asset universe
+- start with headline-only extraction if that gives acceptable recall
+- later consider applying the same lightweight logic to full article body text when the added noise is acceptable
+- keep imports reviewable even if detection becomes automatic
+
+### Risk If Deferred Too Long
+
+- discovery quality may stay limited by whatever assets are already present locally
+- relevant symbols appearing repeatedly in news may remain invisible to the product until manually added
+- the system may miss a natural low-cost path for expanding coverage as news flow evolves
