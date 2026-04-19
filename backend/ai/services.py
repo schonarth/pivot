@@ -40,6 +40,9 @@ class AIService:
     CONTINUITY_SENTIMENT_THRESHOLD = Decimal("0.2")
     TRAJECTORY_PROMPT_LIMIT = 3
     TRAJECTORY_SCORE_THRESHOLD = Decimal("0.25")
+    DIVERGENCE_LOOKBACK_DAYS = 5
+    DIVERGENCE_FLAT_MOVE_THRESHOLD = Decimal("0.005")
+    DIVERGENCE_SIGNAL_THRESHOLD = Decimal("0.2")
     POSITIVE_HEADLINE_MARKERS = {
         "beats",
         "beat",
@@ -622,6 +625,361 @@ class AIService:
             for item in entries
         )
 
+    @staticmethod
+    def _decimal_or_none(value) -> Decimal | None:
+        if value is None:
+            return None
+        return Decimal(str(value))
+
+    @staticmethod
+    def _vote_from_values(values: list[str]) -> str:
+        directional = [value for value in values if value in {"positive", "negative"}]
+        if not directional:
+            return "neutral"
+        if any(value != directional[0] for value in directional):
+            return "neutral"
+        return directional[0]
+
+    @classmethod
+    def _vote_from_score(cls, score: Decimal | None, threshold: Decimal | None = None) -> str:
+        if score is None:
+            return "neutral"
+        threshold = threshold or cls.DIVERGENCE_SIGNAL_THRESHOLD
+        if score >= threshold:
+            return "positive"
+        if score <= -threshold:
+            return "negative"
+        return "neutral"
+
+    @classmethod
+    def _technical_vote(cls, indicators: dict, latest_close: Decimal | None) -> str:
+        votes = []
+
+        ma_20 = cls._decimal_or_none(indicators.get("ma_20"))
+        ma_50 = cls._decimal_or_none(indicators.get("ma_50"))
+        macd = cls._decimal_or_none(indicators.get("macd"))
+        macd_signal = cls._decimal_or_none(indicators.get("macd_signal"))
+        rsi_14 = cls._decimal_or_none(indicators.get("rsi_14"))
+
+        if latest_close is not None and ma_20 is not None and ma_50 is not None:
+            if latest_close > ma_20 > ma_50:
+                votes.append("positive")
+            elif latest_close < ma_20 < ma_50:
+                votes.append("negative")
+
+        if macd is not None and macd_signal is not None:
+            if macd > macd_signal:
+                votes.append("positive")
+            elif macd < macd_signal:
+                votes.append("negative")
+
+        if rsi_14 is not None:
+            if rsi_14 >= Decimal("55"):
+                votes.append("positive")
+            elif rsi_14 <= Decimal("45"):
+                votes.append("negative")
+
+        return cls._vote_from_values(votes)
+
+    @classmethod
+    def _context_vote(cls, news_items: list[dict], trajectory_vote: str) -> str:
+        votes = []
+        sentiment_scores = []
+
+        for item in news_items:
+            score = cls._decimal_or_none(item.get("sentiment_score"))
+            if score is not None:
+                sentiment_scores.append(score)
+                continue
+
+            headline_vote = cls._headline_direction(item.get("headline", ""))
+            if headline_vote in {"positive", "negative"}:
+                votes.append(headline_vote)
+
+        if sentiment_scores:
+            average = sum(sentiment_scores, Decimal("0")) / Decimal(len(sentiment_scores))
+            votes.append(cls._vote_from_score(average))
+
+        votes.append(trajectory_vote)
+        return cls._vote_from_values(votes)
+
+    @classmethod
+    def _shared_context_vote(cls, news_items: list[dict]) -> str:
+        scores = []
+        votes = []
+
+        for item in news_items:
+            if item.get("bucket") not in {"macro", "theme"}:
+                continue
+            score = cls._decimal_or_none(item.get("sentiment_score"))
+            if score is not None:
+                scores.append(score)
+                continue
+            headline_vote = cls._headline_direction(item.get("headline", ""))
+            if headline_vote in {"positive", "negative"}:
+                votes.append(headline_vote)
+
+        if scores:
+            average = sum(scores, Decimal("0")) / Decimal(len(scores))
+            votes.append(cls._vote_from_score(average))
+
+        return cls._vote_from_values(votes)
+
+    @classmethod
+    def _trajectory_vote(cls, sentiment_trajectory: list[dict] | None, subject_symbols: set[str] | None = None) -> str:
+        if not sentiment_trajectory:
+            return "neutral"
+
+        votes = []
+        for entry in sentiment_trajectory:
+            if subject_symbols is not None:
+                if entry.get("subject_type") == "asset" and entry.get("subject") not in subject_symbols:
+                    continue
+                if entry.get("subject_type") == "theme":
+                    continue
+
+            state = entry.get("state")
+            if state in {"improving"}:
+                votes.append("positive")
+            elif state in {"deteriorating", "reversal"}:
+                votes.append("negative")
+
+        return cls._vote_from_values(votes)
+
+    @staticmethod
+    def _format_percent(value: Decimal | None) -> str:
+        if value is None:
+            return "0.00%"
+        return f"{(value * Decimal('100')).quantize(Decimal('0.01'))}%"
+
+    @classmethod
+    def _scope_assets(cls, assets) -> list:
+        return list(assets or [])
+
+    @classmethod
+    def _asset_latest_move(cls, asset) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
+        from markets.models import OHLCV
+
+        rows = list(
+            OHLCV.objects.filter(asset=asset).order_by("-date").values_list("close", flat=True)[
+                :cls.DIVERGENCE_LOOKBACK_DAYS
+            ]
+        )
+        if len(rows) < 2:
+            return None, None, None
+
+        rows.reverse()
+
+        first = cls._decimal_or_none(rows[0])
+        last = cls._decimal_or_none(rows[-1])
+        if first in {None, Decimal("0")} or last is None:
+            return None, None, None
+
+        move = (last - first) / first
+        return first, last, move
+
+    @classmethod
+    def _asset_move_signature(cls, asset) -> str:
+        from markets.models import OHLCV
+
+        closes = list(
+            OHLCV.objects.filter(asset=asset).order_by("-date").values_list("close", flat=True)[
+                :cls.DIVERGENCE_LOOKBACK_DAYS
+            ]
+        )
+        return hashlib.sha256(
+            json.dumps([str(value) for value in closes], default=str).encode("utf-8")
+        ).hexdigest()
+
+    @classmethod
+    def _scope_move_signature(cls, assets) -> str:
+        return hashlib.sha256(
+            json.dumps(
+                [cls._asset_move_signature(asset) for asset in cls._scope_assets(assets)],
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()
+
+    @classmethod
+    def _latest_indicators_for_asset(cls, asset) -> dict:
+        from markets.models import TechnicalIndicators
+
+        indicators = TechnicalIndicators.objects.filter(asset=asset).order_by("-date").first()
+        if not indicators:
+            return {}
+        return {
+            "rsi_14": indicators.rsi_14,
+            "macd": indicators.macd,
+            "macd_signal": indicators.macd_signal,
+            "macd_histogram": indicators.macd_histogram,
+            "ma_20": indicators.ma_20,
+            "ma_50": indicators.ma_50,
+            "ma_200": indicators.ma_200,
+            "bb_upper": indicators.bb_upper,
+            "bb_middle": indicators.bb_middle,
+            "bb_lower": indicators.bb_lower,
+            "volume_20d_avg": indicators.volume_20d_avg,
+        }
+
+    @classmethod
+    def build_divergence_prompt_section(cls, divergence_analysis: dict | None) -> str:
+        if not divergence_analysis:
+            return "- None"
+
+        signal_votes = divergence_analysis.get("signal_votes", {})
+        actual_percent_move = cls._format_percent(
+            cls._decimal_or_none(divergence_analysis.get("actual_percent_move"))
+        )
+        flat_threshold_percent = cls._format_percent(
+            cls._decimal_or_none(divergence_analysis.get("flat_threshold_percent"))
+        )
+        return "\n".join(
+            [
+                f"- Label: {divergence_analysis.get('label', 'insufficient_signal')}",
+                f"- Expected direction: {divergence_analysis.get('expected_direction', 'none')}",
+                f"- Actual direction: {divergence_analysis.get('actual_direction', 'flat')}",
+                f"- Actual move: {actual_percent_move}",
+                f"- Flat threshold: {flat_threshold_percent}",
+                f"- Technical vote: {signal_votes.get('technical', 'neutral')}",
+                f"- Context vote: {signal_votes.get('context', 'neutral')}",
+                f"- Trajectory vote: {signal_votes.get('trajectory', 'neutral')}",
+                f"- Shared context vote: {signal_votes.get('shared_context', 'neutral')}",
+            ]
+        )
+
+    @classmethod
+    def build_divergence_analysis(
+        cls,
+        scope_type: str,
+        assets,
+        news_items: list[dict],
+        sentiment_trajectory: list[dict] | None = None,
+        indicators: dict | None = None,
+    ) -> dict | None:
+        assets = cls._scope_assets(assets)
+        if not assets:
+            return None
+
+        technical_votes = []
+        actual_moves = []
+
+        for asset in assets:
+            asset_indicators = (
+                indicators
+                if len(assets) == 1 and indicators
+                else cls._latest_indicators_for_asset(asset)
+            )
+            first_close, last_close, move = cls._asset_latest_move(asset)
+            if move is not None:
+                actual_moves.append(move)
+            technical_votes.append(cls._technical_vote(asset_indicators, last_close))
+
+        actual_percent_move = None
+        if actual_moves:
+            actual_percent_move = sum(actual_moves, Decimal("0")) / Decimal(len(actual_moves))
+
+        actual_direction = "flat"
+        if actual_percent_move is not None:
+            if actual_percent_move > cls.DIVERGENCE_FLAT_MOVE_THRESHOLD:
+                actual_direction = "up"
+            elif actual_percent_move < -cls.DIVERGENCE_FLAT_MOVE_THRESHOLD:
+                actual_direction = "down"
+
+        technical_vote = cls._vote_from_values(technical_votes)
+
+        subject_symbols = {asset.display_symbol for asset in assets}
+        trajectory_vote = cls._trajectory_vote(sentiment_trajectory, subject_symbols=subject_symbols)
+        context_vote = cls._context_vote(
+            [
+                item
+                for item in news_items
+                if item.get("bucket") not in {"macro", "theme"}
+            ],
+            trajectory_vote,
+        )
+        shared_context_vote = cls._shared_context_vote(news_items)
+
+        expected_direction = "none"
+        label = "insufficient_signal"
+        macro_confirmation = False
+
+        if technical_vote in {"positive", "negative"} and context_vote in {"positive", "negative"}:
+            if technical_vote != context_vote:
+                label = "uncertainty_conflict"
+            else:
+                expected_direction = "up" if technical_vote == "positive" else "down"
+                if actual_direction == expected_direction:
+                    label = "no_divergence"
+                elif actual_direction == "flat":
+                    label = "no_material_follow_through"
+                elif (
+                    (actual_direction == "up" and shared_context_vote == "positive")
+                    or (actual_direction == "down" and shared_context_vote == "negative")
+                ):
+                    label = "competing_macro_priority"
+                    macro_confirmation = True
+                else:
+                    label = "reversal"
+
+        if label == "insufficient_signal" and expected_direction != "none":
+            expected_direction = "none"
+
+        if label == "competing_macro_priority" and not (
+            (actual_direction == "up" and shared_context_vote == "positive")
+            or (actual_direction == "down" and shared_context_vote == "negative")
+        ):
+            macro_confirmation = False
+
+        divergence_analysis = {
+            "label": label,
+            "expected_direction": expected_direction,
+            "actual_direction": actual_direction,
+            "actual_percent_move": actual_percent_move if actual_percent_move is not None else Decimal("0"),
+            "flat_threshold_percent": cls.DIVERGENCE_FLAT_MOVE_THRESHOLD,
+            "signal_votes": {
+                "technical": technical_vote,
+                "context": context_vote,
+                "trajectory": trajectory_vote,
+                "shared_context": shared_context_vote,
+            },
+            "macro_confirmation": macro_confirmation,
+        }
+
+        if actual_percent_move is None:
+            return None
+
+        return divergence_analysis
+
+    @staticmethod
+    def build_divergence_summary(divergence_analysis: dict | None) -> str:
+        if not divergence_analysis:
+            return ""
+
+        label = divergence_analysis.get("label")
+        expected = divergence_analysis.get("expected_direction", "none")
+        actual = divergence_analysis.get("actual_direction", "flat")
+        actual_move = AIService._format_percent(
+            AIService._decimal_or_none(divergence_analysis.get("actual_percent_move"))
+        )
+
+        if label == "no_divergence":
+            return f"Expected {expected}, and the move matched at {actual_move}."
+        if label == "no_material_follow_through":
+            return f"Expected {expected}, but the move stayed flat at {actual_move}."
+        if label == "competing_macro_priority":
+            return f"Expected {expected}, but broader context matched the opposite move at {actual_move}."
+        if label == "reversal":
+            return f"Expected {expected}, but the move reversed to {actual} at {actual_move}."
+        if label == "uncertainty_conflict":
+            return "Technical and context signals conflicted, so no clear expectation formed."
+        return "Not enough aligned directional evidence to form a clear expectation."
+
+    @staticmethod
+    def build_divergence_disclosure(scope_type: str) -> str:
+        if scope_type == "asset":
+            return "Short-window divergence is informational only and does not drive trades."
+        return "Broader-force labels only appear when explicit monitored-set or shared-context evidence exists."
+
     @classmethod
     def _matches_alias(cls, headline: str, alias: str) -> bool:
         normalized_headline = f" {cls._normalize_text(headline)} "
@@ -864,6 +1222,7 @@ class AIService:
         news_items: list[dict],
         story_so_far: list[dict] | None = None,
         sentiment_trajectory: list[dict] | None = None,
+        divergence_analysis: dict | None = None,
     ) -> str:
         if story_so_far:
             story_section = "\n".join(
@@ -879,6 +1238,7 @@ class AIService:
             story_section = "- None"
 
         trajectory_section = cls.build_sentiment_trajectory_prompt_section(sentiment_trajectory or [])
+        divergence_section = cls.build_divergence_prompt_section(divergence_analysis)
 
         news_lines = "\n".join(
             AIService._format_news_line(item) for item in news_items
@@ -919,6 +1279,8 @@ class AIService:
             f"{story_section}\n\n"
             "Sentiment trajectory:\n"
             f"{trajectory_section}\n\n"
+            "Divergence analysis:\n"
+            f"{divergence_section}\n\n"
             "Writing rules:\n"
             "- Write the summary as the main takeaway for an everyday investor.\n"
             "- Keep the summary free of technical jargon and do not repeat the technical paragraph.\n"
@@ -937,12 +1299,14 @@ class AIService:
         holdings: list[dict],
         news_items: list[dict],
         sentiment_trajectory: list[dict] | None = None,
+        divergence_analysis: dict | None = None,
     ) -> str:
         holdings_lines = "\n".join(
             f"- {item['symbol']} | {item['name']} | {item.get('position_detail', item.get('current_price', '-'))}"
             for item in holdings
         ) if holdings else "- None"
         trajectory_section = cls.build_sentiment_trajectory_prompt_section(sentiment_trajectory or [])
+        divergence_section = cls.build_divergence_prompt_section(divergence_analysis)
         news_lines = "\n".join(
             AIService._format_news_line(item) for item in news_items
         ) if news_items else "- None"
@@ -968,6 +1332,8 @@ class AIService:
             f"{news_lines}\n\n"
             "Sentiment trajectory:\n"
             f"{trajectory_section}\n\n"
+            "Divergence analysis:\n"
+            f"{divergence_section}\n\n"
             "Writing rules:\n"
             "- Focus on the monitored set as a whole, not one asset at a time.\n"
             "- Explain how the holdings relate to each other and what the combined setup suggests.\n"
@@ -1082,7 +1448,8 @@ class AIService:
         if not provider or not api_key:
             raise ValueError("AI is not configured for this user")
 
-        cache_key = f"ai_insight:v4:{self.user.id}:{asset.id}"
+        move_signature = self._asset_move_signature(asset)
+        cache_key = f"ai_insight:v5:{self.user.id}:{asset.id}:{move_signature}"
         legacy_cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cached = cache.get(cache_key)
         if cached:
@@ -1106,6 +1473,13 @@ class AIService:
         news_items = self.build_asset_context_pack(asset)
         story_so_far = self.build_story_so_far(asset, news_items)
         sentiment_trajectory = self.build_sentiment_trajectory(news_items, {asset.display_symbol})
+        divergence_analysis = self.build_divergence_analysis(
+            "asset",
+            [asset],
+            news_items,
+            sentiment_trajectory,
+            indicators=indicators,
+        )
 
         model = self.ai_auth.get_model_for_task("indicator_insight")
 
@@ -1115,6 +1489,7 @@ class AIService:
             news_items,
             story_so_far,
             sentiment_trajectory,
+            divergence_analysis,
         )
 
         response_text = ""
@@ -1181,6 +1556,9 @@ class AIService:
             "reasoning": parsed.get("reasoning", ""),
             "price_target": parsed.get("price_target"),
             "sentiment_trajectory": {"entries": sentiment_trajectory} if sentiment_trajectory else None,
+            "divergence_analysis": divergence_analysis,
+            "divergence_summary": self.build_divergence_summary(divergence_analysis),
+            "divergence_disclosure": self.build_divergence_disclosure("asset"),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
             "news_items": [
@@ -1217,6 +1595,13 @@ class AIService:
             news_items,
             {asset.display_symbol for asset in assets},
         )
+        divergence_analysis = self.build_divergence_analysis(
+            scope_type,
+            assets,
+            news_items,
+            sentiment_trajectory,
+        )
+        move_signature = self._scope_move_signature(assets)
         scope_signature = hashlib.sha256(
             json.dumps(
                 {
@@ -1224,12 +1609,13 @@ class AIService:
                     "scope_label": scope_label,
                     "holdings": holdings,
                     "news_items": news_items,
+                    "move_signature": move_signature,
                 },
                 sort_keys=True,
                 default=str,
             ).encode("utf-8")
         ).hexdigest()
-        cache_key = f"ai_scope_insight:v4:{self.user.id}:{scope_type}:{scope_signature}"
+        cache_key = f"ai_scope_insight:v5:{self.user.id}:{scope_type}:{scope_signature}"
         cached = cache.get(cache_key)
         if cached:
             return cached
@@ -1243,6 +1629,7 @@ class AIService:
             holdings,
             news_items,
             sentiment_trajectory,
+            divergence_analysis,
         )
 
         response_text = ""
@@ -1308,6 +1695,9 @@ class AIService:
             "news_context": parsed.get("news_context", ""),
             "reasoning": parsed.get("reasoning", ""),
             "sentiment_trajectory": {"entries": sentiment_trajectory} if sentiment_trajectory else None,
+            "divergence_analysis": divergence_analysis,
+            "divergence_summary": self.build_divergence_summary(divergence_analysis),
+            "divergence_disclosure": self.build_divergence_disclosure(scope_type),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
         }
@@ -1353,8 +1743,6 @@ class AIService:
             return {}
 
         prompt = AIService.build_sentiment_prompt(headlines)
-
-        import json
         try:
             if provider == "anthropic":
                 import anthropic

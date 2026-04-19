@@ -264,3 +264,84 @@ Milestone 03 now has a true portfolio-level and watch-level AI summary UI, but t
 - the current UI may feel busy or confusing even though the underlying capability is correct
 - users may miss the scope-level summary because the drill-down remains prominent
 - the new monitored-set experience may feel more like a convenience feature than the primary portfolio/watch analysis surface
+
+---
+
+## 007 - Specialized Watch Lists for Close Tracking vs Breadth
+
+### Context
+
+Milestone 03 chose the smallest safe watch-scope shape: one named default watch scope per user unless multiple named sets were nearly free. That was appropriate when watch scope mainly needed to support one monitored-set summary. Milestone 05 raises a new pressure: divergence assessment becomes stronger when users monitor a broader peer set, but many users will still want a much smaller set of assets they follow closely day to day.
+
+### Current Safe Policy
+
+- keep the current single watch-scope behavior intact
+- continue treating watch membership as explicit and user-controlled
+- use UI disclosure to explain that divergence reasoning only considers the current asset plus explicitly monitored assets in the relevant portfolio or watch scope
+
+### Why Deferred
+
+- the current single-list model is still sufficient to keep Milestone 03 and Milestone 05 honest
+- adding multiple watch lists introduces naming, navigation, empty-state, and migration questions that are not required to prove divergence reasoning itself
+- broadening watch management too early risks turning a focused analysis milestone into a larger product-surface change
+
+### Earliest Revisit
+
+- after Milestone 05 acceptance
+- before or alongside any later work that depends more heavily on cross-asset monitored breadth
+
+### Future Direction
+
+- allow at least two user-managed watch lists or equivalent watch modes
+- support one narrow list for close tracking and one broader list for context enrichment
+- keep membership explicit rather than inferred
+- preserve a simple default setup for users who do not want to manage multiple lists
+- consider fully user-managed named watch lists, since users may cluster assets more cleanly by theme, such as energy, tech, media, or other cohorts
+- that shape can produce cleaner analyses than forcing everything into a single bucket, even if we offer two buckets
+- possible product framing:
+  - close watch vs context watch
+  - primary watch vs broader watch
+  - fully user-managed named watch lists if that proves cleaner than fixed two-list semantics
+
+### Risk If Deferred Too Long
+
+- users may hesitate to add helpful peer assets because doing so pollutes the one list they actually use for close monitoring
+- Milestone 05 divergence explanations may stay thinner than they need to be because users keep their watch scope artificially small
+- the product may push users toward a behavior that improves analysis quality while making their everyday watch workflow worse
+
+---
+
+## 008 - Distinguish No Expectation From Flat Expectation
+
+### Context
+
+The current divergence model uses `expected_direction = none` when it could not form a directional expectation. That works for "no signal" cases, but it becomes ambiguous when the actual move is flat, because `none + flat` can look like an implied match even though no flat expectation was ever made.
+
+### Current Safe Policy
+
+- keep `expected_direction` as the only expectation field for now
+- treat `none` as "no directional expectation formed"
+- keep `flat` as an actual outcome only, not a modeled expectation state
+
+### Why Deferred
+
+- the current model is simple and sufficient for Milestone 05 behavior
+- adding a separate expectation state changes the data model, the analysis logic, and the UI copy
+- the distinction is useful, but not required to prove divergence reasoning itself
+
+### Earliest Revisit
+
+- when we want to make flat outcomes easier to interpret in the UI
+- before adding any richer divergence badges or expectation-state analytics
+
+### Future Direction
+
+- introduce a separate expectation state such as `no_signal`, `flat`, `up`, `down`
+- or add a boolean like `has_directional_expectation`
+- preserve the ability to say "we had no expectation" versus "we expected flat"
+
+### Risk If Deferred Too Long
+
+- users may misread `none + flat` as a positive match instead of a lack of signal
+- the divergence card may stay slightly ambiguous in low-signal cases
+- future copy may need to keep explaining a distinction the model does not encode directly

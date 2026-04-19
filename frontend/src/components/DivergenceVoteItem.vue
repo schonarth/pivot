@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sentiment-icon"
+    class="vote-item"
     ref="root"
     @mouseenter="openTooltip"
     @mouseleave="closeTooltip"
@@ -9,36 +9,34 @@
   >
     <button
       type="button"
-      class="sentiment-icon-button"
-      :class="[`sentiment-icon-${state}`, `sentiment-icon-button-${state}`]"
-      :aria-label="`${symbol}: ${tooltipMessage}`"
+      class="vote-item-button"
+      :class="`vote-item-${tone}`"
+      :aria-label="accessibleText"
     >
+      <span class="vote-item-label">
+        {{ label }}
+      </span>
       <span
-        class="sentiment-icon-glyph"
+        class="vote-item-arrow"
         aria-hidden="true"
       >
-        {{ sentimentGlyph }}
-      </span>
-      <span class="sentiment-icon-symbol">
-        {{ symbol }}
+        {{ arrow }}
       </span>
     </button>
 
     <Teleport to="body">
-      <Transition name="sentiment-tooltip">
+      <Transition name="vote-tooltip">
         <div
           v-if="showTooltip"
-          class="sentiment-icon-tooltip"
-          :class="`sentiment-icon-tooltip-${state}`"
+          class="vote-item-tooltip"
           :style="tooltipStyle"
           role="tooltip"
         >
-          <div class="sentiment-icon-tooltip-title">
-            {{ tooltipTitle }}
+          <div class="vote-item-tooltip-title">
+            {{ accessibleText }}
           </div>
-          <div class="sentiment-icon-tooltip-body">
-            <strong>{{ symbol }}</strong>
-            <span>{{ tooltipMessage }}</span>
+          <div class="vote-item-tooltip-body">
+            {{ tooltipMessage }}
           </div>
         </div>
       </Transition>
@@ -47,12 +45,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, nextTick } from 'vue'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
 
-const props = defineProps<{
-  state: 'improving' | 'deteriorating' | 'conflicting' | 'reversal'
-  symbol: string
-  tooltipTitle: string
+defineProps<{
+  label: string
+  arrow: '↗' | '↘' | '→'
+  tone: 'success' | 'danger' | 'neutral'
+  accessibleText: string
   tooltipMessage: string
 }>()
 
@@ -61,13 +60,6 @@ const tooltipStyle = ref<Record<string, string>>({})
 const root = ref<HTMLElement | null>(null)
 let hoverTimer: number | null = null
 let resizeListener: (() => void) | null = null
-
-const sentimentGlyph = computed(() => {
-  if (props.state === 'improving') return '📈'
-  if (props.state === 'deteriorating') return '📉'
-  if (props.state === 'reversal') return '🔀'
-  return '💢'
-})
 
 function openTooltip() {
   if (hoverTimer !== null) {
@@ -102,11 +94,11 @@ function closeTooltip() {
 }
 
 function positionTooltip() {
-  const element = root.value?.querySelector('.sentiment-icon-button') as HTMLElement | null
+  const element = root.value?.querySelector('.vote-item-button') as HTMLElement | null
   if (!element) return
 
   const rect = element.getBoundingClientRect()
-  const width = 224
+  const width = 240
   const gap = 8
   const left = Math.min(
     Math.max(rect.right - width, gap),
@@ -132,47 +124,57 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.sentiment-icon {
+.vote-item {
   position: relative;
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
+  min-width: 0;
 }
 
-.sentiment-icon-button {
+.vote-item-button {
   appearance: none;
   border: 0;
   background: transparent;
   color: inherit;
-  padding: 0.05rem 0.15rem;
+  padding: 0;
   margin: 0;
-  width: 3.9rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
   cursor: default;
 }
 
-.sentiment-icon-glyph {
-  font-size: 1.7rem;
+.vote-item-label {
+  font-size: 0.62rem;
   line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--panel-muted);
 }
 
-.sentiment-icon-symbol {
-  font-size: 0.68rem;
+.vote-item-arrow {
+  font-size: 1rem;
   line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  text-align: center;
+  font-weight: 400;
+  font-family: -apple-system, "system-ui", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.sentiment-icon-tooltip {
+.vote-item-success .vote-item-arrow {
+  color: #4ade80;
+}
+
+.vote-item-danger .vote-item-arrow {
+  color: #f87171;
+}
+
+.vote-item-neutral .vote-item-arrow {
+  color: var(--panel-muted);
+}
+
+.vote-item-tooltip {
   position: fixed;
   z-index: 20;
-  width: 14rem;
+  width: 15rem;
   padding: 0.7rem 0.8rem;
   border-radius: 0.45rem;
   background: rgba(15, 23, 42, 0.96);
@@ -185,7 +187,7 @@ onBeforeUnmount(() => {
   text-align: left;
 }
 
-.sentiment-icon-tooltip-title {
+.vote-item-tooltip-title {
   margin-bottom: 0.3rem;
   font-size: 0.7rem;
   font-weight: 700;
@@ -194,72 +196,18 @@ onBeforeUnmount(() => {
   color: #f8fafc;
 }
 
-.sentiment-icon-tooltip-improving .sentiment-icon-tooltip-title {
-  color: #86efac;
-}
-
-.sentiment-icon-tooltip-deteriorating .sentiment-icon-tooltip-title {
-  color: #fca5a5;
-}
-
-.sentiment-icon-tooltip-reversal .sentiment-icon-tooltip-title {
-  color: #fcd34d;
-}
-
-.sentiment-icon-tooltip-conflicting .sentiment-icon-tooltip-title {
-  color: #c4b5fd;
-}
-
-.sentiment-icon-tooltip-body {
+.vote-item-tooltip-body {
   line-height: 1.35;
 }
 
-.sentiment-icon-tooltip-body strong {
-  font-weight: 700;
-  margin-right: 0.25rem;
-  color: #ffffff;
-}
-
-.sentiment-tooltip-enter-active,
-.sentiment-tooltip-leave-active {
+.vote-tooltip-enter-active,
+.vote-tooltip-leave-active {
   transition: opacity 0.08s ease, transform 0.08s ease;
 }
 
-.sentiment-tooltip-enter-from,
-.sentiment-tooltip-leave-to {
+.vote-tooltip-enter-from,
+.vote-tooltip-leave-to {
   opacity: 0;
   transform: translateY(-2px);
-}
-
-.sentiment-icon-improving {
-  transform: translateY(-1px);
-}
-
-.sentiment-icon-button-improving .sentiment-icon-glyph {
-  color: #4ade80;
-}
-
-.sentiment-icon-deteriorating {
-  transform: translateY(-1px);
-}
-
-.sentiment-icon-button-deteriorating .sentiment-icon-glyph {
-  color: #f87171;
-}
-
-.sentiment-icon-reversal {
-  transform: translateY(-1px);
-}
-
-.sentiment-icon-button-reversal .sentiment-icon-glyph {
-  color: #f59e0b;
-}
-
-.sentiment-icon-conflicting {
-  transform: translateY(-1px);
-}
-
-.sentiment-icon-button-conflicting .sentiment-icon-glyph {
-  color: #a78bfa;
 }
 </style>
