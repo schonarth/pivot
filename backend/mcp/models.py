@@ -32,6 +32,8 @@ class AgentToken(models.Model):
     token = models.CharField(max_length=255, unique=True, editable=False)
     name = models.CharField(max_length=255)
     origin = models.CharField(max_length=255, help_text='Agent origin/identifier')
+    llm_provider = models.CharField(max_length=64, blank=True, default='')
+    llm_model = models.CharField(max_length=128, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
 
