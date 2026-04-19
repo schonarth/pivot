@@ -12,6 +12,7 @@ class TestAISettingsEndpoints:
 
         assert response.status_code == 200
         assert response.data["provider_name"] == "openai"
+        assert response.data["enabled"] is True
         assert response.data["monthly_budget_usd"] == "10.00"
         assert response.data["has_api_key"] is False
         assert "available_tasks" in response.data
@@ -22,6 +23,20 @@ class TestAISettingsEndpoints:
 
         ai_auth = AIAuth.objects.get(user=user)
         assert ai_auth.provider_name == "openai"
+        assert ai_auth.enabled is True
+
+    def test_update_settings_toggles_enabled_flag(self, authenticated_client, user):
+        response = authenticated_client.post(
+            "/api/ai/update_settings/",
+            {"enabled": False},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert response.data["enabled"] is False
+
+        ai_auth = AIAuth.objects.get(user=user)
+        assert ai_auth.enabled is False
 
     def test_get_settings_reports_instance_default_state(self, authenticated_client, user):
         service = AIService(user)
@@ -36,6 +51,18 @@ class TestAISettingsEndpoints:
         assert response.data["instance_default_owned_by_current_user"] is True
         assert response.data["instance_default_owner_username"] == user.username
         assert response.data["can_use_instance_default"] is True
+
+    def test_disabled_ai_blocks_credentials(self, user):
+        service = AIService(user)
+        service.set_api_key("user-key")
+
+        ai_auth = AIAuth.objects.get(user=user)
+        ai_auth.enabled = False
+        ai_auth.save(update_fields=["enabled"])
+
+        service = AIService(user)
+        assert service.has_ai_enabled() is False
+        assert service.get_api_credentials() == (None, None)
 
     def test_set_api_key_rejects_instance_default_updates_for_inheritors(self, user, user2):
         owner_service = AIService(user)

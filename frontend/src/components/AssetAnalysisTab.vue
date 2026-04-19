@@ -15,6 +15,7 @@
   </div>
   <div v-else>
     <div
+      v-if="aiEnabled"
       class="card"
       style="margin-bottom: 1.5rem;"
     >
@@ -228,6 +229,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ApexCharts from 'apexcharts'
 import { getAssetAIInsight, getAssetOHLCV, getAssetIndicators } from '@/api/assets'
 import { useNotifications } from '@/composables/useNotifications'
+import { useAiEnabled } from '@/composables/useAiEnabled'
 import type { AssetAIInsight } from '@/types'
 import AIInsightNarrative from './AIInsightNarrative.vue'
 
@@ -250,6 +252,7 @@ const oscillatorChartEl = ref<HTMLDivElement | null>(null)
 let mainChart: ApexCharts | null = null
 let oscillatorChart: ApexCharts | null = null
 const chartGroup = 'asset-analysis'
+const { aiEnabled } = useAiEnabled()
 
 const latestIndicators = computed(() => {
   if (indicatorsData.value.length === 0) return null
