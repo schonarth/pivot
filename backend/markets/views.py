@@ -17,6 +17,7 @@ from .serializers import (
     OHLCVSerializer,
 )
 from .services import NewsService, is_market_open
+from .services import search_asset_symbols
 
 
 class MarketConfigViewSet(viewsets.ReadOnlyModelViewSet):
@@ -39,6 +40,31 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
         if q:
             queryset = queryset.filter(Q(display_symbol__icontains=q) | Q(name__icontains=q))
         return queryset.order_by("market", "display_symbol")
+
+    @action(detail=False, methods=["post"], url_path="lookup-symbol")
+    def lookup_symbol(self, request):
+        symbol = str(request.data.get("symbol") or "").strip()
+        market = str(request.data.get("market") or "").strip().upper() or None
+        if not symbol:
+            return Response(
+                {"error": {"code": "invalid_symbol", "message": "Symbol is required."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if market and not MarketConfig.objects.filter(code=market).exists():
+            return Response(
+                {"error": {"code": "invalid_market", "message": "Invalid market."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        assets = search_asset_symbols(symbol, market=market)
+        if not assets:
+            return Response(
+                {"error": {"code": "not_found", "message": "Symbol not found."}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AssetSerializer(assets, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="price")
     def price(self, request, pk=None):

@@ -345,3 +345,40 @@ The current divergence model uses `expected_direction = none` when it could not 
 - users may misread `none + flat` as a positive match instead of a lack of signal
 - the divergence card may stay slightly ambiguous in low-signal cases
 - future copy may need to keep explaining a distinction the model does not encode directly
+
+---
+
+## 009 - Settings-Based Symbol Discovery Expansion
+
+### Context
+
+The current assets page uses a boring, symbol-only exact lookup path. That is the safe default, but it may eventually need a broader discovery surface for operators who want to add more assets than the initial seed without relying on ad hoc manual imports.
+
+### Current Safe Policy
+
+- keep the Assets page search exact and symbol-only
+- import only when an exact symbol lookup succeeds
+- avoid any background discovery or fuzzy matching
+
+### Why Deferred
+
+- a Settings-based scan panel adds source selection, market scoping, and refresh controls
+- the exact lookup flow is enough to validate controlled asset expansion first
+- broader discovery belongs after the simple path proves useful and stable
+
+### Earliest Revisit
+
+- after the symbol-only lookup path has settled in normal use
+- when operators need coverage beyond one-off symbol searches
+
+### Future Direction
+
+- add a Settings panel for on-demand source scans by market
+- let operators choose trusted sources and active windows before importing
+- keep imports explicit, reviewable, and market-scoped
+
+### Risk If Deferred Too Long
+
+- expanding beyond the seed stays manual for longer than necessary
+- operators may need to use the exact lookup path repeatedly for bulk additions
+- the app may remain dependent on the initial seed set until a broader discovery workflow is introduced

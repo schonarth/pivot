@@ -66,6 +66,54 @@ def refresh_single_asset_quote(asset_id: str):
 
 
 @shared_task
+def backfill_single_asset_ohlcv(asset_id: str, initiated_by: str | None = None):
+    from .models import Asset
+    from .ohlcv_provider import fetch_ohlcv_with_fallback
+    from .services import ingest_ohlcv
+    from realtime.services import publish_event
+
+    alpha_vantage_key = settings.ALPHA_VANTAGE_API_KEY if hasattr(settings, "ALPHA_VANTAGE_API_KEY") else None
+
+    try:
+        asset = Asset.objects.get(id=asset_id)
+    except Asset.DoesNotExist:
+        return
+
+    publish_event(
+        f"asset_{asset_id}",
+        "ohlcv.backfill.started",
+        {"asset_id": asset_id, "symbol": asset.display_symbol},
+    )
+
+    try:
+        ohlcv_result = fetch_ohlcv_with_fallback(
+            asset.provider_symbol,
+            alpha_vantage_key=alpha_vantage_key,
+            period="5y",
+        )
+        rows_ingested = 0
+        if ohlcv_result:
+            rows_ingested = ingest_ohlcv(str(asset.id), ohlcv_result.records, source=ohlcv_result.source)
+        publish_event(
+            f"asset_{asset_id}",
+            "ohlcv.backfill.completed",
+            {
+                "asset_id": asset_id,
+                "symbol": asset.display_symbol,
+                "rows_ingested": rows_ingested,
+                "initiated_by": initiated_by,
+            },
+        )
+    except Exception:
+        publish_event(
+            f"asset_{asset_id}",
+            "ohlcv.backfill.failed",
+            {"asset_id": asset_id, "symbol": asset.display_symbol},
+        )
+        logger.exception("Single-asset backfill failed for %s", asset.display_symbol)
+
+
+@shared_task
 def backfill_ohlcv_historical(source: str = "startup", initiated_by: str | None = None):
     """Backfill historical OHLCV data for all tracked assets (5+ years).
 

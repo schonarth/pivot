@@ -133,7 +133,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { searchAssets } from '@/api/assets'
+import { lookupAssetSymbol, searchAssets } from '@/api/assets'
 import type { Asset } from '@/types'
 import MarketBadge from '@/components/MarketBadge.vue'
 
@@ -275,9 +275,23 @@ function debouncedSearch() {
 async function doSearch() {
   loading.value = true
   try {
-    assets.value = await searchAssets(search.value, marketFilter.value || undefined)
+    const symbol = search.value.trim()
+    if (!symbol) {
+      assets.value = await searchAssets('', marketFilter.value || undefined)
+    } else {
+      assets.value = await lookupAssetSymbol(symbol, marketFilter.value || undefined)
+    }
+
     scrollTop.value = 0
     if (scrollEl.value) scrollEl.value.scrollTop = 0
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      assets.value = []
+      scrollTop.value = 0
+      if (scrollEl.value) scrollEl.value.scrollTop = 0
+      return
+    }
+    throw error
   } finally {
     loading.value = false
   }
