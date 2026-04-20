@@ -1,12 +1,18 @@
 ---
-status: pending
+status: complete
 priority: p1
-issue_id: "008"
+issue_id: "007"
 tags: [code-review, frontend, security, ai-settings, ux]
 dependencies: []
 ---
 
 # AI settings silently opts new keys into instance-default mode
+
+## Status: ✅ CLOSED AS DESIGNED
+
+**Decision**: Will not fix. Defaulting instance-default to on is intentional for this product context.
+
+**Rationale**: Pivot is mostly a personal app used in reasonably restricted environments, often by one or a few users. Asset-level news ingestion is an instance process, not user-bound. Defaulting this off would hide a core feature from users who would not realize they must enable it manually. The API-key protection concern is valid, but in this environment the shared instance-default key is acceptable and the UX cost of turning it off by default is higher.
 
 ## Problem Statement
 
@@ -87,3 +93,14 @@ Saving a new API key currently defaults `useInstanceDefault` to `true` whenever 
 
 **Learnings:**
 - The regression is frontend-driven and changes security/cost semantics without user intent
+
+### 2026-04-20 - Product decision
+
+**By:** Codex
+
+**Actions:**
+- Recorded the "will not fix" decision for the instance-default key default
+- Renamed the todo to complete status so the ledger reflects the closed-by-design outcome
+
+**Learnings:**
+- Not every security-adjacent concern is worth trading away core usability for in this app's deployment context
