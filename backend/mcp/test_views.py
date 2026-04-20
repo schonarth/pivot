@@ -46,6 +46,52 @@ def test_mcp_otp_exchange_and_agent_listing(authenticated_client, user, monkeypa
 
 
 @pytest.mark.django_db
+def test_mcp_token_exchange_rejects_invalid_metadata_types(authenticated_client, user, monkeypatch):
+    monkeypatch.setattr("mcp.views.publish_event", lambda *args, **kwargs: None)
+
+    otp_response = authenticated_client.post("/api/mcp/otp/generate/")
+
+    response = APIClient().post(
+        "/api/mcp/token/exchange/",
+        {
+            "user_id": str(user.api_uuid),
+            "otp": otp_response.data["code"],
+            "name": 123,
+            "origin": "unknown",
+            "llm_provider": "openai",
+            "llm_model": "gpt-5.4-mini",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "name" in response.data["error"]
+
+
+@pytest.mark.django_db
+def test_mcp_token_exchange_rejects_oversized_metadata(authenticated_client, user, monkeypatch):
+    monkeypatch.setattr("mcp.views.publish_event", lambda *args, **kwargs: None)
+
+    otp_response = authenticated_client.post("/api/mcp/otp/generate/")
+
+    response = APIClient().post(
+        "/api/mcp/token/exchange/",
+        {
+            "user_id": str(user.api_uuid),
+            "otp": otp_response.data["code"],
+            "name": "G" * 256,
+            "origin": "unknown",
+            "llm_provider": "openai",
+            "llm_model": "gpt-5.4-mini",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "name" in response.data["error"]
+
+
+@pytest.mark.django_db
 def test_mcp_asset_lookup_imports_new_asset_from_yahoo_search(authenticated_client, user, monkeypatch):
     monkeypatch.setattr("mcp.views.publish_event", lambda *args, **kwargs: None)
 

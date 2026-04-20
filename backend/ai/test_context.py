@@ -872,6 +872,70 @@ class TestScopeInsightPrompt:
 
 
 @pytest.mark.django_db
+class TestScopeInsightCache:
+    def test_analyze_scope_reuses_cache_for_reordered_holdings(self, user):
+        cache.clear()
+
+        asset_a = make_asset("AAA", sector="Financial", industry="Banks")
+        asset_b = make_asset("BBB", sector="Financial", industry="Banks")
+
+        make_news(asset_a, "AAA shares rise on earnings beat", sentiment_score=0.7)
+        make_news(asset_b, "BBB sees steady inflows", sentiment_score=-0.4)
+        make_ohlcv(asset_a, [Decimal("100.00"), Decimal("100.50"), Decimal("101.00"), Decimal("101.50"), Decimal("102.00")])
+        make_ohlcv(asset_b, [Decimal("100.00"), Decimal("99.80"), Decimal("99.60"), Decimal("99.40"), Decimal("99.20")])
+
+        AIAuth.objects.create(user=user, provider_name="openai")
+        service = AIService(user)
+        service.set_api_key("test-key")
+
+        fake_response = SimpleNamespace(
+            output_text=(
+                '{"recommendation":"HOLD","confidence":61,'
+                '"summary":"The monitored set is balanced.",'
+                '"technical_summary":"Momentum is mixed.",'
+                '"news_context":"Coverage is constructive."}'
+            ),
+            usage=SimpleNamespace(input_tokens=88, output_tokens=19),
+        )
+        openai_create = MagicMock(return_value=fake_response)
+        fake_openai = SimpleNamespace(
+            OpenAI=MagicMock(
+                return_value=SimpleNamespace(
+                    responses=SimpleNamespace(create=openai_create),
+                )
+            )
+        )
+
+        holdings = [
+            {
+                "asset_id": str(asset_a.id),
+                "symbol": asset_a.display_symbol,
+                "name": asset_a.name,
+                "market": asset_a.market,
+                "currency": asset_a.currency,
+                "current_price": "10.00",
+                "position_detail": "10 @ 10.00 | MV 100.00 | U P&L 5.00",
+            },
+            {
+                "asset_id": str(asset_b.id),
+                "symbol": asset_b.display_symbol,
+                "name": asset_b.name,
+                "market": asset_b.market,
+                "currency": asset_b.currency,
+                "current_price": "12.00",
+                "position_detail": "8 @ 12.00 | MV 96.00 | U P&L 4.00",
+            },
+        ]
+
+        with patch.dict(sys.modules, {"openai": fake_openai}):
+            first = service.analyze_scope("portfolio", "Core positions", [asset_a, asset_b], holdings)
+            second = service.analyze_scope("portfolio", "Core positions", [asset_b, asset_a], list(reversed(holdings)))
+
+        assert first == second
+        assert openai_create.call_count == 1
+
+
+@pytest.mark.django_db
 class TestSharedInstanceKey:
     def test_analyze_news_sentiment_uses_instance_default_key(self, user):
         service = AIService(user)

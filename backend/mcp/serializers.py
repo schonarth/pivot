@@ -9,6 +9,13 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+class StrictCharField(serializers.CharField):
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            self.fail('invalid')
+        return super().to_internal_value(data)
+
+
 class OTPSerializer(serializers.ModelSerializer):
     class Meta:
         model = OTP
@@ -21,6 +28,15 @@ class AgentTokenSerializer(serializers.ModelSerializer):
         model = AgentToken
         fields = ['id', 'name', 'origin', 'llm_provider', 'llm_model', 'created_at', 'last_used_at']
         read_only_fields = ['id', 'created_at', 'last_used_at']
+
+
+class TokenExchangeSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+    otp = StrictCharField(min_length=6, max_length=6)
+    name = StrictCharField(max_length=255)
+    origin = StrictCharField(max_length=255, required=False, allow_blank=True, default='unknown')
+    llm_provider = StrictCharField(max_length=64)
+    llm_model = StrictCharField(max_length=128)
 
 
 class AISettingsReadOnlySerializer(serializers.Serializer):

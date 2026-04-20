@@ -761,6 +761,25 @@ class AIService:
     def _scope_assets(cls, assets) -> list:
         return list(assets or [])
 
+    @staticmethod
+    def _scope_asset_sort_key(asset) -> tuple[str, str]:
+        return (
+            str(getattr(asset, "display_symbol", "") or "").lower(),
+            str(getattr(asset, "id", "")),
+        )
+
+    @staticmethod
+    def _scope_holding_sort_key(item: dict) -> tuple[str, str, str]:
+        return (
+            str(item.get("symbol") or "").lower(),
+            str(item.get("asset_id") or ""),
+            str(item.get("name") or "").lower(),
+        )
+
+    @classmethod
+    def _canonical_scope_holdings(cls, holdings: list[dict]) -> list[dict]:
+        return [dict(item) for item in sorted(holdings or [], key=cls._scope_holding_sort_key)]
+
     @classmethod
     def _asset_latest_move(cls, asset) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
         from markets.models import OHLCV
@@ -798,9 +817,10 @@ class AIService:
 
     @classmethod
     def _scope_move_signature(cls, assets) -> str:
+        scope_assets = sorted(cls._scope_assets(assets), key=cls._scope_asset_sort_key)
         return hashlib.sha256(
             json.dumps(
-                [cls._asset_move_signature(asset) for asset in cls._scope_assets(assets)],
+                [cls._asset_move_signature(asset) for asset in scope_assets],
                 default=str,
             ).encode("utf-8")
         ).hexdigest()
@@ -1594,6 +1614,9 @@ class AIService:
         provider, api_key = self.get_api_credentials()
         if not provider or not api_key:
             raise ValueError("AI is not configured for this user")
+
+        assets = sorted(self._scope_assets(assets), key=self._scope_asset_sort_key)
+        holdings = self._canonical_scope_holdings(holdings)
 
         news_items = self.build_scope_context_pack(assets)
         sentiment_trajectory = self.build_sentiment_trajectory(
