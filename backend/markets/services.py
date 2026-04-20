@@ -202,7 +202,10 @@ def search_asset_symbols(symbol: str, market: str | None = None) -> list[Asset]:
             )
             from .tasks import backfill_single_asset_ohlcv
 
-            backfill_single_asset_ohlcv.delay(str(asset.id))
+            try:
+                backfill_single_asset_ohlcv.delay(str(asset.id))
+            except Exception:
+                logger.exception("Failed to queue OHLCV backfill for %s", asset.id)
             return [asset]
 
     return []

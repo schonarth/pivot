@@ -80,6 +80,35 @@ class TestMarketEndpoints:
         mock_backfill.assert_called_once()
 
     @patch("markets.services.requests.get")
+    @patch("markets.tasks.backfill_single_asset_ohlcv.delay", side_effect=RuntimeError("broker down"))
+    def test_asset_lookup_symbol_keeps_asset_when_backfill_queue_fails(self, mock_backfill, mock_get, authenticated_client):
+        mock_response = type("Response", (), {})()
+        mock_response.raise_for_status = lambda: None
+        mock_response.json = lambda: {
+            "quotes": [
+                {
+                    "symbol": "ZETA4.SA",
+                    "quoteType": "EQUITY",
+                    "shortname": "Zeta Holdings",
+                    "exchange": "SAO",
+                    "currency": "BRL",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        response = authenticated_client.post(
+            "/api/assets/lookup-symbol/",
+            {"symbol": "ZETA4"},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["display_symbol"] == "ZETA4"
+        mock_backfill.assert_called_once()
+
+    @patch("markets.services.requests.get")
     def test_asset_lookup_symbol_returns_404_when_not_found(self, mock_get, authenticated_client):
         mock_response = type("Response", (), {})()
         mock_response.raise_for_status = lambda: None

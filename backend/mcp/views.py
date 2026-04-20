@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from accounts.models import User
 from .models import AgentToken
-from .serializers import OTPSerializer, AgentTokenSerializer
+from .serializers import OTPSerializer, AgentTokenSerializer, TokenExchangeSerializer
 from .services import generate_otp, validate_and_use_otp, generate_agent_token
 from realtime.services import publish_event
 
@@ -25,36 +25,16 @@ class TokenExchangeView(APIView):
 
     def post(self, request):
         """Exchange OTP for an agent token. Public endpoint—OTP is the authentication."""
-        user_id = request.data.get('user_id')
-        code = request.data.get('otp')
-        name = request.data.get('name', '').strip()
-        origin = request.data.get('origin', 'unknown')
-        llm_model = request.data.get('llm_model', '').strip()
-        llm_provider = request.data.get('llm_provider', '').strip()
+        serializer = TokenExchangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not name:
-            return Response(
-                {'error': 'Missing name', 'detail': 'Provide the agent name so the UI can identify the connected agent.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not llm_model:
-            return Response(
-                {'error': 'Missing llm_model', 'detail': 'Provide the LLM model used by the agent (e.g. openai/gpt-5.4-mini).'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not llm_provider:
-            return Response(
-                {'error': 'Missing llm_provider', 'detail': 'Provide the LLM provider used by the agent (e.g. openai, anthropic, google).'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not user_id or not code:
-            return Response(
-                {'error': 'Missing user_id or otp'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        user_id = data['user_id']
+        code = data['otp']
+        name = data['name']
+        origin = data.get('origin') or 'unknown'
+        llm_model = data['llm_model']
+        llm_provider = data['llm_provider']
 
         # Look up user by api_uuid
         try:
