@@ -10,7 +10,7 @@ Status: Approved
 
 ## Purpose
 
-Define how large-scope work should be executed when a roadmap is broken into milestones, ADRs, and small implementation specs.
+Define how large-scope work should be executed when a roadmap is broken into milestones, SPECs, and small implementation plans.
 
 This document is reusable across roadmap-driven efforts. It is not specific to one feature area.
 
@@ -47,13 +47,14 @@ Examples:
 Creation rule:
 
 - milestone `00` folder may be created immediately when the roadmap is accepted
-- every later milestone folder should be created only after that milestone's ADR is approved
+- every later milestone folder should be created only after that milestone's SPEC is approved
 
 Roadmap numbering rule:
 
 - roadmap numbers are global within `docs/architecture/roadmaps/`
 - milestone numbers are local to each roadmap
-- ADR numbers remain global within `docs/architecture/adrs/`
+- SPEC numbers remain global within `docs/specs/`
+- ADR numbers remain global within `docs/adrs/`
 
 ## Branching
 
@@ -115,7 +116,7 @@ Each task spec should include, at minimum:
 
 1. `Purpose`
 2. `Roadmap Milestone`
-3. `Governing ADR`
+3. `Governing SPEC`
 4. `Status`
 5. `Owner`
 6. `Branch`
@@ -162,9 +163,9 @@ Short description of the task outcome.
 
 Milestone 1 - Asset Context Expansion
 
-## Governing ADR
+## Governing SPEC
 
-ADR-001 Open News Context Expansion
+SPEC-001 Open News Context Expansion
 
 ## Status
 
@@ -189,7 +190,7 @@ feat/autonomous/1-asset-context
 
 ## Entry Conditions
 
-- ADR approved
+- SPEC approved
 - prerequisite task complete
 
 ## Task Steps
@@ -254,7 +255,7 @@ Why this task exists, what earlier decision it depends on, and what later task i
 
 ## Required Prior References
 
-- earlier ADRs, milestone task files, or baseline documents that must be read before implementation
+- earlier SPECs, ADRs, milestone task files, or baseline documents that must be read before implementation
 - only include when the task depends on prior findings materially enough that omission would risk architectural drift
 ```
 

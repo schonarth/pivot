@@ -6,9 +6,10 @@ Organized reference for paper-trader architecture, troubleshooting, and solved p
 
 Reference documentation for system design and implementation details.
 
-- **[Autonomous Market Intelligence Roadmap](architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md)** — Phased path from richer context to autonomous paper trading
+- **[Autonomous Market Intelligence Roadmap](architecture/roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)** — Phased path from richer context to autonomous paper trading
 - **[Milestone Delivery Execution Model](architecture/execution/milestone-delivery-execution-model.md)** — Reusable operating model for milestone-based large-scope implementation
-- **[ADR-001 Open News Context Expansion](architecture/adrs/ADR-001-open-news-context-expansion.md)** — First ADR in the autonomous market intelligence roadmap
+- **[SPECs](../docs/specs/)** — Functional specs governing each roadmap milestone (`docs/specs/`)
+- **[ADRs](../docs/adrs/)** — Architectural decision records extracted from SPECs (`docs/adrs/`)
 - **[Apps](architecture/apps.md)** — Purpose of each Django app
 - **[Core Event Loop](architecture/core-event-loop.md)** — Primary async cycle
 - **[Constraints](architecture/constraints.md)** — Critical architectural invariants

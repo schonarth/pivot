@@ -8,9 +8,9 @@ Implement deterministic market-scoped discovery end to end, ship the non-LLM fal
 
 Milestone 06 - Opportunity Discovery
 
-## Governing ADR
+## Governing SPEC
 
-ADR-006 Opportunity Discovery Pipeline
+SPEC-006 Opportunity Discovery Pipeline
 
 ## Status
 
@@ -41,7 +41,7 @@ feat/autonomous/06-opportunity-discovery
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-006-opportunity-discovery-pipeline.md`
+- `docs/specs/SPEC-006-opportunity-discovery-pipeline.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/04 - implementation-validation-and-release-readiness.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/05 - counterfactual-and-divergence-reasoning/04 - asset-divergence-implementation-and-release-readiness.md`
 
@@ -75,7 +75,7 @@ This is the first complete Milestone 06 implementation slice. It applies the det
 - expose the canonical structured fallback record and one-line reason for each surfaced asset
 - preserve honest behavior when no LLM access is available
 - if optional refinement lands in this slice, keep it gated to user-open only and keep ordering unchanged
-- keep discovery inside ADR-006 scope:
+- keep discovery inside SPEC-006 scope:
   - no auto-buy behavior
   - no hidden watch mutation
   - no scheduled LLM refinement

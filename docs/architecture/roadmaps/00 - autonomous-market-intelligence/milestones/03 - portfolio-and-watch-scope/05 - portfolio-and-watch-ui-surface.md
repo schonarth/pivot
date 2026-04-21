@@ -8,9 +8,9 @@ Add the first authenticated UI surface for monitored-set intelligence so a portf
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -42,9 +42,9 @@ feat/autonomous/03-scope-expansion
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-001-open-news-context-expansion.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
@@ -68,7 +68,7 @@ feat/autonomous/03-scope-expansion
 - scope contract and watch membership documented
 - clustering and prioritization rules documented
 - current authenticated UI surfaces traced
-- ADR-004 remains untouched
+- SPEC-004 remains untouched
 
 ## Background
 
@@ -84,7 +84,7 @@ The milestone currently has the backend and documentation shape for monitored-se
 - only vary the scope-specific asset set and any required position metadata
 - keep the current asset detail AI surface intact
 - preserve asset drill-down from monitored-set assessments back to the existing asset detail path
-- do not touch ADR-004
+- do not touch SPEC-004
 
 ## Proposed Approach
 
@@ -131,7 +131,7 @@ The milestone currently has the backend and documentation shape for monitored-se
 - portfolio detail view shows positions and watch-bound assessments in the same authenticated UI
 - shared assessment component is reused for both scope types
 - asset drill-down still lands on the existing asset detail path
-- no ADR-004 changes were made
+- no SPEC-004 changes were made
 - task file updated with actual implementation outcome
 
 ## Implementation Notes / What Was Done

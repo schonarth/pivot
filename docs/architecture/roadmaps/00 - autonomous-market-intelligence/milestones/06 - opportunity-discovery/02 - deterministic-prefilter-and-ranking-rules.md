@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Turn ADR-006's approved discovery decisions into an exact deterministic contract for eligibility, survivor caps, and shortlist ordering before any implementation slice begins.
+Turn SPEC-006's approved discovery decisions into an exact deterministic contract for eligibility, survivor caps, and shortlist ordering before any implementation slice begins.
 
 ## Roadmap Milestone
 
 Milestone 06 - Opportunity Discovery
 
-## Governing ADR
+## Governing SPEC
 
-ADR-006 Opportunity Discovery Pipeline
+SPEC-006 Opportunity Discovery Pipeline
 
 ## Status
 
@@ -39,9 +39,9 @@ feat/autonomous/06-opportunity-discovery
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
-- `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
-- `docs/architecture/adrs/ADR-006-opportunity-discovery-pipeline.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
+- `docs/specs/SPEC-006-opportunity-discovery-pipeline.md`
 
 ## Likely Files Touched
 
@@ -53,7 +53,7 @@ feat/autonomous/06-opportunity-discovery
 ## Entry Conditions
 
 - universe and insertion-point scan documented
-- approved ADR-006 decisions reviewed
+- approved SPEC-006 decisions reviewed
 
 ## Background
 

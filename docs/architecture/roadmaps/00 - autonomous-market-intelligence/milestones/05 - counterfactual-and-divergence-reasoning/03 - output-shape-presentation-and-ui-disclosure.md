@@ -8,9 +8,9 @@ Define the canonical structured divergence payload, the small-field presentation
 
 Milestone 05 - Counterfactual and Divergence Reasoning
 
-## Governing ADR
+## Governing SPEC
 
-ADR-005 Divergence Reasoning for Market Analysis
+SPEC-005 Divergence Reasoning for Market Analysis
 
 ## Status
 
@@ -32,8 +32,8 @@ feat/autonomous/05-divergence-reasoning
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-- `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/05 - portfolio-and-watch-ui-surface.md`
 
 ## Likely Files Touched
@@ -48,7 +48,7 @@ feat/autonomous/05-divergence-reasoning
 
 - deterministic outcome rules finalized
 - likely UI consumers identified
-- ADR-005 output and disclosure decisions reviewed
+- SPEC-005 output and disclosure decisions reviewed
 
 ## Background
 

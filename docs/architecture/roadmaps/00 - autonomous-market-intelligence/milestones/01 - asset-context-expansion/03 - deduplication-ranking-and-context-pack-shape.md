@@ -8,9 +8,9 @@ Define the compact context pack shape and the deterministic rules that decide wh
 
 Milestone 01 - Asset Context Expansion
 
-## Governing ADR
+## Governing SPEC
 
-ADR-001 Open News Context Expansion
+SPEC-001 Open News Context Expansion
 
 ## Status
 
@@ -46,7 +46,7 @@ feat/autonomous/01-asset-context
 ## Likely Files Touched
 
 - backend/*
-- docs/architecture/adrs/ADR-001-open-news-context-expansion.md
+- docs/specs/SPEC-001-open-news-context-expansion.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/03 - deduplication-ranking-and-context-pack-shape.md
 
 ## Entry Conditions
@@ -57,7 +57,7 @@ feat/autonomous/01-asset-context
 
 ## Background
 
-The value of Milestone 01 depends less on “fetching more headlines” and more on selecting a small, high-signal set that can fit inside a bounded prompt. This task translates ADR-001’s curation requirement into explicit rules for deduplication, ranking, and final context-pack shape.
+The value of Milestone 01 depends less on “fetching more headlines” and more on selecting a small, high-signal set that can fit inside a bounded prompt. This task translates SPEC-001’s curation requirement into explicit rules for deduplication, ranking, and final context-pack shape.
 
 ## Detailed Requirements
 

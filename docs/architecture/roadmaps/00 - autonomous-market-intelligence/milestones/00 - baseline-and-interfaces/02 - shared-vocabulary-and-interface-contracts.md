@@ -8,7 +8,7 @@ Define shared terms and minimum interface contracts so later roadmap milestones 
 
 Milestone 00 - Baseline and Interfaces
 
-## Governing ADR
+## Governing SPEC
 
 Roadmap-only planning task for Milestone 00 baseline work.
 
@@ -41,7 +41,7 @@ feat/autonomous/00-baseline
 
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md
-- docs/architecture/adrs/ADR-001-open-news-context-expansion.md
+- docs/specs/SPEC-001-open-news-context-expansion.md
 
 ## Entry Conditions
 
@@ -75,7 +75,7 @@ The roadmap now spans asset analysis, portfolio monitoring, watch functionality,
 ## Proposed Approach
 
 - reuse the boundary language established in the previous task
-- align terms with the roadmap and ADR-001 instead of creating a second vocabulary
+- align terms with the roadmap and SPEC-001 instead of creating a second vocabulary
 - prefer short definitions and field lists over long prose
 - call out optional versus required fields where uncertainty remains
 - document explicit non-assumptions if later milestones are expected to refine a contract
@@ -104,7 +104,7 @@ The roadmap now spans asset analysis, portfolio monitoring, watch functionality,
    - what execution layers must not assume
 3. Keep contracts technology-agnostic where possible.
 4. Avoid overdesigning fields that later milestones have not validated yet.
-5. Cross-check the vocabulary against ADR-001 and roadmap language.
+5. Cross-check the vocabulary against SPEC-001 and roadmap language.
 
 ## Shared Vocabulary
 

@@ -8,9 +8,9 @@ Integrate deterministic sentiment trajectory into the shared analysis pipeline, 
 
 Milestone 04 - Sentiment Trajectory
 
-## Governing ADR
+## Governing SPEC
 
-ADR-004 Sentiment Trajectory and Narrative State
+SPEC-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
@@ -33,9 +33,9 @@ feat/autonomous/04-sentiment-trajectory
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/03 - prompt-continuity-section-and-ingestion-sentiment.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/04 - implementation-validation-and-release-readiness.md`
 
@@ -78,7 +78,7 @@ This is the milestone integration task. Earlier Milestone 04 files define where 
   - `conflicting`
   - `reversal`
 - validate at least one price-versus-tone divergence explanation where trajectory helps the final analysis
-- keep the milestone inside ADR-004 scope:
+- keep the milestone inside SPEC-004 scope:
   - no trade approval logic
   - no autonomous triggers
   - no long-horizon sentiment history

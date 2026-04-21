@@ -8,9 +8,9 @@ Complete the explicit discovery-to-watch handoff, optional refined-shortlist reu
 
 Milestone 06 - Opportunity Discovery
 
-## Governing ADR
+## Governing SPEC
 
-ADR-006 Opportunity Discovery Pipeline
+SPEC-006 Opportunity Discovery Pipeline
 
 ## Status
 
@@ -42,8 +42,8 @@ feat/autonomous/06-opportunity-discovery
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-- `docs/architecture/adrs/ADR-006-opportunity-discovery-pipeline.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-006-opportunity-discovery-pipeline.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/05 - portfolio-and-watch-ui-surface.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/06 - portfolio-and-watch-scope-ai-summary.md`
 

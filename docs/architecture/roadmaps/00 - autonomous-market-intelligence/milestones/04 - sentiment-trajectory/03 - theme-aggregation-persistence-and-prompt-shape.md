@@ -8,9 +8,9 @@ Define when theme-level trajectory is allowed, whether short-window derived traj
 
 Milestone 04 - Sentiment Trajectory
 
-## Governing ADR
+## Governing SPEC
 
-ADR-004 Sentiment Trajectory and Narrative State
+SPEC-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
@@ -32,8 +32,8 @@ feat/autonomous/04-sentiment-trajectory
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/03 - deduplication-ranking-and-context-pack-shape.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/03 - prompt-continuity-section-and-ingestion-sentiment.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/03 - clustering-prioritization-and-composition.md`
@@ -50,11 +50,11 @@ feat/autonomous/04-sentiment-trajectory
 
 - deterministic state rules defined
 - insertion point documented
-- ADR-004 prompt and persistence boundaries reviewed
+- SPEC-004 prompt and persistence boundaries reviewed
 
 ## Background
 
-ADR-004 now fixes the milestone-level policy for theme aggregation, compute-on-read trajectory, and weak-signal handling. This task turns those decisions into an exact implementation contract for prompt shape and optional optimization boundaries before integration begins.
+SPEC-004 now fixes the milestone-level policy for theme aggregation, compute-on-read trajectory, and weak-signal handling. This task turns those decisions into an exact implementation contract for prompt shape and optional optimization boundaries before integration begins.
 
 ## Detailed Requirements
 

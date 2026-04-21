@@ -8,9 +8,9 @@ Coordinate Milestone 02 execution so asset analysis gains bounded temporal conti
 
 Milestone 02 - Temporal Narrative Continuity
 
-## Governing ADR
+## Governing SPEC
 
-ADR-002 Narrative Continuity for Asset Context
+SPEC-002 Narrative Continuity for Asset Context
 
 ## Status
 
@@ -48,7 +48,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Likely Files Touched
 
-- docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md
+- docs/specs/SPEC-002-narrative-continuity-for-asset-context.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/*
 - backend/ai/*
 - backend/markets/*
@@ -58,7 +58,7 @@ feat/autonomous/02-temporal-continuity
 ## Entry Conditions
 
 - roadmap reviewed
-- ADR-002 reviewed
+- SPEC-002 reviewed
 - Milestone 00 boundary, vocabulary, and storage outputs reviewed
 - Milestone 01 context-pack behavior reviewed against the current code
 - current live news flow verified well enough to distinguish collection issues from continuity issues
@@ -66,10 +66,10 @@ feat/autonomous/02-temporal-continuity
 ## Task Steps
 
 1. Read the roadmap and the milestone delivery execution model in full before executing milestone tasks.
-2. Review ADR-002 and the required Milestone 00 and Milestone 01 references; treat their boundary, storage, and prompt-budget findings as normative inputs.
+2. Review SPEC-002 and the required Milestone 00 and Milestone 01 references; treat their boundary, storage, and prompt-budget findings as normative inputs.
 3. Confirm the current Milestone 01 context pack and identify the smallest safe insertion point for continuity.
 4. Define the retained continuity unit, bounded retention rules, and deterministic `new` / `continuing` / `shifted` labeling.
-5. Define the compact prompt addition and the ingestion-time sentiment path recommended by ADR-002.
+5. Define the compact prompt addition and the ingestion-time sentiment path recommended by SPEC-002.
 6. Implement the milestone task files in order.
 7. Keep Milestone 02 bounded to asset scope only.
 8. Exclude portfolio/watch continuity, sentiment trajectory states, strategy logic, and autonomous behavior.
@@ -104,7 +104,7 @@ Coordinated the Milestone 02 implementation across the existing asset-analysis p
 What was done:
 
 - confirmed the current consumer remains `AIService.analyze_asset`
-- implemented the continuity work without touching ADR-003
+- implemented the continuity work without touching SPEC-003
 - validated the result with focused backend tests and lint
 
 ## Open Follow-Ups

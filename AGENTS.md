@@ -4,6 +4,11 @@
 
 Monorepo: `backend/` (Django/DRF) + `frontend/` (Vue 3/Vite). Docker Compose orchestrates everything.
 
+## Project Rules
+
+- Use `.claude/skills/milestone-lifecycle/SKILL.md` for all milestone work: scaffolding a new milestone, executing tasks from a `00 - milestone coordination.md` file, or preparing a milestone for UAT.
+- Use `.claude/skills/creating-pr/SKILL.md` whenever creating a PR.
+
 ## Commands
 
 ### Backend (inside container or locally with venv)

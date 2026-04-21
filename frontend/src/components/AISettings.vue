@@ -291,7 +291,7 @@ async function loadSettings() {
     canUseInstanceDefault.value = data.can_use_instance_default
     instanceDefaultOwnedByCurrentUser.value = data.instance_default_owned_by_current_user
     instanceDefaultOwnerUsername.value = data.instance_default_owner_username
-    useInstanceDefault.value = !data.instance_default_enabled || data.instance_default_owned_by_current_user
+    useInstanceDefault.value = data.instance_default_owned_by_current_user
     allowOtherUsers.value = data.instance_default_owned_by_current_user && data.instance_default_allow_other_users
 
     availableTasks.value = data.available_tasks

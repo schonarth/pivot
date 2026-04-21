@@ -8,9 +8,9 @@ Define how monitored-set context should compose asset-level context, continuity 
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -40,8 +40,8 @@ feat/autonomous/03-scope-expansion
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/03 - deduplication-ranking-and-context-pack-shape.md`
 
 ## Likely Files Touched

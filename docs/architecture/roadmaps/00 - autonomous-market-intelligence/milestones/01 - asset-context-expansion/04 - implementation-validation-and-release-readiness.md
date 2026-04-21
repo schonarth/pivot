@@ -8,9 +8,9 @@ Integrate the broader asset context pack into the current analysis flow, validat
 
 Milestone 01 - Asset Context Expansion
 
-## Governing ADR
+## Governing SPEC
 
-ADR-001 Open News Context Expansion
+SPEC-001 Open News Context Expansion
 
 ## Status
 
@@ -71,7 +71,7 @@ This is the milestone integration task. The earlier task files define where the 
 - preserve the existing asset-analysis happy path while improving relevant cases
 - validate at least three representative assets from different supported markets
 - include examples where the main driver does not mention the asset symbol directly
-- keep the milestone inside ADR-001 scope:
+- keep the milestone inside SPEC-001 scope:
   - no narrative continuity
   - no sentiment trajectory
   - no counterfactual reasoning layer

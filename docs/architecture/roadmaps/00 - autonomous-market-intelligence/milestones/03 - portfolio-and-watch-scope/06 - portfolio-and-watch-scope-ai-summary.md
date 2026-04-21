@@ -8,9 +8,9 @@ Add a single AI summary for the portfolio scope and a single AI summary for the 
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -43,9 +43,9 @@ feat/autonomous/03-scope-expansion
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-001-open-news-context-expansion.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
@@ -69,7 +69,7 @@ feat/autonomous/03-scope-expansion
 - monitored-set composition rules are already defined
 - the portfolio/watches UI surface exists
 - the current asset AI surface remains intact
-- ADR-004 remains untouched
+- SPEC-004 remains untouched
 
 ## Background
 
@@ -84,7 +84,7 @@ The current portfolio UI improved the browsing experience, but it still only exp
 - keep the portfolio and watch summaries on the same shared monitored-set pipeline
 - reuse the existing asset analysis path only where needed for drill-down or continuity reuse
 - do not add a separate reasoning stack for portfolio or watch
-- do not touch ADR-004
+- do not touch SPEC-004
 
 ## Proposed Approach
 

@@ -1,18 +1,19 @@
 ---
 name: Sentiment Trajectory and Narrative State
-description: Open ADR for tracking sentiment direction over time for assets and themes
+description: Spec for tracking sentiment direction over time for assets and themes
 type: reference
 ---
 
-# ADR
+# SPEC
 
-## ADR-004 Sentiment Trajectory and Narrative State
+## SPEC-004 Sentiment Trajectory and Narrative State
 
 Status: Approved
+Governing ADR: [ADR-004-deterministic-sentiment-trajectory](../adrs/ADR-004-deterministic-sentiment-trajectory.md)
 
 ## Roadmap Position
 
-This ADR corresponds to Milestone 4 of the Autonomous Market Intelligence roadmap:
+This SPEC corresponds to Milestone 4 of the Autonomous Market Intelligence roadmap:
 
 - [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
@@ -22,7 +23,7 @@ It is not intended to authorize trading, replace context selection, or create a 
 
 ## Context
 
-ADR-001 broadens context selection. ADR-002 adds bounded continuity for one asset. ADR-003 expands that context to portfolio and watch scopes.
+SPEC-001 broadens context selection. SPEC-002 adds bounded continuity for one asset. SPEC-003 expands that context to portfolio and watch scopes.
 
 That still leaves a gap: the system can retain relevant items and label them as `new`, `continuing`, or `shifted`, but it cannot yet explain the direction of sentiment across those retained items.
 
@@ -243,7 +244,7 @@ Those belong to later milestones.
 
 ## Notes
 
-This ADR should remain independently mergeable and user-releaseable when implemented.
+This SPEC should remain independently mergeable and user-releaseable when implemented.
 
 Expected user-facing value:
 

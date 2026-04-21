@@ -273,7 +273,10 @@ async function doSearch() {
     if (!symbol) {
       assets.value = await searchAssets('', marketFilter.value || undefined)
     } else {
-      assets.value = await lookupAssetSymbol(symbol, marketFilter.value || undefined)
+      const results = await searchAssets(symbol, marketFilter.value || undefined)
+      assets.value = results.length > 0
+        ? results
+        : await lookupAssetSymbol(symbol, marketFilter.value || undefined)
     }
 
     scrollTop.value = 0

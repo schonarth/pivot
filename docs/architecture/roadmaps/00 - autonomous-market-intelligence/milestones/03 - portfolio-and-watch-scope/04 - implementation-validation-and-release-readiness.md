@@ -8,9 +8,9 @@ Integrate scope-aware monitored-set intelligence into the current pipeline, vali
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -37,9 +37,9 @@ feat/autonomous/03-scope-expansion
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-001-open-news-context-expansion.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
@@ -71,7 +71,7 @@ This is the milestone integration task. The earlier task files define where the 
 - preserve the current asset-intelligence happy path while adding `portfolio` and `watch`
 - validate the first concrete authenticated UI portfolio intelligence consumer
 - validate the first concrete authenticated UI watch intelligence consumer
-- keep the milestone inside ADR-003 scope:
+- keep the milestone inside SPEC-003 scope:
   - no inferred discovery
   - no autonomous trading
   - no cross-asset narrative engine beyond monitored-set composition

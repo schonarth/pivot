@@ -8,9 +8,9 @@ Find the smallest correct insertion point for temporal continuity and identify w
 
 Milestone 02 - Temporal Narrative Continuity
 
-## Governing ADR
+## Governing SPEC
 
-ADR-002 Narrative Continuity for Asset Context
+SPEC-002 Narrative Continuity for Asset Context
 
 ## Status
 
@@ -53,13 +53,13 @@ feat/autonomous/02-temporal-continuity
 
 ## Entry Conditions
 
-- ADR-002 reviewed
+- SPEC-002 reviewed
 - milestone coordination reviewed
 - required Milestone 00 and Milestone 01 references reviewed
 
 ## Background
 
-ADR-002 requires continuity to stay an extension of context building, not a second reasoning system. Before implementation, Milestone 02 must identify where the current context pack is assembled, what compact artifact should be retained, and whether the existing `NewsItem` path already provides enough temporal fields.
+SPEC-002 requires continuity to stay an extension of context building, not a second reasoning system. Before implementation, Milestone 02 must identify where the current context pack is assembled, what compact artifact should be retained, and whether the existing `NewsItem` path already provides enough temporal fields.
 
 ## Detailed Requirements
 
@@ -68,7 +68,7 @@ ADR-002 requires continuity to stay an extension of context building, not a seco
 - determine whether the continuity unit should be:
   - retained selected context items
   - retained `NewsItem` rows plus Milestone 01 recomputation
-  - another compact artifact justified by ADR-002
+  - another compact artifact justified by SPEC-002
 - identify which current persisted fields already satisfy continuity needs
 - identify any storage or coupling risks that would make continuity implementation unsafe
 - do not design the full persistence solution in this task
@@ -76,7 +76,7 @@ ADR-002 requires continuity to stay an extension of context building, not a seco
 ## Proposed Approach
 
 - start from the current asset-analysis consumer and trace backward through Milestone 01 context assembly
-- compare ADR-002 retention requirements against existing persisted data
+- compare SPEC-002 retention requirements against existing persisted data
 - prefer reusing existing artifacts or a small additive record over replaying full prompts
 - document the insertion point and the retention candidate in terms of files, functions, and boundaries
 
@@ -91,7 +91,7 @@ ADR-002 requires continuity to stay an extension of context building, not a seco
 
 1. Trace the current Milestone 01 asset-analysis path and context-pack assembly.
 2. Identify the continuity insertion point that preserves the Milestone 00 context/reasoning/execution boundary.
-3. Compare ADR-002 required fields against current persisted news and context artifacts.
+3. Compare SPEC-002 required fields against current persisted news and context artifacts.
 4. Recommend the smallest retained artifact that supports short-memory continuity.
 5. Document any coupling, storage, or prompt-budget risks that later tasks must respect.
 

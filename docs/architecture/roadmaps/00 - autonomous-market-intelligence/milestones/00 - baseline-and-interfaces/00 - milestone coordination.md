@@ -8,7 +8,7 @@ Coordinate Milestone 00 execution so the project establishes clean boundaries fo
 
 Milestone 00 - Baseline and Interfaces
 
-## Governing ADR
+## Governing SPEC
 
 Roadmap-only planning task. Milestone 00 exists to prepare the baseline boundary document and shared interfaces before later roadmap ADRs depend on them.
 
