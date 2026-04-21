@@ -1,18 +1,19 @@
 ---
 name: Divergence Reasoning for Market Analysis
-description: Draft ADR for comparing expected and actual market behavior with bounded, auditable explanations
+description: Spec for comparing expected and actual market behavior with bounded, auditable explanations
 type: reference
 ---
 
-# ADR
+# SPEC
 
-## ADR-005 Divergence Reasoning for Market Analysis
+## SPEC-005 Divergence Reasoning for Market Analysis
 
 Status: Approved
+Governing ADR: [ADR-005-divergence-classification-before-prose](../adrs/ADR-005-divergence-classification-before-prose.md)
 
 ## Roadmap Position
 
-This ADR corresponds to Milestone 5 of the Autonomous Market Intelligence roadmap:
+This SPEC corresponds to Milestone 5 of the Autonomous Market Intelligence roadmap:
 
 - [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
@@ -22,7 +23,7 @@ It is not intended to authorize trading, replace trajectory analysis, or build a
 
 ## Context
 
-ADR-001 broadens context selection. ADR-002 adds bounded continuity for one asset. ADR-003 expands that context to portfolio and watch scopes. ADR-004 adds short-window sentiment trajectory.
+SPEC-001 broadens context selection. SPEC-002 adds bounded continuity for one asset. SPEC-003 expands that context to portfolio and watch scopes. SPEC-004 adds short-window sentiment trajectory.
 
 That still leaves a gap: the system can describe context, continuity, and sentiment direction, but it cannot yet explain why price action matched or contradicted those inputs.
 
@@ -282,7 +283,7 @@ CLI guidance:
 
 ## Notes
 
-This ADR should remain independently mergeable and user-releaseable when implemented.
+This SPEC should remain independently mergeable and user-releaseable when implemented.
 
 Expected user-facing value:
 

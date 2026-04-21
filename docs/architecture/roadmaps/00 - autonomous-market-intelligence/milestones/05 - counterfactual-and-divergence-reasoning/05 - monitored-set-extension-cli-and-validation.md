@@ -8,9 +8,9 @@ Extend the approved divergence contract to monitored-set consumers where shared 
 
 Milestone 05 - Counterfactual and Divergence Reasoning
 
-## Governing ADR
+## Governing SPEC
 
-ADR-005 Divergence Reasoning for Market Analysis
+SPEC-005 Divergence Reasoning for Market Analysis
 
 ## Status
 
@@ -34,8 +34,8 @@ feat/autonomous/05-divergence-reasoning
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-- `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/04 - implementation-validation-and-release-readiness.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/05 - portfolio-and-watch-ui-surface.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/04 - sentiment-trajectory/04 - implementation-validation-and-release-readiness.md`

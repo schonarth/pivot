@@ -8,9 +8,9 @@ Implement deterministic asset-level divergence end to end, validate the user-vis
 
 Milestone 05 - Counterfactual and Divergence Reasoning
 
-## Governing ADR
+## Governing SPEC
 
-ADR-005 Divergence Reasoning for Market Analysis
+SPEC-005 Divergence Reasoning for Market Analysis
 
 ## Status
 
@@ -33,8 +33,8 @@ feat/autonomous/05-divergence-reasoning
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
-- `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/04 - sentiment-trajectory/04 - implementation-validation-and-release-readiness.md`
 
 ## Likely Files Touched
@@ -75,7 +75,7 @@ This is the first complete Milestone 05 implementation slice. It applies determi
 - keep user-facing prose in small display fields rather than one large blob
 - render divergence and the scope disclosure in the relevant asset UI surface
 - add or update a CLI inspection tool for divergence if that fits this slice cleanly
-- keep the milestone inside ADR-005 scope:
+- keep the milestone inside SPEC-005 scope:
   - no trade approval logic
   - no autonomous triggers
   - no long-horizon divergence history

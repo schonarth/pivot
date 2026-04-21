@@ -8,7 +8,7 @@ Document the current system boundaries and define where context selection should
 
 Milestone 00 - Baseline and Interfaces
 
-## Governing ADR
+## Governing SPEC
 
 Roadmap-only planning task for Milestone 00 baseline work.
 

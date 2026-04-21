@@ -8,9 +8,9 @@ Coordinate Milestone 05 execution so the system can compute deterministic short-
 
 Milestone 05 - Counterfactual and Divergence Reasoning
 
-## Governing ADR
+## Governing SPEC
 
-ADR-005 Divergence Reasoning for Market Analysis
+SPEC-005 Divergence Reasoning for Market Analysis
 
 ## Status
 
@@ -34,15 +34,15 @@ feat/autonomous/05-divergence-reasoning
 
 ## Dependencies
 
-- ADR-005 approved
+- SPEC-005 approved
 - required references:
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md`
   - `docs/architecture/execution/milestone-delivery-execution-model.md`
-  - `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-  - `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-  - `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-  - `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
-  - `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
+  - `docs/specs/SPEC-001-open-news-context-expansion.md`
+  - `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+  - `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+  - `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
+  - `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/03 - clustering-prioritization-and-composition.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/04 - implementation-validation-and-release-readiness.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/05 - portfolio-and-watch-ui-surface.md`
@@ -51,7 +51,7 @@ feat/autonomous/05-divergence-reasoning
 
 ## Likely Files Touched
 
-- docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md
+- docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/05 - counterfactual-and-divergence-reasoning/*
 - backend/ai/*
 - backend/markets/*
@@ -65,13 +65,13 @@ feat/autonomous/05-divergence-reasoning
 
 - roadmap reviewed
 - milestone delivery execution model reviewed
-- ADR-005 reviewed
+- SPEC-005 reviewed
 - Milestone 03 monitored-set files reviewed as normative inputs for shared-context reuse
 - Milestone 04 trajectory files reviewed as normative inputs for signal reuse
 
 ## Task Steps
 
-1. Read the roadmap, milestone delivery execution model, ADR-005, and required prior references before implementation.
+1. Read the roadmap, milestone delivery execution model, SPEC-005, and required prior references before implementation.
 2. Confirm the current shared analysis insertion points for asset analysis and monitored-set analysis.
 3. Execute Milestone 05 task files in order.
 4. Implement asset-level divergence first as the smallest complete milestone slice.
@@ -119,7 +119,7 @@ Completed Milestone 05 setup.
 
 What was done:
 
-- reviewed the roadmap, execution model, ADR-005, and Milestone 03 and 04 handoff files before creating the milestone scaffold
+- reviewed the roadmap, execution model, SPEC-005, and Milestone 03 and 04 handoff files before creating the milestone scaffold
 - created the Milestone 05 folder and task sequence for insertion-point scan, deterministic classification rules, output and UI contract, asset-first implementation, monitored-set extension, and validation readiness
 - aligned the scaffold with the approved Milestone 05 decisions:
   - strict-consensus expected direction

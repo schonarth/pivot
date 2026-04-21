@@ -1,18 +1,19 @@
 ---
 name: News Context Expansion
-description: Open ADR for broadening AI news context beyond symbol-only headlines
+description: Spec for broadening AI news context beyond symbol-only headlines
 type: reference
 ---
 
-# ADR
+# SPEC
 
-## ADR-001 Open News Context Expansion
+## SPEC-001 Open News Context Expansion
 
 Status: Approved
+Governing ADR: [ADR-001-deterministic-context-selection](../adrs/ADR-001-deterministic-context-selection.md)
 
 ## Roadmap Position
 
-This ADR corresponds to Milestone 1 of the Autonomous Market Intelligence roadmap:
+This SPEC corresponds to Milestone 1 of the Autonomous Market Intelligence roadmap:
 
 - [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
@@ -76,7 +77,7 @@ Fallback order:
 2. small explicit project overrides for known gaps or mistakes
 3. if still unresolved, skip sector or industry expansion rather than infer loosely
 
-This ADR does not approve LLM-based sector or industry inference for Milestone 01.
+This SPEC does not approve LLM-based sector or industry inference for Milestone 01.
 
 ### Thematic Keyword Storage
 
@@ -173,7 +174,7 @@ If this results in thinner context packs for some assets, that is acceptable for
 
 ## Notes
 
-This ADR should remain independently mergeable and user-releaseable when implemented.
+This SPEC should remain independently mergeable and user-releaseable when implemented.
 
 Expected user-facing value:
 

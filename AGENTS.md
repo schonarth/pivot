@@ -6,7 +6,7 @@ Monorepo: `backend/` (Django/DRF) + `frontend/` (Vue 3/Vite). Docker Compose orc
 
 ## Project Rules
 
-- Use `.claude/skills/scaffolding-milestone/SKILL.md` whenever implementing an ADR. Scaffold the milestone docs first, then start implementation.
+- Use `.claude/skills/milestone-lifecycle/SKILL.md` for all milestone work: scaffolding a new milestone, executing tasks from a `00 - milestone coordination.md` file, or preparing a milestone for UAT.
 - Use `.claude/skills/creating-pr/SKILL.md` whenever creating a PR.
 
 ## Commands

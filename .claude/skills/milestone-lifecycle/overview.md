@@ -1,10 +1,10 @@
 # Overview
 
-This skill defines how to scaffold milestone-based work when a roadmap is broken into ADRs, milestones, and small implementation specs.
+This skill defines how to scaffold milestone-based work when a roadmap is broken into SPECs, milestones, and small implementation plans.
 
 ## Purpose
 
-Define how large-scope work should be executed when a roadmap is broken into milestones, ADRs, and small implementation specs.
+Define how large-scope work should be executed when a roadmap is broken into milestones, SPECs, and small implementation plans.
 
 This guidance is reusable across roadmap-driven efforts. It is not specific to one feature area.
 

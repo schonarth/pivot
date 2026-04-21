@@ -1,18 +1,19 @@
 ---
 name: Narrative Continuity for Asset Context
-description: Open ADR for bounded short-memory continuity in asset analysis
+description: Spec for bounded short-memory continuity in asset analysis
 type: reference
 ---
 
-# ADR
+# SPEC
 
-## ADR-002 Narrative Continuity for Asset Context
+## SPEC-002 Narrative Continuity for Asset Context
 
 Status: Approved
+Governing ADR: [ADR-002-bounded-continuity-layer](../adrs/ADR-002-bounded-continuity-layer.md)
 
 ## Roadmap Position
 
-This ADR corresponds to Milestone 2 of the Autonomous Market Intelligence roadmap:
+This SPEC corresponds to Milestone 2 of the Autonomous Market Intelligence roadmap:
 
 - [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
@@ -22,7 +23,7 @@ It is not intended to solve portfolio intelligence, watchlists, sentiment trajec
 
 ## Context
 
-ADR-001 broadens asset context beyond exact symbol mentions, but each analysis can still behave like an isolated snapshot.
+SPEC-001 broadens asset context beyond exact symbol mentions, but each analysis can still behave like an isolated snapshot.
 
 That is not enough when users need answers such as:
 
@@ -183,7 +184,7 @@ Reason:
 - it creates a clean forward-only dataset for later sentiment trajectory work
 - it avoids expensive and inconsistent retroactive reclassification later
 
-This ADR does not approve sentiment aggregation or trajectory logic. That belongs to Milestone 4.
+This SPEC does not approve sentiment aggregation or trajectory logic. That belongs to Milestone 4.
 
 ## Constraints
 
@@ -206,7 +207,7 @@ This ADR does not approve sentiment aggregation or trajectory logic. That belong
 
 ## Notes
 
-This ADR should remain independently mergeable and user-releaseable when implemented.
+This SPEC should remain independently mergeable and user-releaseable when implemented.
 
 Expected user-facing value:
 

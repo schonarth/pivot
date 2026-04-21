@@ -8,9 +8,9 @@ Define the deterministic rules that map bounded recent sentiment inputs into `im
 
 Milestone 04 - Sentiment Trajectory
 
-## Governing ADR
+## Governing SPEC
 
-ADR-004 Sentiment Trajectory and Narrative State
+SPEC-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
@@ -31,7 +31,7 @@ feat/autonomous/04-sentiment-trajectory
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/02 - retention-labeling-and-persistence-shape.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/03 - prompt-continuity-section-and-ingestion-sentiment.md`
 
@@ -45,7 +45,7 @@ feat/autonomous/04-sentiment-trajectory
 
 - insertion point documented
 - available input fields documented
-- ADR-004 trajectory-state requirements reviewed
+- SPEC-004 trajectory-state requirements reviewed
 
 ## Background
 

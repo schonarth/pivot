@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Define the bounded retention rules, continuity labels, and compact persistence shape required to implement ADR-002 without creating a broad narrative-history system.
+Define the bounded retention rules, continuity labels, and compact persistence shape required to implement SPEC-002 without creating a broad narrative-history system.
 
 ## Roadmap Milestone
 
 Milestone 02 - Temporal Narrative Continuity
 
-## Governing ADR
+## Governing SPEC
 
-ADR-002 Narrative Continuity for Asset Context
+SPEC-002 Narrative Continuity for Asset Context
 
 ## Status
 
@@ -39,7 +39,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 
@@ -54,7 +54,7 @@ feat/autonomous/02-temporal-continuity
 
 - insertion point documented
 - retained artifact candidate documented
-- ADR-002 retention and state-label decisions reviewed
+- SPEC-002 retention and state-label decisions reviewed
 
 ## Background
 
@@ -70,14 +70,14 @@ Milestone 02 adds short-memory continuity only if retention remains explicit and
   - `shifted`
 - define what constitutes continuity identity and what constitutes a meaningful shift
 - define what is persisted and what remains transient
-- keep the milestone inside ADR-002 bounds:
+- keep the milestone inside SPEC-002 bounds:
   - no full fact versioning
   - no long-lived narrative state tables
   - no replay-oriented raw prompt storage
 
 ## Proposed Approach
 
-- start from ADR-002 defaults:
+- start from SPEC-002 defaults:
   - target `5` days
   - allowed range `3-7` days
 - prefer a compact additive artifact if existing `NewsItem` rows alone are not enough to represent prior selected items

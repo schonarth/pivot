@@ -8,9 +8,9 @@ Coordinate Milestone 03 execution so the system can build intelligence for one a
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -34,12 +34,12 @@ feat/autonomous/03-scope-expansion
 
 ## Dependencies
 
-- ADR-003 approved
+- SPEC-003 approved
 - required references:
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md`
   - `docs/architecture/execution/milestone-delivery-execution-model.md`
-  - `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-  - `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
+  - `docs/specs/SPEC-001-open-news-context-expansion.md`
+  - `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/01 - existing-pipeline-scan-and-insertion-point.md`
@@ -48,7 +48,7 @@ feat/autonomous/03-scope-expansion
 
 ## Likely Files Touched
 
-- docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md
+- docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/*
 - backend/ai/*
 - backend/markets/*
@@ -60,16 +60,16 @@ feat/autonomous/03-scope-expansion
 
 - roadmap reviewed
 - milestone delivery execution model reviewed
-- ADR-003 reviewed
+- SPEC-003 reviewed
 - required prior references reviewed and treated as normative inputs
-- milestone folder exists only because ADR-003 is approved
+- milestone folder exists only because SPEC-003 is approved
 - first concrete consumers fixed for this milestone:
   - portfolio: authenticated UI portfolio intelligence surface
   - watch: authenticated UI watch intelligence surface backed by the same shared producer path
 
 ## Task Steps
 
-1. Read the roadmap, milestone delivery execution model, ADR-003, and required prior references in full before implementation.
+1. Read the roadmap, milestone delivery execution model, SPEC-003, and required prior references in full before implementation.
 2. Scan the current codebase for the existing asset-level context and analysis flow, portfolio summary consumers, and any watchlist-adjacent models or APIs.
 3. Execute the milestone task files in order.
 4. Keep one shared context vocabulary across `asset`, `portfolio`, and `watch`.
@@ -107,12 +107,12 @@ Completed Milestone 03 coordination.
 
 What was done:
 
-- read the roadmap, the milestone delivery execution model, ADR-003, and the required prior references before coordinating the milestone
+- read the roadmap, the milestone delivery execution model, SPEC-003, and the required prior references before coordinating the milestone
 - traced the current shared asset-analysis producer path through `AIService.analyze_asset`
 - confirmed the authenticated UI asset intelligence consumer is `frontend/src/components/AssetAnalysisTab.vue`
 - confirmed there is no current authenticated UI portfolio or watch intelligence surface to extend yet
 - updated the execution model so coordinating agents must verify `Owner` in each task file before handoff
-- required the task files to stay scoped to scan, contract, composition, and validation notes without touching ADR-004
+- required the task files to stay scoped to scan, contract, composition, and validation notes without touching SPEC-004
 
 Milestone-end notes:
 

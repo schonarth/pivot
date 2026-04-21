@@ -8,9 +8,9 @@ Find the smallest correct insertion point for asset context expansion by scannin
 
 Milestone 01 - Asset Context Expansion
 
-## Governing ADR
+## Governing SPEC
 
-ADR-001 Open News Context Expansion
+SPEC-001 Open News Context Expansion
 
 ## Status
 
@@ -51,13 +51,13 @@ feat/autonomous/01-asset-context
 
 ## Entry Conditions
 
-- ADR-001 reviewed
+- SPEC-001 reviewed
 - milestone coordination reviewed
 - required Milestone 00 references reviewed
 
 ## Background
 
-ADR-001 defines what Milestone 01 should do, but not yet where the change belongs in the existing implementation. This task prevents “parallel architecture” by forcing the milestone to find the real insertion point first. The goal is to reuse the current asset-analysis pipeline and add a compact context-building step at the smallest responsible point.
+SPEC-001 defines what Milestone 01 should do, but not yet where the change belongs in the existing implementation. This task prevents “parallel architecture” by forcing the milestone to find the real insertion point first. The goal is to reuse the current asset-analysis pipeline and add a compact context-building step at the smallest responsible point.
 
 ## Detailed Requirements
 

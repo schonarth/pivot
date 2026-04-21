@@ -1,11 +1,11 @@
 ---
-name: scaffolding-milestone
-description: Scaffold roadmap milestone folders, coordination files, task specs, and templates for ADR-driven work. Use when creating or updating milestone scaffolds for any roadmap.
+name: milestone-lifecycle
+description: Covers the full lifecycle of a roadmap milestone — scaffolding folders and task files before implementation, agent execution rules during implementation, and UAT readiness at handoff. Use when creating a new milestone scaffold, starting work from a 00-milestone-coordination.md file, executing any milestone task file, or preparing a milestone for UAT.
 ---
 
-# Scaffolding Milestone
+# Milestone Lifecycle
 
-Use this skill before implementing an ADR or milestone slice. It is the router for the milestone-delivery execution model.
+Use this skill before scaffolding a milestone, when starting implementation from a `00 - milestone coordination.md` file, during execution of any milestone task file, or when preparing a milestone for UAT handoff. It is the router for the milestone-delivery execution model.
 
 ## Start Here
 
