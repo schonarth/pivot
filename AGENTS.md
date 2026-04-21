@@ -4,6 +4,10 @@
 
 Monorepo: `backend/` (Django/DRF) + `frontend/` (Vue 3/Vite). Docker Compose orchestrates everything.
 
+## Project Rules
+
+- Use `.claude/skills/scaffolding-milestone/SKILL.md` whenever implementing an ADR. Scaffold the milestone docs first, then start implementation.
+
 ## Commands
 
 ### Backend (inside container or locally with venv)
