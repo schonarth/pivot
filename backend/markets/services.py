@@ -2,7 +2,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 
 import feedparser
 import requests
@@ -175,14 +175,14 @@ def search_asset_symbols(symbol: str, market: str | None = None) -> list[Asset]:
     quotes = payload.get("quotes", [])
     market_order = [market] if market else list(SEARCH_MARKETS)
     for current_market in market_order:
-        for quote in quotes:
-            provider_symbol = str(quote.get("symbol") or "").upper()
+        for quote_data in quotes:
+            provider_symbol = str(quote_data.get("symbol") or "").upper()
             if not provider_symbol:
                 continue
             quote_market = _market_from_provider_symbol(provider_symbol)
             if quote_market != current_market:
                 continue
-            if quote.get("quoteType") not in {"EQUITY", "ETF"}:
+            if quote_data.get("quoteType") not in {"EQUITY", "ETF"}:
                 continue
             if _display_symbol_from_provider_symbol(provider_symbol, quote_market) != query:
                 continue
@@ -192,9 +192,9 @@ def search_asset_symbols(symbol: str, market: str | None = None) -> list[Asset]:
                 display_symbol=query,
                 market=quote_market,
                 provider_symbol=provider_symbol,
-                name=(quote.get("shortname") or quote.get("longname") or query)[:255],
-                exchange=(quote.get("exchange") or market_config.get("exchange", ""))[:20],
-                currency=(quote.get("currency") or market_config.get("currency", ""))[:3],
+                name=(quote_data.get("shortname") or quote_data.get("longname") or query)[:255],
+                exchange=(quote_data.get("exchange") or market_config.get("exchange", ""))[:20],
+                currency=(quote_data.get("currency") or market_config.get("currency", ""))[:3],
                 sector="",
                 industry="",
                 is_seeded=False,
@@ -304,6 +304,33 @@ class NewsService:
     CACHE_TTL = 4 * 3600
     EMPTY_CACHE_TTL = 15 * 60
 
+    @staticmethod
+    def _normalize_news_text(value, *, max_length: int) -> str:
+        if value is None:
+            return ""
+        normalized = " ".join(str(value).replace("\x00", " ").split())
+        return normalized[:max_length]
+
+    @classmethod
+    def _normalize_query_value(cls, value, *, max_length: int = 255) -> str:
+        return cls._normalize_news_text(value, max_length=max_length)
+
+    @classmethod
+    def _normalize_news_item(cls, item: dict) -> dict | None:
+        url = cls._normalize_news_text(item.get("url"), max_length=500)
+        headline = cls._normalize_news_text(item.get("headline"), max_length=500)
+        source = cls._normalize_news_text(item.get("source"), max_length=100)
+        summary = cls._normalize_news_text(item.get("summary"), max_length=1000)
+        if not url or not headline or not source:
+            return None
+        return {
+            "headline": headline,
+            "url": url,
+            "source": source,
+            "summary": summary or None,
+            "published_at": item.get("published_at"),
+        }
+
     @classmethod
     def fetch_and_store_news(cls, asset: Asset) -> int:
         """Fetch news for asset from all sources and store results. Returns count of new items."""
@@ -337,13 +364,17 @@ class NewsService:
 
     @classmethod
     def _google_news_queries(cls, asset: Asset) -> list[str]:
-        queries = [asset.provider_symbol, asset.display_symbol]
-        if asset.name and asset.name.lower() not in {
-            asset.display_symbol.lower(),
-            asset.provider_symbol.lower(),
+        provider_symbol = cls._normalize_query_value(asset.provider_symbol, max_length=100)
+        display_symbol = cls._normalize_query_value(asset.display_symbol, max_length=50)
+        asset_name = cls._normalize_query_value(asset.name, max_length=255)
+
+        queries = [provider_symbol, display_symbol]
+        if asset_name and asset_name.lower() not in {
+            display_symbol.lower(),
+            provider_symbol.lower(),
         }:
-            queries.append(f'"{asset.name}"')
-            queries.append(f'{asset.display_symbol} OR "{asset.name}"')
+            queries.append(f'"{asset_name}"')
+            queries.append(f'{display_symbol} OR "{asset_name}"')
 
         seen = set()
         result = []
@@ -398,7 +429,8 @@ class NewsService:
     def _fetch_yahoo_finance(cls, asset: Asset) -> list[dict]:
         """Scrape Yahoo Finance news for symbol."""
         try:
-            url = f"https://finance.yahoo.com/quote/{asset.provider_symbol}/news"
+            symbol = quote(cls._normalize_query_value(asset.provider_symbol, max_length=100), safe="")
+            url = f"https://finance.yahoo.com/quote/{symbol}/news"
             resp = requests.get(url, headers=cls.HEADERS, timeout=5)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.content, "html.parser")
@@ -423,7 +455,8 @@ class NewsService:
     def _fetch_marketwatch(cls, asset: Asset) -> list[dict]:
         """Scrape MarketWatch news for symbol."""
         try:
-            url = f"https://www.marketwatch.com/investing/stock/{asset.provider_symbol.lower()}"
+            symbol = cls._normalize_query_value(asset.provider_symbol, max_length=100).lower()
+            url = f"https://www.marketwatch.com/investing/stock/{quote(symbol, safe='')}"
             resp = requests.get(url, headers=cls.HEADERS, timeout=5)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.content, "html.parser")
@@ -450,7 +483,10 @@ class NewsService:
     def _fetch_valor_economico(cls, asset: Asset) -> list[dict]:
         """Scrape Valor Econômico news for BR assets."""
         try:
-            url = f"https://www.valor.com.br/search?q={asset.display_symbol}"
+            url = (
+                "https://www.valor.com.br/search?q="
+                f"{quote_plus(cls._normalize_query_value(asset.display_symbol, max_length=50))}"
+            )
             resp = requests.get(url, headers=cls.HEADERS, timeout=5)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.content, "html.parser")
@@ -506,16 +542,17 @@ class NewsService:
         created_items = []
         count = 0
         for item in news_items:
-            if not item.get("url"):
+            normalized_item = cls._normalize_news_item(item)
+            if not normalized_item:
                 continue
             news_item, created = NewsItem.objects.update_or_create(
                 asset=asset,
-                url=item["url"][:500],
+                url=normalized_item["url"],
                 defaults={
-                    "headline": item["headline"],
-                    "summary": item.get("summary"),
-                    "source": item["source"],
-                    "published_at": item.get("published_at"),
+                    "headline": normalized_item["headline"],
+                    "summary": normalized_item.get("summary"),
+                    "source": normalized_item["source"],
+                    "published_at": normalized_item.get("published_at"),
                 },
             )
             if created:
