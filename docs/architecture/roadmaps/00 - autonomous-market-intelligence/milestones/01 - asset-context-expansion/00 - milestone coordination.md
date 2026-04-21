@@ -8,9 +8,9 @@ Coordinate Milestone 01 execution so asset analysis gains broader, deterministic
 
 Milestone 01 - Asset Context Expansion
 
-## Governing ADR
+## Governing SPEC
 
-ADR-001 Open News Context Expansion
+SPEC-001 Open News Context Expansion
 
 ## Status
 
@@ -42,7 +42,7 @@ feat/autonomous/01-asset-context
 
 ## Likely Files Touched
 
-- docs/architecture/adrs/ADR-001-open-news-context-expansion.md
+- docs/specs/SPEC-001-open-news-context-expansion.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/*
 - backend/*
@@ -51,7 +51,7 @@ feat/autonomous/01-asset-context
 ## Entry Conditions
 
 - roadmap reviewed
-- ADR-001 reviewed
+- SPEC-001 reviewed
 - Milestone 00 core outputs are complete enough to unblock Milestone 01:
   - boundary decision and current-state scan
   - shared vocabulary and interface contracts
@@ -62,7 +62,7 @@ feat/autonomous/01-asset-context
 ## Task Steps
 
 1. Read the roadmap and the milestone delivery execution model in full before executing milestone tasks.
-2. Review ADR-001 and the required Milestone 00 reference files; treat their boundary, vocabulary, consumer, and storage findings as normative inputs.
+2. Review SPEC-001 and the required Milestone 00 reference files; treat their boundary, vocabulary, consumer, and storage findings as normative inputs.
 3. Extract only in-scope Milestone 01 work after reconciling it with the Milestone 00 constraints.
 4. Quickly scan the codebase for the current asset analysis, news retrieval, and prompt assembly path.
 5. Execute the milestone task files in order.
@@ -96,7 +96,7 @@ Completed Milestone 01 coordination.
 
 What was done:
 
-- read the roadmap, ADR-001, and required Milestone 00 references before execution
+- read the roadmap, SPEC-001, and required Milestone 00 references before execution
 - traced the current asset-analysis pipeline and identified `AIService.analyze_asset` as the insertion point
 - kept Milestone 01 scoped to deterministic asset context expansion only
 - required the downstream task files to preserve the Milestone 00 boundary between context, reasoning, and execution

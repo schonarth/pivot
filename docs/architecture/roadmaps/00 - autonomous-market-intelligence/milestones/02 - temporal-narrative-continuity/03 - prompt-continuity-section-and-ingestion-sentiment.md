@@ -8,9 +8,9 @@ Define the compact continuity prompt addition and the ingestion-time sentiment p
 
 Milestone 02 - Temporal Narrative Continuity
 
-## Governing ADR
+## Governing SPEC
 
-ADR-002 Narrative Continuity for Asset Context
+SPEC-002 Narrative Continuity for Asset Context
 
 ## Status
 
@@ -40,7 +40,7 @@ feat/autonomous/02-temporal-continuity
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/03 - deduplication-ranking-and-context-pack-shape.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/04 - implementation-validation-and-release-readiness.md`
 
@@ -54,11 +54,11 @@ feat/autonomous/02-temporal-continuity
 
 - retention and labeling rules finalized
 - current Milestone 01 prompt shape reviewed
-- ADR-002 ingestion-time sentiment direction reviewed
+- SPEC-002 ingestion-time sentiment direction reviewed
 
 ## Background
 
-Milestone 02 only helps users if continuity reaches the prompt in a small, useful shape. ADR-002 also recommends ingestion-time sentiment as a companion signal, but only in its bounded Milestone 02 role. This task exists to keep both additions small, deterministic, and clearly separated from later trajectory work.
+Milestone 02 only helps users if continuity reaches the prompt in a small, useful shape. SPEC-002 also recommends ingestion-time sentiment as a companion signal, but only in its bounded Milestone 02 role. This task exists to keep both additions small, deterministic, and clearly separated from later trajectory work.
 
 ## Detailed Requirements
 
@@ -95,7 +95,7 @@ Milestone 02 only helps users if continuity reaches the prompt in a small, usefu
 1. Define the compact `story_so_far` prompt section shape.
 2. Define which continuity fields are exposed to the prompt and which remain internal.
 3. Define the ingestion-time sentiment capture path and batching rules.
-4. Confirm the design stays within ADR-002 scope and does not pull in Milestone 04.
+4. Confirm the design stays within SPEC-002 scope and does not pull in Milestone 04.
 5. Document prompt-budget risks and guardrails.
 
 ## Tests to Add or Update

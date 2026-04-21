@@ -8,7 +8,7 @@ Map current consumers and likely storage touchpoints so Milestone 01 can integra
 
 Milestone 00 - Baseline and Interfaces
 
-## Governing ADR
+## Governing SPEC
 
 Roadmap-only planning task for Milestone 00 baseline work.
 

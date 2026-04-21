@@ -8,9 +8,9 @@ Integrate bounded temporal continuity into the current asset-analysis flow, vali
 
 Milestone 02 - Temporal Narrative Continuity
 
-## Governing ADR
+## Governing SPEC
 
-ADR-002 Narrative Continuity for Asset Context
+SPEC-002 Narrative Continuity for Asset Context
 
 ## Status
 
@@ -72,7 +72,7 @@ This is the milestone integration task. Earlier task files define where continui
 - integrate continuity into the current asset-analysis flow without creating a second reasoning path
 - preserve the existing asset-analysis happy path when no retained continuity signal exists
 - validate at least one multi-day narrative shift for an asset
-- keep Milestone 02 inside ADR-002 scope:
+- keep Milestone 02 inside SPEC-002 scope:
   - no portfolio or watch continuity
   - no sentiment trajectory states
   - no counterfactual reasoning layer
@@ -101,7 +101,7 @@ This is the milestone integration task. Earlier task files define where continui
 2. Add or update smoke coverage for the asset analysis happy path.
 3. Add validation scenarios for at least one clear multi-day narrative shift and one stable continuing narrative.
 4. Confirm the prompt remains compact and continuity labels remain deterministic.
-5. Verify the implementation still respects Milestone 00 vocabulary, Milestone 01 context-pack boundaries, and ADR-002 storage constraints.
+5. Verify the implementation still respects Milestone 00 vocabulary, Milestone 01 context-pack boundaries, and SPEC-002 storage constraints.
 6. Run lint, typecheck, affected unit tests, and milestone-end integration tests.
 7. Prepare UAT notes:
    - user-visible behavior change
@@ -134,7 +134,7 @@ This is the milestone integration task. Earlier task files define where continui
 
 ## Implementation Notes / What Was Done
 
-Integrated bounded temporal continuity into `AIService.analyze_asset`, validated the new prompt section and label behavior with focused backend tests, and kept the flow within the ADR-002 asset-only scope.
+Integrated bounded temporal continuity into `AIService.analyze_asset`, validated the new prompt section and label behavior with focused backend tests, and kept the flow within the SPEC-002 asset-only scope.
 
 ## Open Follow-Ups
 

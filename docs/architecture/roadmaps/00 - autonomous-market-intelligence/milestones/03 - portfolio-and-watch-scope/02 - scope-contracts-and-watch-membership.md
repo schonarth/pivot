@@ -8,9 +8,9 @@ Define the minimum scope contract and explicit watch membership model needed to 
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -41,7 +41,7 @@ feat/autonomous/03-scope-expansion
 
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/02 - shared-vocabulary-and-interface-contracts.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
 
 ## Likely Files Touched
 
@@ -60,7 +60,7 @@ feat/autonomous/03-scope-expansion
 
 ## Background
 
-ADR-003 approves explicit monitored-set membership and a shared scope contract, but the implementation still needs one concrete contract for input shape, watch membership, and minimal persistence.
+SPEC-003 approves explicit monitored-set membership and a shared scope contract, but the implementation still needs one concrete contract for input shape, watch membership, and minimal persistence.
 
 ## Detailed Requirements
 

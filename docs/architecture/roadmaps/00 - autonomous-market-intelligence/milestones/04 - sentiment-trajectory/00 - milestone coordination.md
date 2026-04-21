@@ -8,9 +8,9 @@ Coordinate Milestone 04 execution so the system can compute short-window sentime
 
 Milestone 04 - Sentiment Trajectory
 
-## Governing ADR
+## Governing SPEC
 
-ADR-004 Sentiment Trajectory and Narrative State
+SPEC-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
@@ -34,13 +34,13 @@ feat/autonomous/04-sentiment-trajectory
 
 ## Dependencies
 
-- ADR-004 approved
+- SPEC-004 approved
 - required references:
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md`
   - `docs/architecture/execution/milestone-delivery-execution-model.md`
-  - `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-  - `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-  - `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+  - `docs/specs/SPEC-001-open-news-context-expansion.md`
+  - `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+  - `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/01 - continuity-insertion-point-and-retained-artifact-scan.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/02 - retention-labeling-and-persistence-shape.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/03 - prompt-continuity-section-and-ingestion-sentiment.md`
@@ -50,7 +50,7 @@ feat/autonomous/04-sentiment-trajectory
 
 ## Likely Files Touched
 
-- docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md
+- docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/04 - sentiment-trajectory/*
 - backend/ai/*
 - backend/markets/*
@@ -62,13 +62,13 @@ feat/autonomous/04-sentiment-trajectory
 
 - roadmap reviewed
 - milestone delivery execution model reviewed
-- ADR-004 reviewed
+- SPEC-004 reviewed
 - Milestone 02 continuity files reviewed as normative inputs
 - Milestone 03 monitored-set files reviewed as normative inputs where monitored-set consumers exist
 
 ## Task Steps
 
-1. Read the roadmap, milestone delivery execution model, ADR-004, and required prior references before implementation.
+1. Read the roadmap, milestone delivery execution model, SPEC-004, and required prior references before implementation.
 2. Confirm the current source of truth for retained selected items and per-item sentiment labels.
 3. Execute Milestone 04 task files in order.
 4. Implement asset-scope trajectory first.
@@ -114,8 +114,8 @@ Completed Milestone 04 setup.
 
 What was done:
 
-- reviewed the roadmap, execution model, ADR-004, and Milestone 02 and 03 handoff files before creating the milestone scaffold
-- marked ADR-004 approved so Milestone 04 artifacts can exist under the roadmap rules
+- reviewed the roadmap, execution model, SPEC-004, and Milestone 02 and 03 handoff files before creating the milestone scaffold
+- marked SPEC-004 approved so Milestone 04 artifacts can exist under the roadmap rules
 - created the Milestone 04 folder and task sequence for scan, deterministic state rules, prompt and persistence shape, and release-readiness validation
 - completed a refinement pass to resolve the initial open decisions around monitored-set inclusion, theme aggregation, compute-on-read trajectory, and weak-signal handling
 - recorded that the current repo now appears to include real monitored-set implementation surfaces that Milestone 04 should verify and reuse when they are implementation-ready

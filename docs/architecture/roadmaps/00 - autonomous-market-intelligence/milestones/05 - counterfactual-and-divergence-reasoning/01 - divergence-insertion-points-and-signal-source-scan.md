@@ -8,9 +8,9 @@ Identify the smallest correct integration points and the exact reusable signals 
 
 Milestone 05 - Counterfactual and Divergence Reasoning
 
-## Governing ADR
+## Governing SPEC
 
-ADR-005 Divergence Reasoning for Market Analysis
+SPEC-005 Divergence Reasoning for Market Analysis
 
 ## Status
 
@@ -30,9 +30,9 @@ feat/autonomous/05-divergence-reasoning
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
-- `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/03 - clustering-prioritization-and-composition.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/04 - sentiment-trajectory/04 - implementation-validation-and-release-readiness.md`
 
@@ -47,7 +47,7 @@ feat/autonomous/05-divergence-reasoning
 ## Entry Conditions
 
 - milestone scaffold exists
-- ADR-005 reviewed
+- SPEC-005 reviewed
 - Milestone 03 and 04 shared analysis paths reviewed
 
 ## Background

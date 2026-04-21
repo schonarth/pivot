@@ -8,9 +8,9 @@ Identify the smallest correct insertion points for adding portfolio and watch sc
 
 Milestone 03 - Portfolio and Watch Scope
 
-## Governing ADR
+## Governing SPEC
 
-ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 ## Status
 
@@ -38,8 +38,8 @@ feat/autonomous/03-scope-expansion
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-001-open-news-context-expansion.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/00 - baseline-and-interfaces/03 - current-consumers-and-storage-touchpoints.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/01 - existing-pipeline-scan-and-insertion-point.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/01 - asset-context-expansion/04 - implementation-validation-and-release-readiness.md`
@@ -56,7 +56,7 @@ feat/autonomous/03-scope-expansion
 ## Entry Conditions
 
 - milestone coordination reviewed
-- ADR-003 reviewed
+- SPEC-003 reviewed
 - required prior references reviewed
 
 ## Background

@@ -8,9 +8,9 @@ Define the deterministic rules that map bounded current signals and bounded rece
 
 Milestone 05 - Counterfactual and Divergence Reasoning
 
-## Governing ADR
+## Governing SPEC
 
-ADR-005 Divergence Reasoning for Market Analysis
+SPEC-005 Divergence Reasoning for Market Analysis
 
 ## Status
 
@@ -31,8 +31,8 @@ feat/autonomous/05-divergence-reasoning
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
-- `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
+- `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
+- `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/04 - sentiment-trajectory/02 - deterministic-trajectory-states-and-thresholds.md`
 
 ## Likely Files Touched
@@ -45,7 +45,7 @@ feat/autonomous/05-divergence-reasoning
 
 - insertion point documented
 - available input signals documented
-- ADR-005 outcome set reviewed
+- SPEC-005 outcome set reviewed
 
 ## Background
 

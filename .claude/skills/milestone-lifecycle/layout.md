@@ -21,13 +21,14 @@ Examples:
 Creation rule:
 
 - milestone `00` folder may be created immediately when the roadmap is accepted
-- every later milestone folder should be created only after that milestone's ADR is approved
+- every later milestone folder should be created only after that milestone's SPEC is approved
 
 Roadmap numbering rule:
 
 - roadmap numbers are global within `docs/architecture/roadmaps/`
 - milestone numbers are local to each roadmap
-- ADR numbers remain global within `docs/architecture/adrs/`
+- SPEC numbers remain global within `docs/specs/`
+- ADR numbers remain global within `docs/adrs/`
 
 ## Branching
 

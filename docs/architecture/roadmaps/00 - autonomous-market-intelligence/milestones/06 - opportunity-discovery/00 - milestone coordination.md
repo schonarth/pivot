@@ -8,9 +8,9 @@ Coordinate Milestone 06 execution so the system can surface a bounded daily shor
 
 Milestone 06 - Opportunity Discovery
 
-## Governing ADR
+## Governing SPEC
 
-ADR-006 Opportunity Discovery Pipeline
+SPEC-006 Opportunity Discovery Pipeline
 
 ## Status
 
@@ -34,16 +34,16 @@ feat/autonomous/06-opportunity-discovery
 
 ## Dependencies
 
-- ADR-006 approved
+- SPEC-006 approved
 - required references:
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/roadmap.md`
   - `docs/architecture/execution/milestone-delivery-execution-model.md`
-  - `docs/architecture/adrs/ADR-001-open-news-context-expansion.md`
-  - `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-  - `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
-  - `docs/architecture/adrs/ADR-004-sentiment-trajectory-and-narrative-state.md`
-  - `docs/architecture/adrs/ADR-005-divergence-reasoning-for-market-analysis.md`
-  - `docs/architecture/adrs/ADR-006-opportunity-discovery-pipeline.md`
+  - `docs/specs/SPEC-001-open-news-context-expansion.md`
+  - `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+  - `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
+  - `docs/specs/SPEC-004-sentiment-trajectory-and-narrative-state.md`
+  - `docs/specs/SPEC-005-divergence-reasoning-for-market-analysis.md`
+  - `docs/specs/SPEC-006-opportunity-discovery-pipeline.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/04 - implementation-validation-and-release-readiness.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/05 - portfolio-and-watch-ui-surface.md`
   - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/03 - portfolio-and-watch-scope/06 - portfolio-and-watch-scope-ai-summary.md`
@@ -53,7 +53,7 @@ feat/autonomous/06-opportunity-discovery
 
 ## Likely Files Touched
 
-- docs/architecture/adrs/ADR-006-opportunity-discovery-pipeline.md
+- docs/specs/SPEC-006-opportunity-discovery-pipeline.md
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/06 - opportunity-discovery/*
 - docs/architecture/roadmaps/00 - autonomous-market-intelligence/deferred-improvements.md
 - backend/ai/*
@@ -68,14 +68,14 @@ feat/autonomous/06-opportunity-discovery
 
 - roadmap reviewed
 - milestone delivery execution model reviewed
-- ADR-006 reviewed
+- SPEC-006 reviewed
 - Milestone 03 watch and monitored-set files reviewed as normative inputs for watch handoff and UI reuse
 - Milestone 04 trajectory files reviewed as normative inputs for bounded context support
 - Milestone 05 divergence files reviewed as normative inputs for optional ranking support and cache honesty
 
 ## Task Steps
 
-1. Read the roadmap, milestone delivery execution model, ADR-006, and required prior references before implementation.
+1. Read the roadmap, milestone delivery execution model, SPEC-006, and required prior references before implementation.
 2. Confirm the current source of truth for market-scoped asset universes, technical data availability, discovery consumers, and watch insertion points.
 3. Execute Milestone 06 task files in order.
 4. Keep scheduled discovery deterministic and non-LLM.
@@ -135,7 +135,7 @@ Completed Milestone 06 setup.
 
 What was done:
 
-- reviewed the roadmap, execution model, ADR-006, and Milestone 03 to 05 handoff files before creating the milestone scaffold
+- reviewed the roadmap, execution model, SPEC-006, and Milestone 03 to 05 handoff files before creating the milestone scaffold
 - created the Milestone 06 folder and task sequence for universe and insertion-point scan, deterministic pre-filter and ranking contract, fallback and refinement contract, implementation slice, and watch handoff plus validation
 - aligned the scaffold with the approved Milestone 06 decisions:
   - all stored assets in one explicit market at a time, excluding assets already held in any user portfolio

@@ -15,9 +15,9 @@ Short description of the task outcome.
 
 Milestone 1 - Asset Context Expansion
 
-## Governing ADR
+## Governing SPEC
 
-ADR-001 Open News Context Expansion
+SPEC-001 Open News Context Expansion
 
 ## Status
 
@@ -50,7 +50,7 @@ feat/autonomous/01-asset-context
 
 ## Entry Conditions
 
-- ADR approved
+- SPEC approved
 - prerequisite task complete
 
 ## Task Steps
@@ -104,7 +104,7 @@ Each task spec should include, at minimum:
 
 1. `Purpose`
 2. `Roadmap Milestone`
-3. `Governing ADR`
+3. `Governing SPEC`
 4. `Status`
 5. `Owner`
 6. `Date Started`

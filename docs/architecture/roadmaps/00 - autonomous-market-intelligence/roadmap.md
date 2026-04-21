@@ -10,7 +10,7 @@ Status: Approved
 
 ## Purpose
 
-Define the end-state for Pivot's market intelligence system without forcing that full scope into a single ADR.
+Define the end-state for Pivot's market intelligence system without forcing that full scope into a single SPEC.
 
 The target outcome is a paper-trading system that can:
 
@@ -21,7 +21,7 @@ The target outcome is a paper-trading system that can:
 5. Validate or reject trade ideas using technical + news context
 6. Eventually execute autonomous paper trades under strict safety controls
 
-This roadmap exists so each ADR can stay narrow while still pointing toward the same long-term vision.
+This roadmap exists so each SPEC can stay narrow while still pointing toward the same long-term vision.
 
 ## Vision
 
@@ -91,8 +91,8 @@ Each milestone below is S.M.A.R.T.:
 
 Suggested cadence:
 
-- Small milestone: 1 ADR, 1 implementation cycle, 1-2 weeks
-- Medium milestone: 1 ADR plus follow-up implementation hardening, 2-3 weeks
+- Small milestone: 1 SPEC, 1 implementation cycle, 1-2 weeks
+- Medium milestone: 1 SPEC plus follow-up implementation hardening, 2-3 weeks
 
 ## Releaseability
 
@@ -138,7 +138,7 @@ Releaseability:
 
 Exit criteria:
 
-- one ADR defines the boundary between context selection, reasoning, and execution
+- one SPEC defines the boundary between context selection, reasoning, and execution
 - one reference document defines shared vocabulary: asset scope, portfolio scope, watch scope, strategy scope
 - current per-asset analysis still works with no behavior expansion
 
@@ -147,8 +147,8 @@ Exit criteria:
 Objective:
 Improve asset analysis by expanding beyond symbol-only news.
 
-Primary ADR:
-- ADR-001 Open News Context Expansion
+Primary SPEC:
+- SPEC-001 Open News Context Expansion
 
 Scope:
 
@@ -187,8 +187,8 @@ Exit criteria:
 Objective:
 Add short-memory narrative continuity so analysis can explain what changed, not just what exists.
 
-Primary ADR:
-- ADR-002 Narrative Continuity for Asset Context
+Primary SPEC:
+- SPEC-002 Narrative Continuity for Asset Context
 
 Scope:
 
@@ -228,8 +228,8 @@ Exit criteria:
 Objective:
 Generalize intelligence from a single asset to a user-defined monitored set.
 
-Primary ADR:
-- ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+Primary SPEC:
+- SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 Scope:
 
@@ -266,8 +266,8 @@ Exit criteria:
 Objective:
 Track how sentiment changes over time for important themes and assets.
 
-Primary ADR:
-- ADR-004 Sentiment Trajectory and Narrative State
+Primary SPEC:
+- SPEC-004 Sentiment Trajectory and Narrative State
 
 Scope:
 
@@ -299,8 +299,8 @@ Exit criteria:
 Objective:
 Explain expected vs actual market behavior in a disciplined way.
 
-Primary ADR:
-- ADR-005 Divergence Reasoning for Market Analysis
+Primary SPEC:
+- SPEC-005 Divergence Reasoning for Market Analysis
 
 Scope:
 
@@ -345,8 +345,8 @@ Exit criteria:
 Objective:
 Find assets worth watching before they are held.
 
-Primary ADR:
-- ADR-006 Opportunity Discovery Pipeline
+Primary SPEC:
+- SPEC-006 Opportunity Discovery Pipeline
 
 Scope:
 
@@ -378,8 +378,8 @@ Exit criteria:
 Objective:
 Turn intelligence into bounded trade validation before any autonomous execution.
 
-Primary ADR:
-- ADR-007 Strategy Validation with Technical and Context Inputs
+Primary SPEC:
+- SPEC-007 Strategy Validation with Technical and Context Inputs
 
 Scope:
 
@@ -411,8 +411,8 @@ Exit criteria:
 Objective:
 Add bounded forward-looking reasoning without yet granting trade autonomy.
 
-Primary ADR:
-- ADR-008 Scenario Framing for Strategy Decisions
+Primary SPEC:
+- SPEC-008 Scenario Framing for Strategy Decisions
 
 Scope:
 
@@ -444,8 +444,8 @@ Exit criteria:
 Objective:
 Add correction safety before granting autonomous execution.
 
-Primary ADR:
-- ADR-009 Fact Corrections and Conflict Detection
+Primary SPEC:
+- SPEC-009 Fact Corrections and Conflict Detection
 
 Scope:
 
@@ -477,8 +477,8 @@ Exit criteria:
 Objective:
 Enable fully automated paper trades driven by strategy + intelligence, under hard limits.
 
-Primary ADR:
-- ADR-010 Autonomous Paper Trading Controls
+Primary SPEC:
+- SPEC-010 Autonomous Paper Trading Controls
 
 Scope:
 
@@ -517,8 +517,8 @@ Exit criteria:
 Objective:
 Make the system reliable enough to monitor and improve without losing transparency.
 
-Primary ADR:
-- ADR-011 Analysis Review and Operational Learning
+Primary SPEC:
+- SPEC-011 Analysis Review and Operational Learning
 
 Scope:
 
@@ -568,16 +568,16 @@ Allowed overlaps:
 - Milestone 6 can begin once Milestone 3 and Milestone 4 are stable
 - Milestone 10 requires Milestone 9 safety work to be stable first
 
-## ADR Mapping
+## SPEC Mapping
 
-This roadmap should not replace ADRs. It should constrain them.
+This roadmap should not replace SPECs. It should constrain them.
 
-Rules for future ADRs:
+Rules for future SPECs:
 
-1. Each ADR should map to exactly one milestone
-2. Each ADR should state what it explicitly does not solve yet
-3. Each ADR should describe the next consumer of the capability
-4. Each ADR should keep storage, reasoning, and execution concerns separate
+1. Each SPEC should map to exactly one milestone
+2. Each SPEC should state what it explicitly does not solve yet
+3. Each SPEC should describe the next consumer of the capability
+4. Each SPEC should keep storage, reasoning, and execution concerns separate
 
 ## Execution
 
@@ -618,10 +618,10 @@ Late-stage metrics:
 
 Immediate next step:
 
-- keep ADR-001 focused on Milestone 1
-- optionally pull a minimal timestamped continuity hook from Milestone 2 if it does not complicate the ADR
+- keep SPEC-001 focused on Milestone 1
+- optionally pull a minimal timestamped continuity hook from Milestone 2 if it does not complicate the SPEC
 
-Do not pull these into ADR-001:
+Do not pull these into SPEC-001:
 
 - opportunity discovery
 - scenario generation
@@ -631,16 +631,16 @@ Do not pull these into ADR-001:
 
 ## Related Documents
 
-- [ADR-001 Open News Context Expansion](../../adrs/ADR-001-open-news-context-expansion.md)
+- [SPEC-001 Open News Context Expansion](../../specs/SPEC-001-open-news-context-expansion.md)
 - [Milestone Delivery Execution Model](../../execution/milestone-delivery-execution-model.md)
 - [Deferred Improvements](deferred-improvements.md)
 - [PRD — Paper Trader](../../../reference/prd-paper-trader.md)
 - [PRD — MLP Phase](../../../reference/prd-mlp.md)
 - [Specification](../../../reference/specification.md)
 
-## ADR Readiness Checklist
+## SPEC Readiness Checklist
 
-Draft a milestone ADR only when most of the following are true:
+Draft a milestone SPEC only when most of the following are true:
 
 - the milestone has a clear user or system outcome
 - the milestone boundary is small enough to discuss without relying on later milestones
@@ -648,11 +648,11 @@ Draft a milestone ADR only when most of the following are true:
 - the likely storage, reasoning, and execution boundaries are understood
 - non-goals can be stated clearly
 - the main alternatives or tradeoffs are visible
-- open questions are specific enough to resolve in one ADR
+- open questions are specific enough to resolve in one SPEC
 - success or exit criteria can be stated concretely
 - the team is likely to work on the milestone soon
 
-Prefer not to draft the ADR yet when any of these are true:
+Prefer not to draft the SPEC yet when any of these are true:
 
 - the milestone depends heavily on learning from an earlier milestone
 - the likely shape is still speculative

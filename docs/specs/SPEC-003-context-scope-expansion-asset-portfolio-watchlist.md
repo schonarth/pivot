@@ -1,18 +1,19 @@
 ---
 name: Context Scope Expansion
-description: Open ADR for expanding context building from single assets to portfolio and watch scopes
+description: Spec for expanding context building from single assets to portfolio and watch scopes
 type: reference
 ---
 
-# ADR
+# SPEC
 
-## ADR-003 Context Scope Expansion: Asset, Portfolio, Watchlist
+## SPEC-003 Context Scope Expansion: Asset, Portfolio, Watchlist
 
 Status: Approved
+Governing ADR: [ADR-003-shared-pipeline-for-monitored-sets](../adrs/ADR-003-shared-pipeline-for-monitored-sets.md)
 
 ## Roadmap Position
 
-This ADR corresponds to Milestone 3 of the Autonomous Market Intelligence roadmap:
+This SPEC corresponds to Milestone 3 of the Autonomous Market Intelligence roadmap:
 
 - [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
@@ -22,7 +23,7 @@ It is not intended to solve discovery of new assets, sentiment trajectory, strat
 
 ## Context
 
-ADR-001 improves asset-level context selection. ADR-002 adds bounded temporal continuity for one asset.
+SPEC-001 improves asset-level context selection. SPEC-002 adds bounded temporal continuity for one asset.
 
 That is still too narrow for users who think in monitored sets:
 
@@ -87,7 +88,7 @@ Minimum expectations:
 - watch scope is distinct from portfolio holdings
 - the same asset may appear in both a portfolio scope and a watch scope
 
-This ADR defines the product concept. It does not require a specific database schema in the ADR itself.
+This SPEC defines the product concept. It does not require a specific database schema in the SPEC itself.
 
 ### Shared Pipeline Over Separate Prompt Paths
 
@@ -178,7 +179,7 @@ A portfolio or watch summary should never flatten away which assets are actually
 
 ### Continuity Reuse
 
-If ADR-002 continuity artifacts exist, Milestone 3 should reuse them within each asset before composing the monitored-set view.
+If SPEC-002 continuity artifacts exist, Milestone 3 should reuse them within each asset before composing the monitored-set view.
 
 Meaning:
 
@@ -226,7 +227,7 @@ Context packs and clustering artifacts should remain transient unless short-live
 
 ## Notes
 
-This ADR should remain independently mergeable and user-releaseable when implemented.
+This SPEC should remain independently mergeable and user-releaseable when implemented.
 
 Expected user-facing value:
 

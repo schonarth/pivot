@@ -8,9 +8,9 @@ Identify the narrowest correct insertion point for sentiment trajectory and conf
 
 Milestone 04 - Sentiment Trajectory
 
-## Governing ADR
+## Governing SPEC
 
-ADR-004 Sentiment Trajectory and Narrative State
+SPEC-004 Sentiment Trajectory and Narrative State
 
 ## Status
 
@@ -30,8 +30,8 @@ feat/autonomous/04-sentiment-trajectory
 
 ## Required Prior References
 
-- `docs/architecture/adrs/ADR-002-narrative-continuity-for-asset-context.md`
-- `docs/architecture/adrs/ADR-003-context-scope-expansion-asset-portfolio-watchlist.md`
+- `docs/specs/SPEC-002-narrative-continuity-for-asset-context.md`
+- `docs/specs/SPEC-003-context-scope-expansion-asset-portfolio-watchlist.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/01 - continuity-insertion-point-and-retained-artifact-scan.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/02 - retention-labeling-and-persistence-shape.md`
 - `docs/architecture/roadmaps/00 - autonomous-market-intelligence/milestones/02 - temporal-narrative-continuity/03 - prompt-continuity-section-and-ingestion-sentiment.md`
@@ -48,12 +48,12 @@ feat/autonomous/04-sentiment-trajectory
 ## Entry Conditions
 
 - milestone coordination reviewed
-- ADR-004 reviewed
+- SPEC-004 reviewed
 - Milestone 02 continuity retention and prompt-shape files reviewed
 
 ## Background
 
-ADR-004 only works if trajectory reuses retained selected items and stored per-item sentiment instead of creating a parallel historical system. This task exists to confirm the live insertion point and signal source before any deterministic state rules are written.
+SPEC-004 only works if trajectory reuses retained selected items and stored per-item sentiment instead of creating a parallel historical system. This task exists to confirm the live insertion point and signal source before any deterministic state rules are written.
 
 The current repo scan suggests monitored-set surfaces now exist in code, including scope-level analysis, watch membership, and portfolio/watch summary consumers. This task should treat monitored-set readiness as something to verify concretely in the current codebase, not as an assumed gap from earlier milestone notes.
 

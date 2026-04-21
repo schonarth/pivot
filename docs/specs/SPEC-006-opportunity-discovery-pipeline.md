@@ -1,18 +1,19 @@
 ---
 name: Opportunity Discovery Pipeline
-description: Draft ADR for bounded asset discovery using deterministic preselection and on-demand refinement
+description: Spec for bounded asset discovery using deterministic preselection and on-demand refinement
 type: reference
 ---
 
-# ADR
+# SPEC
 
-## ADR-006 Opportunity Discovery Pipeline
+## SPEC-006 Opportunity Discovery Pipeline
 
 Status: Approved
+Governing ADR: [ADR-006-two-stage-bounded-discovery](../adrs/ADR-006-two-stage-bounded-discovery.md)
 
 ## Roadmap Position
 
-This ADR corresponds to Milestone 6 of the Autonomous Market Intelligence roadmap:
+This SPEC corresponds to Milestone 6 of the Autonomous Market Intelligence roadmap:
 
 - [Autonomous Market Intelligence Roadmap](../roadmaps/00%20-%20autonomous-market-intelligence/roadmap.md)
 
@@ -22,7 +23,7 @@ It is not intended to authorize buying, replace strategy validation, or perform 
 
 ## Context
 
-ADR-001 expands asset context. ADR-002 adds bounded continuity. ADR-003 generalizes analysis to monitored sets. ADR-004 adds short-window sentiment trajectory. ADR-005 explains expected-vs-actual divergence.
+SPEC-001 expands asset context. SPEC-002 adds bounded continuity. SPEC-003 generalizes analysis to monitored sets. SPEC-004 adds short-window sentiment trajectory. SPEC-005 explains expected-vs-actual divergence.
 
 That still leaves a product gap: the current intelligence path is strongest once a user already holds or explicitly watches an asset.
 
@@ -282,10 +283,10 @@ Approved first implementation:
 Expected ranking inputs may include:
 
 - technical posture from the pre-filter stage
-- deterministic context metadata derived from ADR-001
-- continuity cues from ADR-002 when available
-- sentiment trajectory from ADR-004 when available
-- divergence evidence from ADR-005 when it materially strengthens or weakens the opportunity case
+- deterministic context metadata derived from SPEC-001
+- continuity cues from SPEC-002 when available
+- sentiment trajectory from SPEC-004 when available
+- divergence evidence from SPEC-005 when it materially strengthens or weakens the opportunity case
 
 Recommended first-pass ranking dimensions:
 
@@ -413,7 +414,7 @@ Meaning:
 - the watch addition should be explicit and user-visible
 - discovery should not silently mutate watch membership as a side effect of scanning
 
-This keeps Milestone 6 aligned with ADR-003, where watch membership remains explicit and deterministic.
+This keeps Milestone 6 aligned with SPEC-003, where watch membership remains explicit and deterministic.
 
 ### Scheduling Is Allowed, Autonomy Is Not
 
@@ -534,7 +535,7 @@ Once implemented, discovery review tooling should live in general project docume
 
 ## Notes
 
-This ADR should remain independently mergeable and user-releaseable when implemented.
+This SPEC should remain independently mergeable and user-releaseable when implemented.
 
 Expected user-facing value:
 
