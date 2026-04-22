@@ -32,6 +32,11 @@ Use this skill when opening a pull request for this repository.
 - Keep the description concise, accurate, and markdown formatted.
 - Include tests run and any known limitations.
 
+## Gotchas
+
+- Codex usually creates PRs with malformed descriptions. Always use markdown and check the formatting.
+- Keep unrelated changes out of the PR description. They simply do not belong there. Do not mention anything left out.
+
 ## Suggested Commands
 
 - `git branch --show-current`

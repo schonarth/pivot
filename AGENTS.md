@@ -6,6 +6,7 @@ Monorepo: `backend/` (Django/DRF) + `frontend/` (Vue 3/Vite). Docker Compose orc
 
 ## Project Rules
 
+- Prefer Serena's semantic code tools when Serena is available, especially for codebase exploration, symbol lookup, and targeted edits; if Serena is unavailable, continue normally with standard repo tools.
 - Use `.claude/skills/milestone-lifecycle/SKILL.md` for all milestone work: scaffolding a new milestone, executing tasks from a `00 - milestone coordination.md` file, or preparing a milestone for UAT.
 - Use `.claude/skills/creating-pr/SKILL.md` whenever creating a PR.
 
