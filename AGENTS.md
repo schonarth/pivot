@@ -90,6 +90,7 @@ Playwright e2E tests in `frontend/e2e/` should verify complete user journeys (au
 2. Run frontend typecheck: `npm run typecheck` — no type errors
 3. Run frontend unit tests: `npm run test` — fix or update as needed
 4. Run frontend e2e tests: `npx playwright test` — full user journeys must work
+5. Before stopping a running backend after large implementation tasks or test runs, check `/api/system/query-stats` for N+1/query-heavy request signals.
 
 If any test fails, investigate and fix the software issue (not the test). Tests are the source of truth.
 
