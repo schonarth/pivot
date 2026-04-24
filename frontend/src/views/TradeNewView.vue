@@ -125,10 +125,16 @@
         <div style="display: flex; justify-content: space-between;">
           <span>Net Cash Impact:</span><span>{{ preview.net }}</span>
         </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Balance after transaction:</span>
+          <span :class="{ 'negative-balance': projectedBalance !== null && projectedBalance < 0 }">
+            {{ projectedBalanceDisplay }}
+          </span>
+        </div>
       </div>
       <button
         class="btn"
-        :disabled="!selectedAsset || !quantity || loading"
+        :disabled="!selectedAsset || !quantity || loading || disallowBuy"
         @click="handleSubmit()"
       >
         <span
@@ -157,7 +163,7 @@ import MarketBadge from '@/components/MarketBadge.vue'
 import { searchAssets as apiSearchAssets, getAssetPrice, getAsset } from '@/api/assets'
 import { createTrade } from '@/api/trades'
 import { getPortfolio } from '@/api/portfolios'
-import type { Asset, AssetQuote } from '@/types'
+import type { Asset, AssetQuote, Portfolio } from '@/types'
 
 const props = defineProps<{ id?: string | string[] }>()
 const route = useRoute()
@@ -175,6 +181,7 @@ const searchQuery = ref('')
 const searchResults = ref<Asset[]>([])
 const selectedAsset = ref<Asset | null>(null)
 const currentPrice = ref<AssetQuote | null>(null)
+const portfolio = ref<Portfolio | null>(null)
 const quantity = ref<number | null>(null)
 const rationale = ref('')
 const error = ref('')
@@ -197,12 +204,24 @@ const preview = computed(() => {
   }
 })
 
+const projectedBalance = computed(() => {
+  if (!preview.value || !portfolio.value) return null
+  return Number(portfolio.value.current_cash) + Number(preview.value.net)
+})
+
+const projectedBalanceDisplay = computed(() => {
+  if (projectedBalance.value === null || !portfolio.value) return '--'
+  return `${portfolio.value.base_currency} ${projectedBalance.value.toFixed(2)}`
+})
+
+const disallowBuy = computed(() => action.value === 'BUY' && projectedBalance.value !== null && projectedBalance.value < 0)
+
 let searchTimeout: ReturnType<typeof setTimeout>
 
 onMounted(async () => {
   try {
-    const portfolio = await getPortfolio(portfolioId)
-    feeRate.value = portfolio.market === 'BR' ? 0.0003 : portfolio.market === 'US' ? 0 : 0.001
+    portfolio.value = await getPortfolio(portfolioId)
+    feeRate.value = portfolio.value.market === 'BR' ? 0.0003 : portfolio.value.market === 'US' ? 0 : 0.001
   } catch {}
 
   if (preselectedAssetId) {
@@ -222,9 +241,9 @@ function doSearch() {
     }
     try {
       if (!portfolioId) return
-      const portfolio = await getPortfolio(portfolioId)
-      searchResults.value = await apiSearchAssets(searchQuery.value, portfolio.market)
-      feeRate.value = portfolio.market === 'BR' ? 0.0003 : portfolio.market === 'US' ? 0 : 0.001
+      portfolio.value = await getPortfolio(portfolioId)
+      searchResults.value = await apiSearchAssets(searchQuery.value, portfolio.value.market)
+      feeRate.value = portfolio.value.market === 'BR' ? 0.0003 : portfolio.value.market === 'US' ? 0 : 0.001
     } catch {
       searchResults.value = []
     }
@@ -245,6 +264,7 @@ async function selectAsset(asset: Asset) {
 async function handleSubmit(bypassGuardrails: boolean = false) {
   if (!portfolioId) return
   if (!selectedAsset.value || !quantity.value) return
+  if (disallowBuy.value) return
   error.value = ''
   guardrailViolations.value = []
   canBypassGuardrails.value = false
@@ -271,4 +291,5 @@ async function handleSubmit(bypassGuardrails: boolean = false) {
 
 <style scoped>
 .alert-danger { background: rgba(239,68,68,0.15); color: var(--danger); padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+.negative-balance { color: var(--danger); }
 </style>

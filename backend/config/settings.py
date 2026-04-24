@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "realtime",
     "strategies",
     "ai",
+    "config",
     "mcp",
 ]
 
