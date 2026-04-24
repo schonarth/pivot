@@ -14,19 +14,19 @@ SPEC-007 Strategy Validation with Technical and Context Inputs
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-YYYY-MM-DD
+2026-04-24
 
 ## Date Completed
 
-YYYY-MM-DD
+2026-04-24
 
 ## Branch
 
@@ -108,7 +108,10 @@ Validation requests consume time and tokens. Milestone 07 therefore needs an exp
 
 ## Implementation Notes / What Was Done
 
-Short note describing what was actually implemented, especially if it differs from the plan.
+- Added an explicit `Should I?` action next to manual trade execution in the new trade form.
+- Kept validation out of form load, input change, and trade submit.
+- Rendered verdict, compact rationale, exact evidence snapshot, and recent paper recommendations as advisory review output.
+- Added frontend regression coverage proving validation is only invoked by the explicit action and trade submit remains separate.
 
 ## Open Follow-Ups
 

@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import AIAuth, AIInstanceKey, PROVIDER_CHOICES, TASK_MODELS
+
+from .models import AIAuth, AIInstanceKey, PROVIDER_CHOICES, TASK_MODELS, StrategyRecommendation
 
 
 class AIAuthSettingsSerializer(serializers.ModelSerializer):
@@ -90,3 +91,40 @@ class AIBudgetSerializer(serializers.Serializer):
     percentage_used = serializers.CharField()
     at_limit = serializers.BooleanField()
     should_warn = serializers.BooleanField()
+
+
+class StrategyValidationRequestSerializer(serializers.Serializer):
+    portfolio_id = serializers.UUIDField()
+    asset_id = serializers.UUIDField()
+    action = serializers.ChoiceField(choices=["BUY", "SELL"])
+    quantity = serializers.IntegerField(min_value=1)
+    rationale = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+    def validate_action(self, value):
+        return value.upper()
+
+
+class StrategyRecommendationSerializer(serializers.ModelSerializer):
+    asset_display_symbol = serializers.CharField(source="asset.display_symbol", read_only=True)
+    asset_name = serializers.CharField(source="asset.name", read_only=True)
+
+    class Meta:
+        model = StrategyRecommendation
+        fields = (
+            "id",
+            "candidate_id",
+            "portfolio",
+            "asset",
+            "asset_display_symbol",
+            "asset_name",
+            "action",
+            "quantity",
+            "candidate",
+            "technical_inputs",
+            "context_inputs",
+            "sentiment_trajectory_inputs",
+            "divergence_inputs",
+            "verdict",
+            "rationale",
+            "recorded_at",
+        )

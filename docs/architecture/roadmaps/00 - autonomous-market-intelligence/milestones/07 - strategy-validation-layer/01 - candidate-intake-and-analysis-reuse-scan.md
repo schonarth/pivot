@@ -14,19 +14,19 @@ SPEC-007 Strategy Validation with Technical and Context Inputs
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-YYYY-MM-DD
+2026-04-24
 
 ## Date Completed
 
-YYYY-MM-DD
+2026-04-24
 
 ## Branch
 
@@ -96,7 +96,11 @@ Milestone 07 is only bounded if candidate intake is explicit and the validation 
 
 ## Implementation Notes / What Was Done
 
-Short note describing what was actually implemented, especially if it differs from the plan.
+- Confirmed manual trade candidate intake already has the required explicit fields: portfolio, asset, action, quantity, and optional rationale.
+- Reused existing `TechnicalIndicators`, latest quote, `AIService.build_asset_context_pack`, sentiment trajectory, and divergence helpers.
+- Chose `POST /api/ai/strategy-validation/` as the paper-only validation insertion point.
+- Kept trade submission at `POST /api/portfolios/{id}/trades/` separate from validation.
+- Added `GET /api/ai/strategy-recommendations/` as the bounded review path for stored paper recommendations.
 
 ## Open Follow-Ups
 

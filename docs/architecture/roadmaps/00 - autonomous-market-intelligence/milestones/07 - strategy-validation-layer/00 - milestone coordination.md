@@ -26,7 +26,7 @@ GPT-5.4 / coordination
 
 ## Date Completed
 
-2026-04-21
+2026-04-24
 
 ## Branch
 
@@ -127,20 +127,20 @@ feat/autonomous/07-strategy-validation
 
 ## Implementation Notes / What Was Done
 
-Completed Milestone 07 setup.
+Completed Milestone 07 implementation.
 
 What was done:
 
-- marked SPEC-007 approved after the manual-trade opt-in decision was locked
-- created the Milestone 07 folder and task sequence for candidate intake, deterministic verdict and storage rules, advisory manual-trade UX, implementation, and release readiness
-- aligned the scaffold with the approved Milestone 07 decisions:
-  - explicit candidate-only validation
-  - bounded reuse of existing analysis artifacts
-  - three-verdict contract only
-  - paper-only recommendation logging as canonical output
-  - conspicuous opt-in `Should I?` action near manual trade execution
-  - no blocking or hidden validation in the manual trade flow
+- added explicit paper candidate validation through `POST /api/ai/strategy-validation/`
+- added canonical `StrategyRecommendation` storage for exact candidate and evidence snapshots
+- reused existing technical indicators, context packs, sentiment trajectory, and divergence helpers
+- exposed recent paper recommendations through `GET /api/ai/strategy-recommendations/`
+- added an opt-in `Should I?` action near manual trade execution
+- kept manual trade submission separate and non-blocking regardless of verdict
+- added deterministic backend coverage for `approve`, `reject`, `defer`, persistence, and non-blocking execution
+- added frontend coverage for explicit validation invocation and advisory rendering
 
 ## Open Follow-Ups
 
-- none
+- Consumers beyond manual trade review are intentionally deferred.
+- Decide before Milestone 08 whether dedicated operator review tooling should be hardened first.

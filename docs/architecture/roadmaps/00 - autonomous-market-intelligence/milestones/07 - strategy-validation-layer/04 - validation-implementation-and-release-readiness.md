@@ -14,19 +14,19 @@ SPEC-007 Strategy Validation with Technical and Context Inputs
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-YYYY-MM-DD
+2026-04-24
 
 ## Date Completed
 
-YYYY-MM-DD
+2026-04-24
 
 ## Branch
 
@@ -104,8 +104,13 @@ Milestone 07 should ship as a coherent user-facing recommendation layer, not as 
 
 ## Implementation Notes / What Was Done
 
-Short note describing what was actually implemented, especially if it differs from the plan.
+- Shipped explicit paper candidate validation end to end through `POST /api/ai/strategy-validation/`.
+- Persisted canonical recommendation records and exposed recent records through `GET /api/ai/strategy-recommendations/`.
+- Kept manual trade execution non-blocking, including after a rejected validation verdict.
+- Added backend verdict and persistence tests plus frontend opt-in advisory-flow tests.
+- Verified full backend tests, changed-file backend lint, frontend typecheck, and affected frontend tests.
 
 ## Open Follow-Ups
 
-- none
+- Consumers beyond manual trade review are intentionally deferred.
+- Dedicated operator review tooling can be hardened before Milestone 08 if broader audit workflows are needed.

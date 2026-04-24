@@ -1,7 +1,8 @@
 import uuid
 from decimal import Decimal
-from django.db import models
+
 from django.conf import settings
+from django.db import models
 
 
 PROVIDER_CHOICES = [
@@ -131,3 +132,45 @@ class AICost(models.Model):
 
     def __str__(self):
         return f"{self.ai_auth.user.username} - {self.model_name} ({self.cost_usd})"
+
+
+class StrategyRecommendation(models.Model):
+    VERDICT_CHOICES = [
+        ("approve", "Approve"),
+        ("reject", "Reject"),
+        ("defer", "Defer"),
+    ]
+    ACTION_CHOICES = [("BUY", "Buy"), ("SELL", "Sell")]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    candidate_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="strategy_recommendations",
+    )
+    portfolio = models.ForeignKey(
+        "portfolios.Portfolio",
+        on_delete=models.CASCADE,
+        related_name="strategy_recommendations",
+    )
+    asset = models.ForeignKey("markets.Asset", on_delete=models.CASCADE, related_name="strategy_recommendations")
+    action = models.CharField(max_length=4, choices=ACTION_CHOICES)
+    quantity = models.PositiveIntegerField()
+    candidate = models.JSONField()
+    technical_inputs = models.JSONField()
+    context_inputs = models.JSONField()
+    sentiment_trajectory_inputs = models.JSONField()
+    divergence_inputs = models.JSONField(null=True, blank=True)
+    verdict = models.CharField(max_length=10, choices=VERDICT_CHOICES)
+    rationale = models.TextField()
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "strategy_recommendations"
+        ordering = ["-recorded_at"]
+        indexes = [
+            models.Index(fields=["user", "-recorded_at"]),
+            models.Index(fields=["portfolio", "-recorded_at"]),
+            models.Index(fields=["asset", "-recorded_at"]),
+        ]

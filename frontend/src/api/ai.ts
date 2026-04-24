@@ -1,4 +1,5 @@
 import client from './client'
+import type { StrategyRecommendation } from '@/types'
 
 export interface AISettings {
   provider_name: string
@@ -62,5 +63,23 @@ export async function updateSettings(settings: Partial<AISettings>): Promise<AIS
 
 export async function testConnection(provider_name?: string, api_key?: string): Promise<{ status: string; provider: string; model: string; message: string }> {
   const response = await client.post('/ai/test_connection/', { provider_name, api_key })
+  return response.data
+}
+
+export async function validateStrategyCandidate(candidate: {
+  portfolio_id: string
+  asset_id: string
+  action: 'BUY' | 'SELL'
+  quantity: number
+  rationale?: string
+}): Promise<StrategyRecommendation> {
+  const response = await client.post('/ai/strategy-validation/', candidate)
+  return response.data
+}
+
+export async function getStrategyRecommendations(portfolioId: string): Promise<StrategyRecommendation[]> {
+  const response = await client.get('/ai/strategy-recommendations/', {
+    params: { portfolio_id: portfolioId },
+  })
   return response.data
 }

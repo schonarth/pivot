@@ -14,19 +14,19 @@ SPEC-007 Strategy Validation with Technical and Context Inputs
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-YYYY-MM-DD
+2026-04-24
 
 ## Date Completed
 
-YYYY-MM-DD
+2026-04-24
 
 ## Branch
 
@@ -113,7 +113,10 @@ Milestone 07 cannot stay honest if verdict semantics drift or if recommendation 
 
 ## Implementation Notes / What Was Done
 
-Short note describing what was actually implemented, especially if it differs from the plan.
+- Added canonical `StrategyRecommendation` records with candidate snapshot, technical inputs, context inputs, sentiment trajectory inputs, optional divergence inputs, verdict, rationale, and timestamp.
+- Added deterministic validation rules limited to `approve`, `reject`, and `defer`.
+- Added fixture-style regression coverage for aligned approval, hard rejection, insufficient-context defer, and stored recommendation persistence.
+- Kept rationale compact and subordinate to structured stored fields.
 
 ## Open Follow-Ups
 
