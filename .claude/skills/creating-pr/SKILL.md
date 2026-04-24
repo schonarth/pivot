@@ -30,6 +30,8 @@ Use this skill when opening a pull request for this repository.
 - Do not use plain text descriptions.
 - Do not target any branch other than `develop` unless the user explicitly says so.
 - Keep the description concise, accurate, and markdown formatted.
+- Do not include unrelated changes or files in the description.
+  - Notes like "There is an unrelated untracked ADR file in the worktree that is not part of this PR" should not be mentioned in the PR description.
 - Include tests run and any known limitations.
 
 ## Gotchas

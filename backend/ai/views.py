@@ -1,12 +1,18 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import AIAuth
-from .serializers import AIAuthSettingsSerializer, AIBudgetSerializer
-from .services import AIService
 from .discovery import OpportunityDiscoveryService
+from .models import AIAuth, StrategyRecommendation
+from .serializers import (
+    AIAuthSettingsSerializer,
+    AIBudgetSerializer,
+    StrategyRecommendationSerializer,
+    StrategyValidationRequestSerializer,
+)
+from .services import AIService
+from .strategy_validation import StrategyValidationService
 
 
 class AISettingsViewSet(viewsets.ViewSet):
@@ -140,6 +146,28 @@ class AISettingsViewSet(viewsets.ViewSet):
             {"status": "ok", **result},
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=False, methods=["post"], url_path="strategy-validation")
+    def strategy_validation(self, request):
+        serializer = StrategyValidationRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        service = StrategyValidationService(request.user)
+        try:
+            recommendation = service.validate(**serializer.validated_data)
+        except ValueError as exc:
+            return Response(
+                {"error": {"code": "invalid_candidate", "message": str(exc)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(StrategyRecommendationSerializer(recommendation).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"], url_path="strategy-recommendations")
+    def strategy_recommendations(self, request):
+        queryset = StrategyRecommendation.objects.filter(user=request.user).select_related("asset", "portfolio")
+        portfolio_id = request.query_params.get("portfolio_id")
+        if portfolio_id:
+            queryset = queryset.filter(portfolio_id=portfolio_id)
+        return Response(StrategyRecommendationSerializer(queryset[:20], many=True).data)
 
 
 class OpportunityDiscoveryViewSet(viewsets.ViewSet):

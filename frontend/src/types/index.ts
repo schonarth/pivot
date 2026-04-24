@@ -190,6 +190,25 @@ export interface AssetAIInsight {
   news_items: AssetAIInsightNewsItem[]
 }
 
+export interface StrategyRecommendation {
+  id: string
+  candidate_id: string
+  portfolio: string
+  asset: string
+  asset_display_symbol: string
+  asset_name: string
+  action: 'BUY' | 'SELL'
+  quantity: number
+  candidate: Record<string, unknown>
+  technical_inputs: Record<string, unknown>
+  context_inputs: Record<string, unknown>
+  sentiment_trajectory_inputs: Record<string, unknown>
+  divergence_inputs: Record<string, unknown> | null
+  verdict: 'approve' | 'reject' | 'defer'
+  rationale: string
+  recorded_at: string
+}
+
 export interface AlertTriggerTrade {
   action: 'BUY' | 'SELL'
   quantity: number
