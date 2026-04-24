@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -8,7 +9,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from .services import AIService, AIBudgetError
-from markets.models import Asset, AssetQuote, OHLCV, TechnicalIndicators
+from markets.models import Asset, AssetQuote, NewsItem, OHLCV, TechnicalIndicators
 from trading.models import Position
 
 logger = logging.getLogger("paper_trader.ai.discovery")
@@ -137,8 +138,8 @@ class OpportunityDiscoveryService:
 
         return 0, 0
 
-    def _context_bundle(self, asset: Asset) -> tuple[dict, int, list[dict]]:
-        context_items = AIService.build_asset_context_pack(asset, max_items=5)
+    def _context_bundle(self, asset: Asset, news_items=None) -> tuple[dict, int, list[dict]]:
+        context_items = AIService.build_asset_context_pack(asset, max_items=5, news_items=news_items)
         trajectory = AIService.build_sentiment_trajectory(context_items, {asset.display_symbol})
         support = "none"
         if context_items:
@@ -167,12 +168,22 @@ class OpportunityDiscoveryService:
         }
         return summary, len(context_items), context_items
 
-    def _technical_bundle(self, asset: Asset) -> dict | None:
-        ohlcv_rows = list(
-            OHLCV.objects.filter(asset=asset)
-            .order_by("date")
-            .values("date", "close", "volume")
-        )
+    def _technical_bundle(
+        self,
+        asset: Asset,
+        ohlcv_rows: list[dict] | None = None,
+        indicators: TechnicalIndicators | None = None,
+        indicators_loaded: bool = False,
+        quote: AssetQuote | None = None,
+        quote_loaded: bool = False,
+        news_items=None,
+    ) -> dict | None:
+        if ohlcv_rows is None:
+            ohlcv_rows = list(
+                OHLCV.objects.filter(asset=asset)
+                .order_by("date")
+                .values("date", "close", "volume")
+            )
         if len(ohlcv_rows) < 200:
             return None
 
@@ -182,7 +193,8 @@ class OpportunityDiscoveryService:
         latest_close = self._decimal(latest_row["close"])
         latest_date = latest_row["date"]
 
-        indicators = self._latest_indicators(asset)
+        if indicators is None and not indicators_loaded:
+            indicators = self._latest_indicators(asset)
         if indicators:
             ma_20 = self._decimal(indicators.ma_20) if indicators.ma_20 is not None else None
             ma_50 = self._decimal(indicators.ma_50) if indicators.ma_50 is not None else None
@@ -233,7 +245,7 @@ class OpportunityDiscoveryService:
         if rsi_14 is not None and Decimal("50") <= rsi_14 <= Decimal("70"):
             technical_score += 1
 
-        context_summary, context_items_count, context_items = self._context_bundle(asset)
+        context_summary, context_items_count, context_items = self._context_bundle(asset, news_items=news_items)
         context_score = 0
         if context_items_count:
             context_score += 1
@@ -242,7 +254,9 @@ class OpportunityDiscoveryService:
         if context_summary["trajectory"] in {"improving", "reversal"}:
             context_score += 1
 
-        freshness_score, freshness_age = self._freshness_score(self._latest_quote(asset), latest_date)
+        if quote is None and not quote_loaded:
+            quote = self._latest_quote(asset)
+        freshness_score, freshness_age = self._freshness_score(quote, latest_date)
 
         rank_score = (
             Decimal(technical_score)
@@ -483,9 +497,39 @@ class OpportunityDiscoveryService:
             .exclude(id__in=held_asset_ids)
             .order_by("display_symbol")
         )
+        asset_ids = [asset.id for asset in assets]
+        ohlcv_rows_by_asset = defaultdict(list)
+        for row in (
+            OHLCV.objects.filter(asset_id__in=asset_ids)
+            .order_by("asset_id", "date")
+            .values("asset_id", "date", "close", "volume")
+        ):
+            ohlcv_rows_by_asset[row["asset_id"]].append(row)
+
+        indicators_by_asset = {}
+        for indicator in TechnicalIndicators.objects.filter(asset_id__in=asset_ids).order_by("asset_id", "-date"):
+            indicators_by_asset.setdefault(indicator.asset_id, indicator)
+
+        quotes_by_asset = {}
+        for quote in AssetQuote.objects.filter(asset_id__in=asset_ids).order_by("asset_id", "-fetched_at"):
+            quotes_by_asset.setdefault(quote.asset_id, quote)
+
+        news_items = list(
+            NewsItem.objects.select_related("asset")
+            .order_by("-published_at", "-fetched_at")[:200]
+        )
+
         survivors: list[dict] = []
         for asset in assets:
-            bundle = self._technical_bundle(asset)
+            bundle = self._technical_bundle(
+                asset,
+                ohlcv_rows=ohlcv_rows_by_asset[asset.id],
+                indicators=indicators_by_asset.get(asset.id),
+                indicators_loaded=True,
+                quote=quotes_by_asset.get(asset.id),
+                quote_loaded=True,
+                news_items=news_items,
+            )
             if bundle is None:
                 continue
             survivors.append(bundle)

@@ -1,10 +1,10 @@
-from django.urls import path
+from django.core.cache import cache
+from django.db import connection
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from django.db import connection
-from django.core.cache import cache
+from config.query_observability import get_query_stats
 
 
 @api_view(["GET"])
@@ -30,10 +30,10 @@ def health_check(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def system_stats(request):
-    from portfolios.models import Portfolio
-    from trading.models import Trade
     from alerts.models import Alert
     from markets.models import Asset, AssetQuote
+    from portfolios.models import Portfolio
+    from trading.models import Trade
 
     stats = {
         "users": 0,
@@ -44,3 +44,9 @@ def system_stats(request):
         "quotes": AssetQuote.objects.count(),
     }
     return Response(stats)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def query_stats(request):
+    return Response(get_query_stats())

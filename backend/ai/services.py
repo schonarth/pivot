@@ -1141,16 +1141,17 @@ class AIService:
         return None, "", ""
 
     @classmethod
-    def build_asset_context_pack(cls, asset, max_items: int = TOTAL_CONTEXT_LIMIT) -> list[dict]:
+    def build_asset_context_pack(cls, asset, max_items: int = TOTAL_CONTEXT_LIMIT, news_items=None) -> list[dict]:
         from markets.models import NewsItem
 
         asset_sector, asset_industry = cls._resolved_asset_metadata(asset)
         candidates: list[dict] = []
 
-        news_items = (
-            NewsItem.objects.select_related("asset")
-            .order_by("-published_at", "-fetched_at")[:200]
-        )
+        if news_items is None:
+            news_items = (
+                NewsItem.objects.select_related("asset")
+                .order_by("-published_at", "-fetched_at")[:200]
+            )
 
         bucket_raw_counts: dict[str, int] = {bucket: 0 for bucket in BUCKET_ORDER}
 

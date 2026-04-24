@@ -7,6 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 from django.core.cache import cache
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from ai.discovery import OpportunityDiscoveryService
@@ -143,6 +145,38 @@ class TestOpportunityDiscovery:
         assert response.data["shortlist_count"] == 1
         assert response.data["shortlist"][0]["symbol"] == candidate_asset.display_symbol
         assert all(item["symbol"] != held_asset.display_symbol for item in response.data["shortlist"])
+
+    def test_discovery_bulk_loads_technical_inputs(self, user):
+        assets = [
+            Asset.objects.create(
+                display_symbol=f"BULK{index}",
+                provider_symbol=f"BULK{index}",
+                name=f"Bulk Candidate {index}",
+                market="US",
+                exchange="XNYS",
+                currency="USD",
+                sector="Tech",
+                industry="Software",
+                is_seeded=True,
+            )
+            for index in range(3)
+        ]
+        for asset in assets:
+            build_history(asset, Decimal("100.00"))
+
+        service = OpportunityDiscoveryService(user)
+
+        with CaptureQueriesContext(connection) as queries:
+            service.discover("US")
+
+        ohlcv_queries = [query for query in queries if 'FROM "ohlcv"' in query["sql"]]
+        indicator_queries = [query for query in queries if 'FROM "technical_indicators"' in query["sql"]]
+        quote_queries = [query for query in queries if 'FROM "asset_quotes"' in query["sql"]]
+        news_queries = [query for query in queries if 'FROM "news_items"' in query["sql"]]
+        assert len(ohlcv_queries) == 1
+        assert len(indicator_queries) == 1
+        assert len(quote_queries) == 1
+        assert len(news_queries) == 1
 
     def test_refinement_cache_reuses_and_invalidates_on_shortlist_change(self, user, db, monkeypatch):
         cache.clear()
