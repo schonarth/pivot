@@ -47,7 +47,7 @@
           v-model="searchQuery"
           type="text"
           placeholder="Type to search assets..."
-          @input="doSearch"
+          @input="handleSearchInput"
         >
         <div
           v-if="searchResults.length"
@@ -73,25 +73,36 @@
         style="margin-bottom: 1rem;"
       >
         <div style="display: flex; justify-content: space-between;">
-          <strong>{{ selectedAsset.display_symbol }}</strong>
+          <div>
+            <strong>{{ selectedAsset.display_symbol }}</strong>
+            <span
+              v-if="currentPrice?.market_open"
+              class="badge badge-success"
+              style="margin-left: 0.5rem;"
+            >Market Open</span>
+            <span
+              v-else-if="currentPrice"
+              class="badge badge-warning"
+              style="margin-left: 0.5rem;"
+            >Market Closed</span>
+          </div>
           <span>{{ selectedAsset.name }}</span>
         </div>
         <div
           v-if="currentPrice"
-          style="margin-top: 0.5rem;"
+          style="display: flex; justify-content: space-between; margin-top: 0.5rem;"
         >
-          <span>Current Price: </span>
-          <strong>{{ currentPrice.currency }} {{ Number(currentPrice.price).toFixed(4) }}</strong>
-          <span
-            v-if="currentPrice.market_open"
-            class="badge badge-success"
-            style="margin-left: 0.5rem;"
-          >Market Open</span>
-          <span
-            v-else
-            class="badge badge-warning"
-            style="margin-left: 0.5rem;"
-          >Market Closed</span>
+          <div>
+            <span>Current Price: </span>
+            <strong>{{ currentPrice.currency }} {{ Number(currentPrice.price).toFixed(2) }}</strong>
+          </div>
+          <div
+            v-if="currentPosition > 0"
+            :class="{ 'negative-balance': disallowSell }"
+          >
+            <span>Current position: </span>
+            <strong>{{ currentPosition }}</strong>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -135,7 +146,7 @@
       <div class="trade-actions">
         <button
           class="btn"
-          :disabled="!selectedAsset || !quantity || loading || disallowBuy"
+          :disabled="!selectedAsset || !quantity || loading || disallowBuy || disallowSell"
           @click="handleSubmit()"
         >
           <span
@@ -236,8 +247,8 @@ import MarketBadge from '@/components/MarketBadge.vue'
 import { searchAssets as apiSearchAssets, getAssetPrice, getAsset } from '@/api/assets'
 import { createTrade } from '@/api/trades'
 import { getStrategyRecommendations, validateStrategyCandidate } from '@/api/ai'
-import { getPortfolio } from '@/api/portfolios'
-import type { Asset, AssetQuote, Portfolio, StrategyRecommendation } from '@/types'
+import { getPortfolio, getPortfolioSummary } from '@/api/portfolios'
+import type { Asset, AssetQuote, Portfolio, PortfolioSummary, StrategyRecommendation } from '@/types'
 
 const t = {
   shouldI: 'Should I?',
@@ -262,6 +273,7 @@ const searchResults = ref<Asset[]>([])
 const selectedAsset = ref<Asset | null>(null)
 const currentPrice = ref<AssetQuote | null>(null)
 const portfolio = ref<Portfolio | null>(null)
+const portfolioSummary = ref<PortfolioSummary | null>(null)
 const quantity = ref<number | null>(null)
 const rationale = ref('')
 const error = ref('')
@@ -276,6 +288,18 @@ const recommendationsScrollTop = ref(0)
 const feeRate = ref<number>(0)
 const recommendationRowHeight = 40
 const recommendationViewportHeight = 320
+
+type ApiError = {
+  response?: {
+    data?: {
+      error?: {
+        message?: string
+        violations?: string[]
+        allow_bypass?: boolean
+      }
+    }
+  }
+}
 
 const preview = computed(() => {
   if (!selectedAsset.value || !quantity.value || !currentPrice.value) return null
@@ -302,6 +326,11 @@ const projectedBalanceDisplay = computed(() => {
 })
 
 const disallowBuy = computed(() => action.value === 'BUY' && projectedBalance.value !== null && projectedBalance.value < 0)
+const currentPosition = computed(() => {
+  if (!selectedAsset.value) return 0
+  return portfolioSummary.value?.positions.find(position => position.asset_id === selectedAsset.value?.id)?.quantity ?? 0
+})
+const disallowSell = computed(() => action.value === 'SELL' && quantity.value !== null && quantity.value > currentPosition.value)
 const recommendationDisplay = computed(() => {
   if (!latestRecommendation.value) return displayForVerdict('defer')
   return displayForVerdict(latestRecommendation.value.verdict)
@@ -323,19 +352,35 @@ let searchTimeout: ReturnType<typeof setTimeout>
 onMounted(async () => {
   try {
     portfolio.value = await getPortfolio(portfolioId)
+    portfolioSummary.value = await getPortfolioSummary(portfolioId)
     feeRate.value = portfolio.value.market === 'BR' ? 0.0003 : portfolio.value.market === 'US' ? 0 : 0.001
-  } catch {}
+  } catch {
+    portfolio.value = null
+    portfolioSummary.value = null
+  }
   try {
     recommendations.value = await getStrategyRecommendations(portfolioId)
-  } catch {}
+  } catch {
+    recommendations.value = []
+  }
 
   if (preselectedAssetId) {
     try {
       const asset = await getAsset(preselectedAssetId)
       await selectAsset(asset)
-    } catch {}
+    } catch {
+      selectedAsset.value = null
+    }
   }
 })
+
+function handleSearchInput() {
+  if (selectedAsset.value && searchQuery.value !== selectedAsset.value.display_symbol) {
+    selectedAsset.value = null
+    currentPrice.value = null
+  }
+  doSearch()
+}
 
 function doSearch() {
   clearTimeout(searchTimeout)
@@ -347,6 +392,7 @@ function doSearch() {
     try {
       if (!portfolioId) return
       portfolio.value = await getPortfolio(portfolioId)
+      portfolioSummary.value = await getPortfolioSummary(portfolioId)
       searchResults.value = await apiSearchAssets(searchQuery.value, portfolio.value.market)
       feeRate.value = portfolio.value.market === 'BR' ? 0.0003 : portfolio.value.market === 'US' ? 0 : 0.001
     } catch {
@@ -366,10 +412,15 @@ async function selectAsset(asset: Asset) {
   }
 }
 
+function apiError(error: unknown): ApiError {
+  return error as ApiError
+}
+
 async function handleSubmit(bypassGuardrails: boolean = false) {
   if (!portfolioId) return
   if (!selectedAsset.value || !quantity.value) return
   if (disallowBuy.value) return
+  if (disallowSell.value) return
   error.value = ''
   guardrailViolations.value = []
   canBypassGuardrails.value = false
@@ -384,10 +435,11 @@ async function handleSubmit(bypassGuardrails: boolean = false) {
       bypassGuardrails,
     )
     router.push(`/portfolios/${portfolioId}`)
-  } catch (e: any) {
-    error.value = e.response?.data?.error?.message || 'Trade failed'
-    guardrailViolations.value = e.response?.data?.error?.violations || []
-    canBypassGuardrails.value = Boolean(e.response?.data?.error?.allow_bypass)
+  } catch (e: unknown) {
+    const responseError = apiError(e).response?.data?.error
+    error.value = responseError?.message || 'Trade failed'
+    guardrailViolations.value = responseError?.violations || []
+    canBypassGuardrails.value = Boolean(responseError?.allow_bypass)
   } finally {
     loading.value = false
   }
@@ -407,8 +459,8 @@ async function handleValidation() {
       rationale: rationale.value || undefined,
     })
     recommendations.value = [latestRecommendation.value, ...recommendations.value.filter(item => item.id !== latestRecommendation.value?.id)]
-  } catch (e: any) {
-    validationError.value = e.response?.data?.error?.message || t.validationFailed
+  } catch (e: unknown) {
+    validationError.value = apiError(e).response?.data?.error?.message || t.validationFailed
   } finally {
     validationLoading.value = false
   }
