@@ -1,5 +1,8 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django_celery_beat.models import PeriodicTask, CrontabSchedule, IntervalSchedule
+
+from markets.tasks import fetch_market_prices
 
 
 class Command(BaseCommand):
@@ -7,7 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         price_interval, _ = IntervalSchedule.objects.get_or_create(
-            every=300,
+            every=settings.PRICE_REFRESH_INTERVAL,
             period=IntervalSchedule.SECONDS,
         )
 
@@ -59,6 +62,19 @@ class Command(BaseCommand):
             },
         )
 
+        untracked_interval, _ = IntervalSchedule.objects.get_or_create(
+            every=3600,
+            period=IntervalSchedule.SECONDS,
+        )
+
+        PeriodicTask.objects.update_or_create(
+            name="refresh_untracked_asset_prices",
+            defaults={
+                "task": "markets.tasks.refresh_untracked_asset_prices",
+                "interval": untracked_interval,
+            },
+        )
+
         sentiment_interval, _ = IntervalSchedule.objects.get_or_create(
             every=3600,
             period=IntervalSchedule.SECONDS,
@@ -84,5 +100,7 @@ class Command(BaseCommand):
                 "interval": discovery_interval,
             },
         )
+
+        fetch_market_prices.delay()
 
         self.stdout.write(self.style.SUCCESS("Periodic tasks configured."))

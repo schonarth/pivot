@@ -1,48 +1,99 @@
 import logging
-from datetime import date
+from collections import deque
+from datetime import date, timedelta
 from celery import shared_task
 from django.conf import settings
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 
 logger = logging.getLogger("paper_trader.markets")
+
+UNTRACKED_PRICE_REFRESH_BATCH_SIZE = 50
+UNTRACKED_PRICE_REFRESH_STATE = {
+    "seeded_for": None,
+    "pending": deque(),
+    "failed": set(),
+}
+
+
+def _refresh_asset(asset, refreshed_asset_ids, portfolios_to_notify):
+    from .quote_provider import refresh_asset_quote
+
+    quote = refresh_asset_quote(str(asset.id))
+    if quote is None:
+        return False
+
+    refreshed_asset_ids.append(str(asset.id))
+    for position in asset.positions.all():
+        portfolios_to_notify.add(str(position.portfolio_id))
+    for membership in asset.portfolio_watch_memberships.all():
+        portfolios_to_notify.add(str(membership.portfolio_id))
+    return True
+
+
+def _seed_untracked_price_refresh_state():
+    from django.utils import timezone
+    from .models import Asset
+    from portfolios.models import PortfolioWatchMembership
+    from trading.models import Position
+
+    cutoff = timezone.now() - timedelta(hours=24)
+    held_asset_ids = Position.objects.values_list("asset_id", flat=True).distinct()
+    watched_asset_ids = PortfolioWatchMembership.objects.values_list("asset_id", flat=True).distinct()
+    asset_ids = list(
+        Asset.objects.exclude(id__in=held_asset_ids)
+        .exclude(id__in=watched_asset_ids)
+        .exclude(alerts__status="active")
+        .annotate(latest_quote_at=Max("quotes__fetched_at"))
+        .filter(Q(latest_quote_at__lt=cutoff) | Q(latest_quote_at__isnull=True))
+        .order_by("latest_quote_at", "created_at", "id")
+        .values_list("id", flat=True)
+    )
+
+    today = timezone.localdate()
+    UNTRACKED_PRICE_REFRESH_STATE["seeded_for"] = today
+    UNTRACKED_PRICE_REFRESH_STATE["pending"] = deque(str(asset_id) for asset_id in asset_ids)
+    UNTRACKED_PRICE_REFRESH_STATE["failed"] = set()
+
+
+def _refresh_asset_group(asset_queryset, refreshed_asset_ids, portfolios_to_notify):
+    from .services import is_market_open
+
+    for asset in asset_queryset:
+        if not is_market_open(asset.market):
+            continue
+        try:
+            _refresh_asset(asset, refreshed_asset_ids, portfolios_to_notify)
+        except Exception:
+            logger.exception("Failed to refresh quote for asset %s", asset.display_symbol)
 
 
 @shared_task
 def fetch_market_prices():
     from .models import Asset
-    from .services import MARKET_CONFIGS, is_market_open
-    from .quote_provider import refresh_asset_quote
-
-    tracked_assets = Asset.objects.filter(
-        id__in=set(
-            list(
-                Asset.objects.filter(
-                    positions__isnull=False
-                ).values_list("id", flat=True)
-            )
-            + list(
-                Asset.objects.filter(
-                    alerts__status="active"
-                ).values_list("id", flat=True)
-            )
-        )
-    )
 
     refreshed_asset_ids = []
     portfolios_to_notify = set()
-    for market_code, cfg in MARKET_CONFIGS.items():
-        if not is_market_open(market_code):
-            continue
-        market_assets = tracked_assets.filter(market=market_code)
-        for asset in market_assets:
-            try:
-                quote = refresh_asset_quote(str(asset.id))
-                if quote:
-                    refreshed_asset_ids.append(str(asset.id))
-                    for position in asset.positions.all():
-                        portfolios_to_notify.add(str(position.portfolio_id))
-            except Exception:
-                logger.exception("Failed to refresh quote for asset %s", asset.display_symbol)
+    held_asset_ids = list(Asset.objects.filter(positions__isnull=False).distinct().values_list("id", flat=True))
+    watched_asset_ids = list(
+        Asset.objects.filter(portfolio_watch_memberships__isnull=False)
+        .exclude(id__in=held_asset_ids)
+        .distinct()
+        .values_list("id", flat=True)
+    )
+
+    held_assets = Asset.objects.filter(id__in=held_asset_ids).order_by("display_symbol")
+    watched_assets = Asset.objects.filter(id__in=watched_asset_ids).order_by("display_symbol")
+    alert_assets = (
+        Asset.objects.filter(alerts__status="active")
+        .exclude(id__in=held_asset_ids)
+        .exclude(id__in=watched_asset_ids)
+        .distinct()
+        .order_by("display_symbol")
+    )
+
+    _refresh_asset_group(held_assets, refreshed_asset_ids, portfolios_to_notify)
+    _refresh_asset_group(watched_assets, refreshed_asset_ids, portfolios_to_notify)
+    _refresh_asset_group(alert_assets, refreshed_asset_ids, portfolios_to_notify)
 
     if portfolios_to_notify:
         from realtime.services import publish_event
@@ -53,6 +104,36 @@ def fetch_market_prices():
         from alerts.tasks import evaluate_alerts_for_assets
 
         evaluate_alerts_for_assets.delay(refreshed_asset_ids)
+
+
+@shared_task
+def refresh_untracked_asset_prices():
+    from django.utils import timezone
+    from .quote_provider import refresh_asset_quote
+
+    today = timezone.localdate()
+    if UNTRACKED_PRICE_REFRESH_STATE["seeded_for"] != today:
+        _seed_untracked_price_refresh_state()
+
+    pending = UNTRACKED_PRICE_REFRESH_STATE["pending"]
+    if not pending:
+        return 0
+
+    refreshed_asset_ids = []
+    attempts = 0
+    while pending and attempts < UNTRACKED_PRICE_REFRESH_BATCH_SIZE:
+        asset_id = pending.popleft()
+        attempts += 1
+        try:
+            if refresh_asset_quote(asset_id):
+                refreshed_asset_ids.append(asset_id)
+            else:
+                UNTRACKED_PRICE_REFRESH_STATE["failed"].add(asset_id)
+        except Exception:
+            UNTRACKED_PRICE_REFRESH_STATE["failed"].add(asset_id)
+            logger.exception("Failed to refresh quote for asset %s", asset_id)
+
+    return len(refreshed_asset_ids)
 
 
 @shared_task
