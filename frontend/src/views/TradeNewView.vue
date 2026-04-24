@@ -289,6 +289,18 @@ const feeRate = ref<number>(0)
 const recommendationRowHeight = 40
 const recommendationViewportHeight = 320
 
+type ApiError = {
+  response?: {
+    data?: {
+      error?: {
+        message?: string
+        violations?: string[]
+        allow_bypass?: boolean
+      }
+    }
+  }
+}
+
 const preview = computed(() => {
   if (!selectedAsset.value || !quantity.value || !currentPrice.value) return null
   const price = Number(currentPrice.value.price)
@@ -400,6 +412,10 @@ async function selectAsset(asset: Asset) {
   }
 }
 
+function apiError(error: unknown): ApiError {
+  return error as ApiError
+}
+
 async function handleSubmit(bypassGuardrails: boolean = false) {
   if (!portfolioId) return
   if (!selectedAsset.value || !quantity.value) return
@@ -419,10 +435,11 @@ async function handleSubmit(bypassGuardrails: boolean = false) {
       bypassGuardrails,
     )
     router.push(`/portfolios/${portfolioId}`)
-  } catch (e: any) {
-    error.value = e.response?.data?.error?.message || 'Trade failed'
-    guardrailViolations.value = e.response?.data?.error?.violations || []
-    canBypassGuardrails.value = Boolean(e.response?.data?.error?.allow_bypass)
+  } catch (e: unknown) {
+    const responseError = apiError(e).response?.data?.error
+    error.value = responseError?.message || 'Trade failed'
+    guardrailViolations.value = responseError?.violations || []
+    canBypassGuardrails.value = Boolean(responseError?.allow_bypass)
   } finally {
     loading.value = false
   }
@@ -442,8 +459,8 @@ async function handleValidation() {
       rationale: rationale.value || undefined,
     })
     recommendations.value = [latestRecommendation.value, ...recommendations.value.filter(item => item.id !== latestRecommendation.value?.id)]
-  } catch (e: any) {
-    validationError.value = e.response?.data?.error?.message || t.validationFailed
+  } catch (e: unknown) {
+    validationError.value = apiError(e).response?.data?.error?.message || t.validationFailed
   } finally {
     validationLoading.value = false
   }
