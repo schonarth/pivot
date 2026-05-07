@@ -35,7 +35,7 @@
             Price
           </div>
           <div style="font-size: 1.5rem; font-weight: 600;">
-            {{ quote.currency }} {{ Number(quote.price).toFixed(4) }}
+            {{ quote.currency }} <UpdatingPrice :value="Number(quote.price).toFixed(4)" />
           </div>
         </div>
         <div>
@@ -212,6 +212,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MarketBadge from '@/components/MarketBadge.vue'
 import AssetAnalysisTab from '@/components/AssetAnalysisTab.vue'
+import UpdatingPrice from '@/components/UpdatingPrice.vue'
 import { getAsset, getAssetPrice, refreshAssetPrice } from '@/api/assets'
 import { addPortfolioWatchAsset, getPortfolios } from '@/api/portfolios'
 import { useToast } from '@/composables/useToast'

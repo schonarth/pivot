@@ -11,11 +11,11 @@
 
     <div style="display: flex; justify-content: space-between;">
       <span class="text-muted">Cash</span>
-      <span>{{ portfolio.base_currency }} {{ formatNum(portfolio.current_cash) }}</span>
+      <span>{{ portfolio.base_currency }} <UpdatingPrice :value="formatNum(portfolio.current_cash)" /></span>
     </div>
     <div style="display: flex; justify-content: space-between;">
       <span class="text-muted">Capital</span>
-      <span>{{ portfolio.base_currency }} {{ formatNum(portfolio.initial_capital) }}</span>
+      <span>{{ portfolio.base_currency }} <UpdatingPrice :value="formatNum(portfolio.initial_capital)" /></span>
     </div>
 
     <div
@@ -55,7 +55,7 @@
             Total Equity
           </div>
           <div style="font-weight: 600;">
-            {{ summary.base_currency }} {{ formatNum(summary.total_equity) }}
+            {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.total_equity)" />
           </div>
         </div>
         <div>
@@ -63,7 +63,7 @@
             Invested
           </div>
           <div style="font-weight: 600;">
-            {{ summary.base_currency }} {{ formatNum(summary.positions_value) }}
+            {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.positions_value)" />
           </div>
         </div>
         <div>
@@ -74,7 +74,7 @@
             :class="Number(summary.trading_pnl) >= 0 ? 'text-success' : 'text-danger'"
             style="font-weight: 600;"
           >
-            {{ summary.base_currency }} {{ formatNum(summary.trading_pnl) }}
+            {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.trading_pnl)" />
           </div>
         </div>
       </div>
@@ -94,6 +94,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MarketBadge from '@/components/MarketBadge.vue'
+import UpdatingPrice from '@/components/UpdatingPrice.vue'
 import { getPortfolioSummary } from '@/api/portfolios'
 import { formatCurrency } from '@/utils/numbers'
 import type { Portfolio, PortfolioSummary } from '@/types'

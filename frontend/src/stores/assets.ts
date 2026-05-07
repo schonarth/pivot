@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type AssetSortKey = 'display_symbol' | 'name' | 'market' | 'currency' | 'sector'
+export type AssetSortKey = 'display_symbol' | 'name' | 'market' | 'price' | 'currency' | 'sector'
 export type AssetSortDirection = 'asc' | 'desc'
 
 export const useAssetStore = defineStore('assets', () => {

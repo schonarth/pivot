@@ -73,6 +73,7 @@
               v-for="col in columns"
               :key="col.key"
               class="col-header"
+              :class="{ 'col-header-price': col.key === 'price' }"
               @click="setSort(col.key)"
             >
               <span>{{ col.label }}</span>
@@ -90,7 +91,7 @@
             :style="{ height: paddingTop + 'px' }"
           >
             <td
-              colspan="5"
+              colspan="6"
               style="padding: 0; border: none;"
             />
           </tr>
@@ -109,6 +110,9 @@
             <td class="cell">
               <MarketBadge :market="asset.market" />
             </td>
+            <td class="cell cell-price">
+              <UpdatingPrice :value="priceByAssetId[asset.id] ?? '-'" />
+            </td>
             <td class="cell">
               {{ asset.currency }}
             </td>
@@ -121,7 +125,7 @@
             :style="{ height: paddingBottom + 'px' }"
           >
             <td
-              colspan="5"
+              colspan="6"
               style="padding: 0; border: none;"
             />
           </tr>
@@ -134,23 +138,27 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
-import { lookupAssetSymbol, searchAssets } from '@/api/assets'
+import { getAssetPrice, lookupAssetSymbol, searchAssets } from '@/api/assets'
 import type { Asset } from '@/types'
 import MarketBadge from '@/components/MarketBadge.vue'
+import UpdatingPrice from '@/components/UpdatingPrice.vue'
 import { useAssetStore, type AssetSortKey } from '@/stores/assets'
+import { useWebSocketStore } from '@/stores/websocket'
+import { formatCurrency } from '@/utils/numbers'
 
 const ROW_HEIGHT = 48
 const OVERSCAN = 5
 
-const columns = [
-  { key: 'display_symbol' as AssetSortKey, label: 'Symbol',   index: 0 },
-  { key: 'name'           as AssetSortKey, label: 'Name',     index: 1 },
-  { key: 'market'         as AssetSortKey, label: 'Market',   index: 2 },
-  { key: 'currency'       as AssetSortKey, label: 'Currency', index: 3 },
-  { key: 'sector'         as AssetSortKey, label: 'Sector',   index: 4 },
+const columns: { key: AssetSortKey; label: string; index: number }[] = [
+  { key: 'display_symbol', label: 'Symbol',   index: 0 },
+  { key: 'name',           label: 'Name',     index: 1 },
+  { key: 'market',         label: 'Market',   index: 2 },
+  { key: 'price',          label: 'Price',    index: 3 },
+  { key: 'currency',       label: 'Currency', index: 4 },
+  { key: 'sector',         label: 'Sector',   index: 5 },
 ]
 
-const colWidths = ref([100, 320, 80, 90, 160])
+const colWidths = ref([100, 320, 80, 100, 90, 160])
 const tableWidth = computed(() => colWidths.value.reduce((s, w) => s + w, 0))
 const colPcts = computed(() => colWidths.value.map(w => (w / tableWidth.value * 100).toFixed(2) + '%'))
 
@@ -162,9 +170,13 @@ const markets = [
 ]
 
 const assetStore = useAssetStore()
+const ws = useWebSocketStore()
 const { marketFilter, sortDir, sortKey } = storeToRefs(assetStore)
 
 const search = ref('')
+const priceByAssetId = ref<Record<string, string>>({})
+const priceSortByAssetId = ref<Record<string, number>>({})
+const refreshingPrices = ref(false)
 
 function toggleMarket(code: string) {
   assetStore.toggleMarket(code)
@@ -176,6 +188,12 @@ const loading = ref(false)
 const sortedAssets = computed(() => {
   const key = sortKey.value
   return [...assets.value].sort((a, b) => {
+    if (key === 'price') {
+      const av = priceSortByAssetId.value[a.id] ?? Number.NEGATIVE_INFINITY
+      const bv = priceSortByAssetId.value[b.id] ?? Number.NEGATIVE_INFINITY
+      const cmp = av === bv ? a.display_symbol.localeCompare(b.display_symbol) : av - bv
+      return sortDir.value === 'asc' ? cmp : -cmp
+    }
     const av = (a[key] ?? '').toString().toLowerCase()
     const bv = (b[key] ?? '').toString().toLowerCase()
     const cmp = av.localeCompare(bv)
@@ -222,6 +240,9 @@ const resizeObserver = new ResizeObserver(measureContainer)
 
 onMounted(async () => {
   await doSearch()
+  ws.on('price.updated', () => {
+    loadAssetPrices()
+  })
   await nextTick()
   if (scrollEl.value) {
     resizeObserver.observe(scrollEl.value)
@@ -231,6 +252,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   resizeObserver.disconnect()
+  ws.off('price.updated')
   window.removeEventListener('mousemove', onResizeMove)
   window.removeEventListener('mouseup', stopResize)
 })
@@ -278,6 +300,7 @@ async function doSearch() {
         ? results
         : await lookupAssetSymbol(symbol, marketFilter.value || undefined)
     }
+    await loadAssetPrices()
 
     scrollTop.value = 0
     if (scrollEl.value) scrollEl.value.scrollTop = 0
@@ -291,6 +314,32 @@ async function doSearch() {
     throw error
   } finally {
     loading.value = false
+  }
+}
+
+async function loadAssetPrices() {
+  if (refreshingPrices.value) return
+  refreshingPrices.value = true
+  try {
+    const entries = await Promise.all(
+      assets.value.map((asset) =>
+        getAssetPrice(asset.id)
+          .then((quote) => [asset.id, formatCurrency(quote.price), Number(quote.price)] as const)
+          .catch(() => null)
+      )
+    )
+    const nextPrices = { ...priceByAssetId.value }
+    const nextSortPrices = { ...priceSortByAssetId.value }
+    for (const entry of entries) {
+      if (!entry) continue
+      const [id, price, sortPrice] = entry
+      nextPrices[id] = price
+      nextSortPrices[id] = sortPrice
+    }
+    priceByAssetId.value = nextPrices
+    priceSortByAssetId.value = nextSortPrices
+  } finally {
+    refreshingPrices.value = false
   }
 }
 </script>
@@ -334,6 +383,10 @@ async function doSearch() {
 .col-header:hover {
   background: var(--bg-tertiary);
 }
+.col-header-price {
+  padding-right: 2rem;
+  text-align: right;
+}
 .sort-icon {
   position: absolute;
   right: 12px;
@@ -361,5 +414,8 @@ async function doSearch() {
   text-overflow: ellipsis;
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
+}
+.cell-price {
+  text-align: right;
 }
 </style>

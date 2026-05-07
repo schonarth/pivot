@@ -68,7 +68,7 @@
           Total Equity
         </div>
         <div style="font-size: 1.25rem; font-weight: 600;">
-          {{ summary.base_currency }} {{ formatNum(summary.total_equity) }}
+          {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.total_equity)" />
         </div>
       </div>
       <div class="card">
@@ -79,7 +79,7 @@
           Cash
         </div>
         <div style="font-size: 1.25rem; font-weight: 600;">
-          {{ summary.base_currency }} {{ formatNum(summary.current_cash) }}
+          {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.current_cash)" />
         </div>
       </div>
       <div class="card">
@@ -90,7 +90,7 @@
           Invested
         </div>
         <div style="font-size: 1.25rem; font-weight: 600;">
-          {{ summary.base_currency }} {{ formatNum(summary.positions_value) }}
+          {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.positions_value)" />
         </div>
       </div>
       <div class="card">
@@ -104,7 +104,7 @@
           :class="Number(summary.trading_pnl) >= 0 ? 'text-success' : 'text-danger'"
           style="font-size: 1.25rem; font-weight: 600;"
         >
-          {{ summary.base_currency }} {{ formatNum(summary.trading_pnl) }}
+          {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.trading_pnl)" />
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@
           Net Deposits/Withdrawals
         </div>
         <div style="font-size: 1rem;">
-          {{ summary.base_currency }} {{ formatNum(summary.net_external_cash_flows) }}
+          {{ summary.base_currency }} <UpdatingPrice :value="formatNum(summary.net_external_cash_flows)" />
         </div>
       </div>
       <div class="card">
@@ -216,11 +216,11 @@
                 </router-link>
               </td>
               <td>{{ pos.quantity }}</td>
-              <td>{{ formatNum(pos.average_cost) }}</td>
-              <td>{{ formatNum(pos.current_price) }}</td>
-              <td>{{ formatNum(pos.market_value) }}</td>
+              <td><UpdatingPrice :value="formatNum(pos.average_cost)" /></td>
+              <td><UpdatingPrice :value="formatNum(pos.current_price)" /></td>
+              <td><UpdatingPrice :value="formatNum(pos.market_value)" /></td>
               <td :class="Number(pos.unrealized_pnl) >= 0 ? 'text-success' : 'text-danger'">
-                {{ formatNum(pos.unrealized_pnl) }}
+                <UpdatingPrice :value="formatNum(pos.unrealized_pnl)" />
               </td>
               <td style="text-align: center;">
                 <span
@@ -525,7 +525,7 @@
               class="text-muted"
               style="font-size: 0.8rem; margin-left: 0.5rem;"
             >
-              now {{ alertPrices[a.asset] }}
+              now <UpdatingPrice :value="alertPrices[a.asset]" />
             </span>
             <span
               v-if="a.auto_trade_enabled"
@@ -789,6 +789,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import MarketBadge from '@/components/MarketBadge.vue'
 import MonitoredSetAssessment from '@/components/MonitoredSetAssessment.vue'
 import StrategiesView from '@/views/StrategiesView.vue'
+import UpdatingPrice from '@/components/UpdatingPrice.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   addPortfolioWatchAsset,
@@ -868,6 +869,7 @@ const watchAssetResults = ref<Asset[]>([])
 const watchAssetSelected = ref<Asset | null>(null)
 const watchSaving = ref(false)
 const watchCreateError = ref('')
+const refreshingPrices = ref(false)
 
 const activeAlerts = computed(() => alerts.value.filter((a) => a.status === 'active'))
 const triggeredAlerts = computed(() => alerts.value.filter((a) => a.status === 'triggered'))
@@ -924,7 +926,7 @@ async function load() {
   }
   loading.value = true
   try {
-    summary.value = await getPortfolioSummary(portfolioId.value)
+    await loadSummary()
     timeline.value = await getPortfolioTimeline(portfolioId.value)
     await loadAlerts()
   } finally {
@@ -932,8 +934,16 @@ async function load() {
   }
 }
 
+async function loadSummary() {
+  summary.value = await getPortfolioSummary(portfolioId.value)
+}
+
 async function loadAlerts() {
   alerts.value = await getAlerts(portfolioId.value)
+  await loadAlertPrices()
+}
+
+async function loadAlertPrices() {
   const assetIds = [...new Set(activeAlerts.value.map((a) => a.asset))]
   const priceResults = await Promise.all(
     assetIds.map((id) => getAssetPrice(id).then((q) => ({ id, price: q.price })).catch(() => null))
@@ -943,6 +953,17 @@ async function loadAlerts() {
     if (result) map[result.id] = result.price
   }
   alertPrices.value = map
+}
+
+async function refreshOnScreenPrices() {
+  if (!portfolioId.value || portfolioId.value === 'undefined' || refreshingPrices.value) return
+  refreshingPrices.value = true
+  try {
+    await loadSummary()
+    await loadAlertPrices()
+  } finally {
+    refreshingPrices.value = false
+  }
 }
 
 async function loadPortfolioInsight() {
@@ -970,7 +991,7 @@ onMounted(() => {
     toast.warning('Price alert triggered')
   })
   ws.on('price.updated', () => {
-    load()
+    refreshOnScreenPrices()
   })
   ws.on('portfolio.updated', () => {
     load()
