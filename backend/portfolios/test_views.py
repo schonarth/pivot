@@ -1,11 +1,13 @@
 from decimal import Decimal
-
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from ai.services import AIService
+from conftest import AssetFactory, AssetQuoteFactory, PositionFactory
 from portfolios.models import PortfolioWatchMembership
 
 
@@ -66,6 +68,26 @@ class TestPortfolioEndpoints:
         assert response.status_code == 200
         assert response.data["watch_assets"][0]["asset_id"] == str(asset.id)
         assert response.data["watch_assets"][0]["symbol"] == asset.display_symbol
+
+    def test_portfolio_summary_bulk_loads_latest_quotes(self, authenticated_client, portfolio):
+        position_assets = [AssetFactory(market=portfolio.market, currency=portfolio.base_currency) for _ in range(2)]
+        watch_assets = [AssetFactory(market=portfolio.market, currency=portfolio.base_currency) for _ in range(2)]
+        for asset in position_assets:
+            AssetQuoteFactory(asset=asset, price=Decimal("125.00"))
+            PositionFactory(portfolio=portfolio, asset=asset, quantity=Decimal("2"), average_cost=Decimal("100.00"))
+        for asset in watch_assets:
+            AssetQuoteFactory(asset=asset, price=Decimal("80.00"))
+            PortfolioWatchMembership.objects.create(portfolio=portfolio, asset=asset)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = authenticated_client.get(f"/api/portfolios/{portfolio.id}/summary/")
+
+        quote_queries = [query for query in queries if 'FROM "asset_quotes"' in query["sql"]]
+        assert response.status_code == 200
+        assert Decimal(response.data["positions_value"]) == Decimal("500.00")
+        assert len(response.data["positions"]) == 2
+        assert len(response.data["watch_assets"]) == 2
+        assert len(quote_queries) == 1
 
     @patch.object(AIService, "analyze_scope")
     def test_portfolio_summary_does_not_compute_scope_insights(

@@ -248,16 +248,21 @@ def get_portfolio_scope_insight(portfolio, scope_type: str) -> dict | None:
 
 
 def get_portfolio_summary(portfolio) -> dict:
-    from markets.quote_provider import get_latest_quote
+    from markets.quote_provider import get_latest_quotes
     from .models import PortfolioWatchMembership
     from trading.models import Position
 
-    positions = Position.objects.filter(portfolio=portfolio).select_related("asset")
+    positions = list(Position.objects.filter(portfolio=portfolio).select_related("asset"))
+    watch_memberships = list(PortfolioWatchMembership.objects.filter(portfolio=portfolio).select_related("asset"))
+    asset_ids = {position.asset_id for position in positions}
+    asset_ids.update(membership.asset_id for membership in watch_memberships)
+    latest_quotes = get_latest_quotes(asset_ids)
+
     positions_value = Decimal("0")
     position_details = []
 
     for pos in positions:
-        quote = get_latest_quote(str(pos.asset_id))
+        quote = latest_quotes.get(pos.asset_id)
         current_price = quote.price if quote else pos.average_cost
         market_value = pos.quantity * current_price
         unrealized_pnl = market_value - (pos.quantity * pos.average_cost)
@@ -279,10 +284,9 @@ def get_portfolio_summary(portfolio) -> dict:
             }
         )
 
-    watch_memberships = PortfolioWatchMembership.objects.filter(portfolio=portfolio).select_related("asset")
     watch_details = []
     for membership in watch_memberships:
-        quote = get_latest_quote(str(membership.asset_id))
+        quote = latest_quotes.get(membership.asset_id)
         watch_details.append(
             {
                 "asset_id": str(membership.asset_id),

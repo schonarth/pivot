@@ -15,7 +15,6 @@ def fetch_yahoo_quote(provider_symbol: str) -> dict | None:
         import yfinance as yf
 
         ticker = yf.Ticker(provider_symbol)
-        info = ticker.fast_info
         hist = ticker.history(period="1d", interval="1m")
         if hist.empty:
             return None
@@ -89,3 +88,10 @@ def refresh_asset_quote(asset_id: str) -> AssetQuote | None:
 
 def get_latest_quote(asset_id: str) -> AssetQuote | None:
     return AssetQuote.objects.filter(asset_id=asset_id).order_by("-fetched_at").first()
+
+
+def get_latest_quotes(asset_ids) -> dict:
+    latest_quotes = {}
+    for quote in AssetQuote.objects.filter(asset_id__in=asset_ids).order_by("asset_id", "-fetched_at"):
+        latest_quotes.setdefault(quote.asset_id, quote)
+    return latest_quotes
