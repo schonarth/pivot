@@ -1,5 +1,7 @@
 from decimal import Decimal
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from ai.models import AIAuth, AICost
 from ai.services import AIService
@@ -51,6 +53,18 @@ class TestAISettingsEndpoints:
         assert response.data["instance_default_owned_by_current_user"] is True
         assert response.data["instance_default_owner_username"] == user.username
         assert response.data["can_use_instance_default"] is True
+
+    def test_get_settings_fetches_instance_default_once(self, authenticated_client, user):
+        service = AIService(user)
+        service.set_api_key("user-key")
+        service.set_instance_default_api_key("instance-key", allow_other_users=True)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = authenticated_client.get("/api/ai/get_settings/")
+
+        instance_key_queries = [query for query in queries if 'FROM "ai_instance_keys"' in query["sql"]]
+        assert response.status_code == 200
+        assert len(instance_key_queries) == 1
 
     def test_disabled_ai_blocks_credentials(self, user):
         service = AIService(user)

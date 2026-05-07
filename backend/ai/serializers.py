@@ -55,7 +55,9 @@ class AIAuthSettingsSerializer(serializers.ModelSerializer):
         return TASK_MODELS
 
     def _get_instance_default_key(self) -> AIInstanceKey | None:
-        return AIInstanceKey.objects.filter(pk=1).first()
+        if not hasattr(self, "_instance_default_key"):
+            self._instance_default_key = AIInstanceKey.objects.select_related("owner").filter(pk=1).first()
+        return self._instance_default_key
 
     def get_instance_default_enabled(self, obj) -> bool:
         instance_key = self._get_instance_default_key()
