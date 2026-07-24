@@ -86,6 +86,7 @@ class TestPortfolioEndpoints:
         assert response.status_code == 200
         assert Decimal(response.data["positions_value"]) == Decimal("500.00")
         assert len(response.data["positions"]) == 2
+        assert response.data["positions"][0]["current_price_as_of"] is not None
         assert len(response.data["watch_assets"]) == 2
         assert len(quote_queries) == 1
 

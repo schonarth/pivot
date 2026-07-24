@@ -49,6 +49,7 @@ export interface PositionDetail {
   quantity: number
   average_cost: string
   current_price: string
+  current_price_as_of?: string
   market_value: string
   unrealized_pnl: string
   currency: string

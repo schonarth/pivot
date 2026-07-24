@@ -275,6 +275,7 @@ def get_portfolio_summary(portfolio) -> dict:
                 "quantity": pos.quantity,
                 "average_cost": pos.average_cost,
                 "current_price": current_price,
+                "current_price_as_of": quote.as_of if quote else None,
                 "market_value": market_value,
                 "unrealized_pnl": unrealized_pnl,
                 "currency": pos.asset.currency,

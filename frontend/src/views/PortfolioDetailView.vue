@@ -196,13 +196,13 @@
         <table>
           <thead>
             <tr>
-              <th>Symbol</th>
-              <th>Qty</th>
-              <th>Avg Cost</th>
-              <th>Current Price</th>
-              <th>Market Value</th>
-              <th>Unrealized P&L</th>
-              <th />
+              <th :title="positionColumnTitles.symbol">Symbol</th>
+              <th :title="positionColumnTitles.quantity">Qty</th>
+              <th :title="positionColumnTitles.averageCost">Avg Cost</th>
+              <th :title="positionColumnTitles.currentPrice">Current Price</th>
+              <th :title="positionColumnTitles.marketValue">Market Value</th>
+              <th :title="positionColumnTitles.unrealizedPnl">Unrealized P&L</th>
+              <th :title="positionColumnTitles.alerts" />
             </tr>
           </thead>
           <tbody>
@@ -211,18 +211,29 @@
               :key="pos.asset_id"
             >
               <td>
-                <router-link :to="`/assets/${pos.asset_id}`">
+                <router-link
+                  :to="`/assets/${pos.asset_id}`"
+                  :title="pos.name"
+                >
                   {{ pos.symbol }}
                 </router-link>
               </td>
-              <td>{{ pos.quantity }}</td>
-              <td><UpdatingPrice :value="formatNum(pos.average_cost)" /></td>
-              <td><UpdatingPrice :value="formatNum(pos.current_price)" /></td>
-              <td><UpdatingPrice :value="formatNum(pos.market_value)" /></td>
-              <td :class="Number(pos.unrealized_pnl) >= 0 ? 'text-success' : 'text-danger'">
+              <td :title="positionColumnTitles.quantity">{{ pos.quantity }}</td>
+              <td :title="positionColumnTitles.averageCost"><UpdatingPrice :value="formatNum(pos.average_cost)" /></td>
+              <td :title="currentPriceTitle(pos)">
+                <UpdatingPrice :value="formatNum(pos.current_price)" />
+              </td>
+              <td :title="positionColumnTitles.marketValue"><UpdatingPrice :value="formatNum(pos.market_value)" /></td>
+              <td
+                :class="Number(pos.unrealized_pnl) >= 0 ? 'text-success' : 'text-danger'"
+                :title="positionColumnTitles.unrealizedPnl"
+              >
                 <UpdatingPrice :value="formatNum(pos.unrealized_pnl)" />
               </td>
-              <td style="text-align: center;">
+              <td
+                style="text-align: center;"
+                :title="positionColumnTitles.alerts"
+              >
                 <span
                   v-if="assetsWithAlerts.has(pos.asset_id)"
                   class="alert-indicator"
@@ -810,7 +821,7 @@ import { useNotifications } from '@/composables/useNotifications'
 import { useToast } from '@/composables/useToast'
 import { useAiEnabled } from '@/composables/useAiEnabled'
 import ScopeInsightCard from '@/components/ScopeInsightCard.vue'
-import type { Alert, Asset, PortfolioSummary, MonitoredAssetSummary } from '@/types'
+import type { Alert, Asset, PortfolioSummary, MonitoredAssetSummary, PositionDetail } from '@/types'
 
 const props = defineProps<{ id?: string | string[] }>()
 const route = useRoute()
@@ -819,6 +830,46 @@ const ws = useWebSocketStore()
 const { showNotification } = useNotifications()
 const toast = useToast()
 const { aiEnabled } = useAiEnabled()
+
+const positionColumnTitles = {
+  symbol: 'Company name',
+  quantity: 'How many shares you hold',
+  averageCost: 'Average price paid per share',
+  currentPrice: 'Current market price',
+  marketValue: 'Quantity multiplied by the current market price',
+  unrealizedPnl: 'Gain or loss on shares you still hold, before selling',
+  alerts: 'Active alerts for this asset',
+}
+
+function currentPriceTitle(position: PositionDetail) {
+  if (!position.current_price_as_of) return positionColumnTitles.currentPrice
+  return `${positionColumnTitles.currentPrice} as of ${formatQuoteAsOf(position.current_price_as_of)}`
+}
+
+function formatQuoteAsOf(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfYesterday = new Date(startOfToday)
+  startOfYesterday.setDate(startOfToday.getDate() - 1)
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (startOfDate.getTime() === startOfToday.getTime()) {
+    const elapsedMinutes = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 60000))
+    if (elapsedMinutes < 60) return `${elapsedMinutes || 1} ${elapsedMinutes === 1 ? 'minute' : 'minutes'} ago`
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60)
+    return `${elapsedHours} ${elapsedHours === 1 ? 'hour' : 'hours'} ago`
+  }
+
+  if (startOfDate.getTime() === startOfYesterday.getTime()) return 'yesterday'
+
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const day = date.toLocaleString('en-US', { day: '2-digit' })
+  return `${month}, ${day}`
+}
 
 const getPortfolioId = () => {
   const routePortfolioId = route.params.id as string | string[] | undefined
