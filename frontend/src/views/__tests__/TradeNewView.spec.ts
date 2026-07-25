@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TradeNewView from '../TradeNewView.vue'
 
 const push = vi.fn()
+const routeQuery: Record<string, string> = { asset: 'asset-1' }
 
 vi.mock('@/api/assets', () => ({
   searchAssets: vi.fn(),
@@ -17,6 +18,11 @@ vi.mock('@/api/trades', () => ({
 vi.mock('@/api/ai', () => ({
   validateStrategyCandidate: vi.fn(),
   getStrategyRecommendations: vi.fn(),
+  getRecommendationEvidence: vi.fn(),
+  createFactCorrection: vi.fn(),
+  createArtifactReview: vi.fn(),
+  setSourceStance: vi.fn(),
+  clearSourceStance: vi.fn(),
 }))
 
 vi.mock('@/api/portfolios', () => ({
@@ -27,7 +33,7 @@ vi.mock('@/api/portfolios', () => ({
 vi.mock('vue-router', () => ({
   useRoute: () => ({
     params: { id: 'portfolio-1' },
-    query: { asset: 'asset-1' },
+    query: routeQuery,
   }),
   useRouter: () => ({
     push,
@@ -36,11 +42,12 @@ vi.mock('vue-router', () => ({
 
 const { getAssetPrice, getAsset, searchAssets } = await import('@/api/assets')
 const { getPortfolio, getPortfolioSummary } = await import('@/api/portfolios')
-const { validateStrategyCandidate, getStrategyRecommendations } = await import('@/api/ai')
+const { validateStrategyCandidate, getStrategyRecommendations, getRecommendationEvidence } = await import('@/api/ai')
 const { createTrade } = await import('@/api/trades')
 
 describe('TradeNewView', () => {
   beforeEach(() => {
+    delete routeQuery.evidenceSourceStanceOverride
     vi.mocked(getPortfolio).mockReset()
     vi.mocked(getPortfolioSummary).mockReset()
     vi.mocked(getAsset).mockReset()
@@ -48,8 +55,10 @@ describe('TradeNewView', () => {
     vi.mocked(searchAssets).mockReset()
     vi.mocked(validateStrategyCandidate).mockReset()
     vi.mocked(getStrategyRecommendations).mockReset()
+    vi.mocked(getRecommendationEvidence).mockReset()
     vi.mocked(createTrade).mockReset()
     vi.mocked(getStrategyRecommendations).mockResolvedValue([])
+    vi.mocked(getRecommendationEvidence).mockResolvedValue({ evidence: [], fact_key_suggestions: [] })
     vi.mocked(getPortfolioSummary).mockResolvedValue({
       portfolio_id: 'portfolio-1',
       name: 'Primary',
@@ -375,7 +384,7 @@ describe('TradeNewView', () => {
     expect(wrapper.find('.scenario-frame p').text()).not.toContain('pressure .')
     expect(wrapper.text()).not.toContain('Technical vote: negative')
     expect(wrapper.text()).not.toContain('Treat the candidate as advisory')
-    expect(wrapper.text()).not.toContain('Review evidence')
+    expect(wrapper.text()).toContain('Evidence review')
     expect(wrapper.text()).toContain('Previous recommendations')
 
     await wrapper.find('.recommendation-toggle').trigger('click')
@@ -563,5 +572,60 @@ describe('TradeNewView', () => {
     expect(wrapper.find('.recommendation-detail-row').text()).toContain('Bull case')
     expect(wrapper.find('.recommendation-detail-row').text()).toContain('adverse for SELL')
     expect(wrapper.find('.recommendation-detail-row').text()).toContain('Stored bullish case is adverse to the sell.')
+  })
+
+  it('keeps original evidence read-only, normalizes fact keys, and leaves stance disabled with one eligible source', async () => {
+    vi.mocked(getStrategyRecommendations).mockResolvedValue([{
+      id: 'evidence-recommendation', candidate_id: 'candidate', portfolio: 'portfolio-1', asset: 'asset-1', asset_display_symbol: 'ALP1', asset_name: 'Alpha One', action: 'BUY', quantity: 1,
+      candidate: {}, technical_inputs: {}, context_inputs: {}, sentiment_trajectory_inputs: {}, divergence_inputs: null,
+      verdict: 'defer', rationale: 'Evidence review.', scenario_frames: [], recorded_at: '2026-04-16T00:00:00Z',
+    }] as never)
+    vi.mocked(getRecommendationEvidence).mockResolvedValue({
+      fact_key_suggestions: ['earnings_result'],
+      evidence: [{
+        news_item_id: 'news-1', excerpt: 'Alpha reports earnings', original_value: 'Alpha reports earnings', source_id: 'source-1', source_name: 'Source', source_stance: null,
+        eligible_source_count: 1, source_stance_controls_enabled: false, current_treatment: { kind: 'baseline', state: null, adjustment: 0 }, correction_history: [], artifact_review_history: [], categorical_uncertainty: null,
+      }],
+    })
+
+    const wrapper = mount(TradeNewView, { global: { stubs: { RouterLink: true, MarketBadge: true } } })
+    await flushPromises()
+    await wrapper.find('.recommendation-toggle').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.evidence-review input').exists()).toBe(false)
+    await wrapper.find('.evidence-review-trigger').trigger('click')
+    const original = wrapper.find('.evidence-review-modal input[readonly]')
+    expect(original.element).toHaveProperty('readOnly', true)
+    const factKey = wrapper.find('.evidence-review-modal input[list]')
+    await factKey.setValue('Earnings Result!')
+    await factKey.trigger('blur')
+    expect((factKey.element as HTMLInputElement).value).toBe('earnings_result')
+    expect(wrapper.find('.source-stance-trigger').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Source stance requires at least two eligible configured sources.')
+  })
+
+  it('requests the development override so enabled source-stance controls remain testable', async () => {
+    routeQuery.evidenceSourceStanceOverride = 'true'
+    vi.mocked(getStrategyRecommendations).mockResolvedValue([{
+      id: 'override-recommendation', candidate_id: 'candidate', portfolio: 'portfolio-1', asset: 'asset-1', asset_display_symbol: 'ALP1', asset_name: 'Alpha One', action: 'BUY', quantity: 1,
+      candidate: {}, technical_inputs: {}, context_inputs: {}, sentiment_trajectory_inputs: {}, divergence_inputs: null,
+      verdict: 'defer', rationale: 'Evidence review.', scenario_frames: [], recorded_at: '2026-04-16T00:00:00Z',
+    }] as never)
+    vi.mocked(getRecommendationEvidence).mockResolvedValue({
+      fact_key_suggestions: [],
+      evidence: [{
+        news_item_id: 'news-1', excerpt: 'Alpha reports earnings', original_value: 'Alpha reports earnings', source_id: 'source-1', source_name: 'Source', source_stance: null,
+        eligible_source_count: 1, source_stance_controls_enabled: true, current_treatment: { kind: 'baseline', state: null, adjustment: 0 }, correction_history: [], artifact_review_history: [], categorical_uncertainty: null,
+      }],
+    })
+
+    const wrapper = mount(TradeNewView, { global: { stubs: { RouterLink: true, MarketBadge: true } } })
+    await flushPromises()
+    await wrapper.find('.recommendation-toggle').trigger('click')
+    await flushPromises()
+
+    expect(getRecommendationEvidence).toHaveBeenCalledWith('override-recommendation', true)
+    expect(wrapper.find('.source-stance-trigger').attributes('disabled')).toBeUndefined()
   })
 })

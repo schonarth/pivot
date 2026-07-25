@@ -79,6 +79,10 @@ Agent-facing endpoints use an OTP-exchanged `agent_token` parameter in the reque
 | POST | `/api/mcp/backtest/create/` | Agent | Create backtest; body: `{agent_token, strategy_instance_id, date_from, date_to}`; returns backtest object. |
 | GET | `/api/mcp/backtest/{id}/results/` | Agent | Backtest results; pass `agent_token` in the query string. |
 | GET | `/api/mcp/agent-trades/` | Agent | Agent-executed trades; pass `agent_token` in the query string. |
+| GET | `/api/mcp/evidence/{recommendation_id}/` | Agent | Scoped evidence, treatment, correction history, invalidation state, and fact-key suggestions; pass `agent_token` in the query string. |
+| POST | `/api/mcp/evidence/fact-corrections/` | Agent | Create or supersede a correction from `{agent_token, news_item_id, fact_key, corrected_value, correction_state, reason}`; `original_value` is captured from the artifact. |
+| POST | `/api/mcp/evidence/artifact-reviews/` | Agent | Set `{agent_token, news_item_id, artifact_review_state, reason}`. |
+| POST | `/api/mcp/evidence/source-stances/` | Agent | Set `{agent_token, source_id, stance}` or clear with `{agent_token, source_id, clear: true}`. |
 | GET | `/api/mcp/schema/` | None | Endpoint schema and auth/caching strategies. |
 
 ## Health and System

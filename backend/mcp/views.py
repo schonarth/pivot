@@ -4,7 +4,15 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from accounts.models import User
 from .models import AgentToken
-from .serializers import OTPSerializer, AgentTokenSerializer, TokenExchangeSerializer
+from .serializers import (
+    OTPSerializer,
+    AgentTokenSerializer,
+    TokenExchangeSerializer,
+    FactCorrectionCreateSerializer,
+    ArtifactReviewCreateSerializer,
+    SourceStanceCreateSerializer,
+    EvidenceRecordSerializer,
+)
 from .services import generate_otp, validate_and_use_otp, generate_agent_token
 from realtime.services import publish_event
 
@@ -514,6 +522,136 @@ class BacktestResultsView(APIView):
         return Response(serializer.data)
 
 
+class MCPEvidenceView(APIView):
+    permission_classes = [AllowAny]
+
+    @staticmethod
+    def _agent(request, location):
+        token = request.query_params.get("agent_token") if location == "query" else request.data.get("agent_token")
+        if not token:
+            return None, Response({"error": "Missing agent_token"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            return AgentToken.objects.select_related("user").get(token=token), None
+        except AgentToken.DoesNotExist:
+            return None, Response({"error": "Invalid agent token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    @staticmethod
+    def _news_item_for_operator(operator, news_item_id):
+        from ai.models import StrategyRecommendation
+        from markets.models import NewsItem
+
+        for recommendation in StrategyRecommendation.objects.filter(user=operator).only("context_inputs"):
+            context_items = recommendation.context_inputs.get("items", [])
+            if any(
+                str(item.get("news_item_id")) == str(news_item_id)
+                for item in context_items
+                if isinstance(item, dict)
+            ):
+                return NewsItem.objects.filter(id=news_item_id).select_related("news_source").first()
+        return None
+
+
+class MCPEvidenceRetrieveView(MCPEvidenceView):
+    def get(self, request, recommendation_id):
+        agent, error = self._agent(request, "query")
+        if error:
+            return error
+
+        from ai.models import StrategyRecommendation
+        from ai.serializers import StrategyRecommendationSerializer
+        from ai.services import EvidenceReviewService
+
+        recommendation = StrategyRecommendation.objects.filter(user=agent.user, id=recommendation_id).first()
+        if recommendation is None:
+            return Response({"error": "Recommendation not found"}, status=status.HTTP_404_NOT_FOUND)
+        data = StrategyRecommendationSerializer(recommendation).data
+        return Response(
+            {
+                "recommendation_id": data["id"],
+                "evidence": data["evidence"],
+                "is_invalidated": data["is_invalidated"],
+                "latest_invalidation": data["latest_invalidation"],
+                "fact_key_suggestions": EvidenceReviewService(agent.user).fact_key_suggestions(),
+            }
+        )
+
+
+class MCPFactCorrectionCreateView(MCPEvidenceView):
+    def post(self, request):
+        agent, error = self._agent(request, "body")
+        if error:
+            return error
+        serializer = FactCorrectionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        news_item = self._news_item_for_operator(agent.user, data["news_item_id"])
+        if news_item is None:
+            return Response({"error": "Evidence artifact not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        from ai.services import EvidenceReviewService
+
+        correction = EvidenceReviewService(agent.user).create_fact_correction(
+            news_item=news_item,
+            fact_key=data["fact_key"],
+            corrected_value=data["corrected_value"],
+            correction_state=data["correction_state"],
+            reason=data["reason"],
+            actor=agent,
+        )
+        return Response(EvidenceRecordSerializer(correction).data, status=status.HTTP_201_CREATED)
+
+
+class MCPArtifactReviewCreateView(MCPEvidenceView):
+    def post(self, request):
+        agent, error = self._agent(request, "body")
+        if error:
+            return error
+        serializer = ArtifactReviewCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        news_item = self._news_item_for_operator(agent.user, data["news_item_id"])
+        if news_item is None:
+            return Response({"error": "Evidence artifact not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        from ai.services import EvidenceReviewService
+
+        review = EvidenceReviewService(agent.user).set_artifact_review(
+            news_item,
+            data["artifact_review_state"],
+            data["reason"],
+            actor=agent,
+        )
+        return Response(EvidenceRecordSerializer(review).data, status=status.HTTP_201_CREATED)
+
+
+class MCPSourceStanceCreateView(MCPEvidenceView):
+    def post(self, request):
+        agent, error = self._agent(request, "body")
+        if error:
+            return error
+        serializer = SourceStanceCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        from markets.models import NewsSource
+
+        source = NewsSource.objects.filter(id=data["source_id"]).first()
+        if source is None or not any(
+            self._news_item_for_operator(agent.user, item.id)
+            for item in source.news_items.only("id")
+        ):
+            return Response({"error": "Evidence source not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        from ai.services import EvidenceReviewService
+
+        service = EvidenceReviewService(agent.user)
+        if data["clear"]:
+            service.clear_source_stance(source, actor=agent)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        stance = service.set_source_stance(source, data["stance"], actor=agent)
+        return Response(EvidenceRecordSerializer(stance).data, status=status.HTTP_201_CREATED)
+
+
 class MCPSchemaView(APIView):
     permission_classes = [AllowAny]
 
@@ -677,6 +815,79 @@ class MCPSchemaView(APIView):
                     {'name': 'agent_token', 'type': 'string', 'required': True, 'location': 'query'}
                 ],
                 'response': {'id': 'UUID', 'status': 'string', 'result': 'object', 'created_at': 'ISO 8601'}
+            },
+            {
+                'name': 'Evidence Review',
+                'method': 'GET',
+                'path': '/api/mcp/evidence/<recommendation_id>/',
+                'description': (
+                    'Retrieve scoped evidence, correction history, treatment, invalidation state, and fact-key suggestions.'
+                ),
+                'auth': 'Agent token',
+                'params': [
+                    {'name': 'recommendation_id', 'type': 'UUID', 'required': True, 'location': 'path'},
+                    {'name': 'agent_token', 'type': 'string', 'required': True, 'location': 'query'},
+                ],
+                'response': {
+                    'recommendation_id': 'UUID',
+                    'evidence': 'array',
+                    'is_invalidated': 'boolean',
+                    'fact_key_suggestions': 'array',
+                },
+            },
+            {
+                'name': 'Create Fact Correction',
+                'method': 'POST',
+                'path': '/api/mcp/evidence/fact-corrections/',
+                'description': (
+                    'Create or supersede a scoped fact correction. Reuse a suggested fact_key when suitable; '
+                    'original_value is platform-captured and must not be supplied.'
+                ),
+                'auth': 'Agent token',
+                'params': [
+                    {'name': 'agent_token', 'type': 'string', 'required': True},
+                    {'name': 'news_item_id', 'type': 'UUID', 'required': True},
+                    {'name': 'fact_key', 'type': 'string', 'required': True},
+                    {'name': 'corrected_value', 'type': 'string', 'required': True},
+                    {'name': 'correction_state', 'type': 'corrected|disputed|stale', 'required': True},
+                    {'name': 'reason', 'type': 'string', 'required': True},
+                ],
+                'response': {
+                    'id': 'UUID',
+                    'fact_key': 'string',
+                    'original_value': 'string',
+                    'created_by_agent': 'object',
+                },
+            },
+            {
+                'name': 'Create Artifact Review',
+                'method': 'POST',
+                'path': '/api/mcp/evidence/artifact-reviews/',
+                'description': 'Create or supersede a scoped artifact review.',
+                'auth': 'Agent token',
+                'params': [
+                    {'name': 'agent_token', 'type': 'string', 'required': True},
+                    {'name': 'news_item_id', 'type': 'UUID', 'required': True},
+                    {'name': 'artifact_review_state', 'type': 'accepted|disputed|stale', 'required': True},
+                    {'name': 'reason', 'type': 'string', 'required': True},
+                ],
+                'response': {'id': 'UUID', 'artifact_review_state': 'string', 'created_by_agent': 'object'}
+            },
+            {
+                'name': 'Set or Clear Source Stance',
+                'method': 'POST',
+                'path': '/api/mcp/evidence/source-stances/',
+                'description': (
+                    'Set trusted or untrusted for a scoped source, or clear the active stance with clear=true.'
+                ),
+                'auth': 'Agent token',
+                'params': [
+                    {'name': 'agent_token', 'type': 'string', 'required': True},
+                    {'name': 'source_id', 'type': 'integer', 'required': True},
+                    {'name': 'stance', 'type': 'trusted|untrusted', 'required': False},
+                    {'name': 'clear', 'type': 'boolean', 'required': False},
+                ],
+                'response': {'id': 'UUID', 'stance': 'string', 'created_by_agent': 'object'}
             }
         ]
 

@@ -1,17 +1,28 @@
+from django.conf import settings
+from django.db.models import Prefetch, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from markets.models import NewsItem, NewsSource
+
 from .discovery import OpportunityDiscoveryService
-from .models import AIAuth, StrategyRecommendation
+from .models import AIAuth, ArtifactReview, FactCorrection, RecommendationInvalidation, StrategyRecommendation
 from .serializers import (
     AIAuthSettingsSerializer,
     AIBudgetSerializer,
+    ArtifactReviewRequestSerializer,
+    ArtifactReviewSerializer,
+    FactCorrectionRequestSerializer,
+    FactCorrectionSerializer,
+    SourceStanceRequestSerializer,
+    SourceStanceSerializer,
     StrategyRecommendationSerializer,
     StrategyValidationRequestSerializer,
 )
-from .services import AIService
+from .services import AIService, EvidenceReviewService
 from .strategy_validation import StrategyValidationService
 
 
@@ -167,6 +178,16 @@ class AISettingsViewSet(viewsets.ViewSet):
             StrategyRecommendation.objects.filter(user=request.user)
             .select_related("asset", "portfolio")
             .prefetch_related("scenario_frames")
+            .prefetch_related(
+                Prefetch(
+                    "invalidations",
+                    queryset=(
+                        RecommendationInvalidation.objects.select_related("fact_correction", "artifact_review")
+                        .order_by("-created_at")
+                    ),
+                    to_attr="_latest_invalidations",
+                )
+            )
         )
         portfolio_id = request.query_params.get("portfolio_id")
         if portfolio_id:
@@ -192,3 +213,117 @@ class OpportunityDiscoveryViewSet(viewsets.ViewSet):
             )
 
         return Response(result)
+
+
+class EvidenceReviewViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def recommendation_evidence(self, request, recommendation_id):
+        recommendation = get_object_or_404(
+            StrategyRecommendation.objects.select_related("asset"), id=recommendation_id, user=request.user
+        )
+        service = EvidenceReviewService(request.user)
+        eligible_source_count = NewsSource.objects.filter(
+            Q(market=recommendation.asset.market) | Q(market__isnull=True) | Q(market="")
+        ).count()
+        override_enabled = settings.DEBUG and request.query_params.get("enable_source_stance_controls") == "true"
+        evidence = service.evidence_for_recommendation(recommendation)
+        news_items = {
+            str(item.id): item
+            for item in NewsItem.objects.filter(
+                id__in=[item["news_item_id"] for item in evidence]
+            ).select_related("news_source")
+        }
+        for item in evidence:
+            news_item = news_items.get(item["news_item_id"])
+            if news_item is None:
+                continue
+            active_stance = service.active_source_stance(news_item.news_source)
+            item.update(
+                original_value=news_item.headline,
+                source_id=str(news_item.news_source_id),
+                source_name=news_item.news_source.institution_name,
+                source_stance=active_stance.stance if active_stance else None,
+                eligible_source_count=eligible_source_count,
+                source_stance_controls_enabled=eligible_source_count >= 2 or override_enabled,
+            )
+        return Response({"evidence": evidence, "fact_key_suggestions": service.fact_key_suggestions()})
+
+    def fact_key_suggestions(self, request):
+        return Response(EvidenceReviewService(request.user).fact_key_suggestions())
+
+    def news_item_evidence(self, request, news_item_id):
+        news_item = get_object_or_404(NewsItem.objects.select_related("news_source"), id=news_item_id)
+        service = EvidenceReviewService(request.user)
+        treatment = service.treatment_for_news_item(news_item)
+        corrections = FactCorrection.objects.filter(
+            operator=request.user, source_artifact_type="news_item", source_artifact_id=news_item.id
+        ).order_by("-created_at")
+        reviews = ArtifactReview.objects.filter(
+            operator=request.user, source_artifact_type="news_item", source_artifact_id=news_item.id
+        ).order_by("-created_at")
+        eligible_source_count = NewsSource.objects.filter(
+            Q(market=news_item.asset.market) | Q(market__isnull=True) | Q(market="")
+        ).count()
+        active_stance = service.active_source_stance(news_item.news_source)
+        return Response({
+            "evidence": [{
+                "news_item_id": str(news_item.id), "excerpt": news_item.headline, "original_value": news_item.headline,
+                "source_id": str(news_item.news_source_id), "source_name": news_item.news_source.institution_name,
+                "source_stance": active_stance.stance if active_stance else None,
+                "eligible_source_count": eligible_source_count,
+                "source_stance_controls_enabled": eligible_source_count >= 2,
+                "current_treatment": treatment,
+                "correction_history": FactCorrectionSerializer(corrections, many=True).data,
+                "artifact_review_history": ArtifactReviewSerializer(reviews, many=True).data,
+                "categorical_uncertainty": treatment["state"] if treatment["state"] in {"disputed", "stale"} else None,
+            }],
+            "fact_key_suggestions": service.fact_key_suggestions(),
+        })
+
+    def create_correction(self, request):
+        serializer = FactCorrectionRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        news_item = self._scoped_news_item(request.user, serializer.validated_data["news_item_id"])
+        try:
+            correction = EvidenceReviewService(request.user).create_fact_correction(
+                news_item=news_item,
+                fact_key=serializer.validated_data["fact_key"],
+                corrected_value=serializer.validated_data["corrected_value"],
+                correction_state=serializer.validated_data["correction_state"],
+                reason=serializer.validated_data["reason"],
+            )
+        except ValueError as exc:
+            return Response({"fact_key": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(FactCorrectionSerializer(correction).data, status=status.HTTP_201_CREATED)
+
+    def create_artifact_review(self, request):
+        serializer = ArtifactReviewRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        news_item = self._scoped_news_item(request.user, serializer.validated_data["news_item_id"])
+        review = EvidenceReviewService(request.user).set_artifact_review(
+            news_item,
+            serializer.validated_data["artifact_review_state"],
+            serializer.validated_data["reason"],
+        )
+        return Response(ArtifactReviewSerializer(review).data, status=status.HTTP_201_CREATED)
+
+    def create_source_stance(self, request):
+        serializer = SourceStanceRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        source = self._scoped_source(request.user, serializer.validated_data["source_id"])
+        stance = EvidenceReviewService(request.user).set_source_stance(source, serializer.validated_data["stance"])
+        return Response(SourceStanceSerializer(stance).data, status=status.HTTP_201_CREATED)
+
+    def clear_source_stance(self, request, source_id):
+        source = self._scoped_source(request.user, source_id)
+        EvidenceReviewService(request.user).clear_source_stance(source)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    def _scoped_news_item(user, news_item_id):
+        return get_object_or_404(NewsItem.objects.select_related("news_source"), id=news_item_id)
+
+    @staticmethod
+    def _scoped_source(user, source_id):
+        return get_object_or_404(NewsSource, id=source_id)

@@ -42,9 +42,9 @@
         </p>
       </div>
 
-      <div v-else-if="footnotes.length">
+      <div v-if="footnotes.length">
         <div class="section-label">
-          {{ footerLabel }}
+          {{ footnotesLabel || footerLabel }}
         </div>
         <ul class="footnote-list">
           <li
@@ -65,6 +65,7 @@
               {{ item.headline }}
             </span>
             <span class="text-muted">({{ item.source }})</span>
+            <HeadlineEvidenceControls :news-item-id="item.news_item_id" />
           </li>
         </ul>
       </div>
@@ -187,8 +188,10 @@ import type { DivergenceAnalysis } from '@/types'
 import DivergenceDirectionBlock from './DivergenceDirectionBlock.vue'
 import DivergenceVoteItem from './DivergenceVoteItem.vue'
 import SentimentIcon from './SentimentIcon.vue'
+import HeadlineEvidenceControls from './HeadlineEvidenceControls.vue'
 
 type FootnoteItem = {
+  news_item_id?: string
   headline: string
   url?: string
   source: string
@@ -212,6 +215,7 @@ const props = defineProps<{
   divergenceSummary?: string
   divergenceDisclosure?: string
   footerLabel: string
+  footnotesLabel?: string
   footerText?: string
   footnotes?: FootnoteItem[]
   priceTarget?: number | null

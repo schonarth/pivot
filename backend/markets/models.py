@@ -122,6 +122,19 @@ class TechnicalIndicators(models.Model):
         return f"{self.asset.display_symbol} {self.date} indicators"
 
 
+class NewsSource(models.Model):
+    institution_name = models.CharField(max_length=100)
+    feed_url = models.URLField(max_length=500, unique=True)
+    market = models.CharField(max_length=5, null=True, blank=True)
+    is_system_managed = models.BooleanField(default=True, editable=False)
+
+    class Meta:
+        db_table = "news_sources"
+
+    def __str__(self):
+        return self.institution_name
+
+
 class NewsItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="news_items")
@@ -129,6 +142,7 @@ class NewsItem(models.Model):
     summary = models.TextField(null=True, blank=True)
     url = models.URLField(max_length=500)
     source = models.CharField(max_length=100)
+    news_source = models.ForeignKey(NewsSource, on_delete=models.PROTECT, related_name="news_items")
     sentiment_score = models.DecimalField(
         max_digits=3, decimal_places=2, null=True, blank=True,
         help_text="Sentiment score from -1.0 (negative) to +1.0 (positive)"

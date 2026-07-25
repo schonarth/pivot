@@ -5,14 +5,15 @@ from unittest.mock import patch
 import pytest
 from django.utils import timezone
 
-from ai.models import StrategyRecommendation, StrategyScenarioFrame
+from ai.models import RecommendationInvalidation, StrategyRecommendation, StrategyScenarioFrame
+from ai.services import EvidenceReviewService
 from ai.strategy_validation import (
     _normalize_ai_scenario_payloads,
     _parse_scenario_response,
     validate_scenario_frame_payloads,
 )
-from markets.models import OHLCV, AssetQuote, NewsItem, TechnicalIndicators
-from portfolios.models import PortfolioGuardrails
+from markets.models import OHLCV, AssetQuote, NewsItem, NewsSource, TechnicalIndicators
+from portfolios.models import Portfolio, PortfolioGuardrails
 from trading.models import Position
 
 
@@ -58,18 +59,90 @@ def make_indicators(asset, *, positive=True):
 
 
 def make_news(asset, headline, score):
+    news_source, _ = NewsSource.objects.get_or_create(
+        feed_url="https://finance.yahoo.com/quote/{symbol}/news",
+        defaults={"institution_name": "Yahoo Finance"},
+    )
     return NewsItem.objects.create(
         asset=asset,
         headline=headline,
         url=f"https://example.com/{asset.display_symbol}/{score}",
         source="fixture",
+        news_source=news_source,
         sentiment_score=Decimal(str(score)),
         published_at=timezone.now(),
     )
 
 
+def make_recommendation(*, user, portfolio, asset, news_item):
+    return StrategyRecommendation.objects.create(
+        user=user,
+        portfolio=portfolio,
+        asset=asset,
+        action="BUY",
+        quantity=1,
+        candidate={"asset_symbol": asset.display_symbol},
+        technical_inputs={"vote": "positive"},
+        context_inputs={
+            "vote": "positive",
+            "items": [{"news_item_id": str(news_item.id), "headline": news_item.headline}],
+        },
+        sentiment_trajectory_inputs={"vote": "positive", "entries": []},
+        verdict="approve",
+        rationale="Stored recommendation rationale.",
+    )
 @pytest.mark.django_db
 class TestStrategyValidation:
+    def test_material_correction_invalidates_matching_recommendation_idempotently_and_keeps_snapshot(
+        self, user, portfolio, asset
+    ):
+        news_item = make_news(asset, f"{asset.display_symbol} raises guidance", "0.80")
+        recommendation = make_recommendation(user=user, portfolio=portfolio, asset=asset, news_item=news_item)
+        original_context = recommendation.context_inputs
+        service = EvidenceReviewService(user)
+
+        correction = service.create_fact_correction(
+            news_item=news_item,
+            fact_key="guidance",
+            corrected_value="Guidance was withdrawn.",
+            correction_state="corrected",
+            reason="Issuer correction.",
+        )
+        service.invalidate_recommendations_for_trigger(correction)
+
+        assert RecommendationInvalidation.objects.filter(
+            recommendation=recommendation, fact_correction=correction
+        ).count() == 1
+        recommendation.refresh_from_db()
+        assert recommendation.context_inputs == original_context
+
+    def test_artifact_disputed_invalidates_only_matching_operator_recommendation(self, user, user2, portfolio, asset):
+        news_item = make_news(asset, f"{asset.display_symbol} raises guidance", "0.80")
+        matching = make_recommendation(user=user, portfolio=portfolio, asset=asset, news_item=news_item)
+        other_portfolio = Portfolio.objects.create(
+            user=user2,
+            name="Other portfolio",
+            market=asset.market,
+            initial_capital=Decimal("1000.00"),
+            current_cash=Decimal("1000.00"),
+        )
+        other = make_recommendation(user=user2, portfolio=other_portfolio, asset=asset, news_item=news_item)
+
+        review = EvidenceReviewService(user).set_artifact_review(news_item, "disputed", "Conflicting report.")
+
+        assert RecommendationInvalidation.objects.filter(recommendation=matching, artifact_review=review).exists()
+        assert not RecommendationInvalidation.objects.filter(recommendation=other).exists()
+
+    def test_accepted_artifact_and_source_stance_do_not_invalidate_recommendations(self, user, portfolio, asset):
+        news_item = make_news(asset, f"{asset.display_symbol} raises guidance", "0.80")
+        recommendation = make_recommendation(user=user, portfolio=portfolio, asset=asset, news_item=news_item)
+        service = EvidenceReviewService(user)
+
+        service.set_artifact_review(news_item, "accepted", "Confirmed.")
+        service.set_source_stance(news_item.news_source, "untrusted")
+
+        assert not RecommendationInvalidation.objects.filter(recommendation=recommendation).exists()
+
     def test_strategy_validation_approves_aligned_candidate(self, authenticated_client, portfolio, asset):
         make_quote(asset)
         make_ohlcv(asset, [96, 98, 100, 102, 104])
@@ -167,6 +240,21 @@ class TestStrategyValidation:
         assert response.status_code == 201
         assert response.data["verdict"] == "defer"
         assert response.data["context_inputs"]["item_count"] == 0
+
+    def test_strategy_validation_defers_when_evidence_votes_conflict(self, authenticated_client, portfolio, asset):
+        make_quote(asset)
+        make_ohlcv(asset, [96, 98, 100, 102, 104])
+        make_indicators(asset, positive=True)
+        make_news(asset, f"{asset.display_symbol} cuts outlook after earnings miss", "-0.80")
+
+        response = authenticated_client.post(
+            "/api/ai/strategy-validation/",
+            {"portfolio_id": str(portfolio.id), "asset_id": str(asset.id), "action": "BUY", "quantity": 2},
+            format="json",
+        )
+
+        assert response.status_code == 201
+        assert response.data["verdict"] == "defer"
 
     @patch("realtime.services.publish_event")
     def test_rejected_validation_does_not_block_manual_trade(
@@ -448,9 +536,7 @@ class TestScenarioFrameValidation:
             )
 
     def test_parses_fenced_json_response(self):
-        frames = _parse_scenario_response(
-            '```json\n[{"scenario_case":"base","direction":"conditional"}]\n```'
-        )
+        frames = _parse_scenario_response('```json\n[{"scenario_case":"base","direction":"conditional"}]\n```')
 
         assert frames[0]["scenario_case"] == "base"
 

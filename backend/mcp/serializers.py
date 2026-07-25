@@ -56,3 +56,60 @@ class BacktestCreateSerializer(serializers.Serializer):
     strategy_instance_id = serializers.UUIDField()
     date_from = serializers.DateField()
     date_to = serializers.DateField()
+
+
+class EvidenceMutationSerializer(serializers.Serializer):
+    news_item_id = serializers.UUIDField()
+    reason = serializers.CharField()
+
+    def validate(self, attrs):
+        if "original_value" in self.initial_data:
+            raise serializers.ValidationError({"original_value": "This value is captured from the source artifact."})
+        return attrs
+
+
+class FactCorrectionCreateSerializer(EvidenceMutationSerializer):
+    fact_key = serializers.CharField(max_length=100)
+    corrected_value = serializers.CharField()
+    correction_state = serializers.ChoiceField(choices=["corrected", "disputed", "stale"])
+
+
+class ArtifactReviewCreateSerializer(EvidenceMutationSerializer):
+    artifact_review_state = serializers.ChoiceField(choices=["accepted", "disputed", "stale"])
+
+
+class SourceStanceCreateSerializer(serializers.Serializer):
+    source_id = serializers.IntegerField()
+    stance = serializers.ChoiceField(choices=["trusted", "untrusted"], required=False)
+    clear = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, attrs):
+        if attrs["clear"] == ("stance" in attrs):
+            raise serializers.ValidationError("Provide either stance or clear.")
+        return attrs
+
+
+class EvidenceRecordSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    source_artifact_type = serializers.CharField(read_only=True)
+    source_artifact_id = serializers.UUIDField(read_only=True)
+    source = serializers.IntegerField(source="source_id", read_only=True)
+    fact_key = serializers.CharField(read_only=True, required=False)
+    original_value = serializers.CharField(read_only=True, required=False)
+    corrected_value = serializers.CharField(read_only=True, required=False)
+    correction_state = serializers.CharField(read_only=True, required=False)
+    artifact_review_state = serializers.CharField(read_only=True, required=False)
+    stance = serializers.CharField(read_only=True, required=False)
+    reason = serializers.CharField(read_only=True, required=False)
+    created_at = serializers.DateTimeField(read_only=True)
+    superseded_at = serializers.DateTimeField(read_only=True)
+    created_by_agent = serializers.SerializerMethodField()
+
+    def get_created_by_agent(self, obj):
+        if not obj.created_by_agent_id:
+            return None
+        return {
+            "id": obj.created_by_agent_id,
+            "name": obj.created_by_agent.name,
+            "origin": obj.created_by_agent.origin,
+        }

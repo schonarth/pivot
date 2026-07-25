@@ -10,7 +10,16 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from .encryption import KeyEncryption
-from .models import AIAuth, AICost, AIInstanceKey
+from .models import (
+    AIAuth,
+    AICost,
+    AIInstanceKey,
+    ArtifactReview,
+    FactCorrection,
+    RecommendationInvalidation,
+    SourceStance,
+    StrategyRecommendation,
+)
 from .news_context_policy import (
     ASSET_METADATA_OVERRIDES,
     BUCKET_LIMITS,
@@ -28,7 +37,248 @@ logger = logging.getLogger("paper_trader.ai")
 
 class AIBudgetError(Exception):
     """Raised when AI budget limit is exceeded."""
+
     pass
+
+
+class EvidenceReviewService:
+    def __init__(self, operator):
+        self.operator = operator
+
+    def _audit_agent(self, actor):
+        if actor is not None and actor.user_id != self.operator.id:
+            raise ValueError("assistant does not belong to operator")
+        return actor
+
+    @staticmethod
+    def normalize_fact_key(value: str) -> str:
+        normalized = re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+        if not normalized:
+            raise ValueError("fact_key must contain letters or numbers")
+        return normalized
+
+    def create_fact_correction(
+        self,
+        *,
+        news_item,
+        fact_key: str,
+        corrected_value: str,
+        correction_state: str,
+        reason: str,
+        actor=None,
+    ) -> FactCorrection:
+        actor = self._audit_agent(actor)
+        normalized_fact_key = self.normalize_fact_key(fact_key)
+        now = timezone.now()
+        FactCorrection.objects.filter(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id=news_item.id,
+            fact_key=normalized_fact_key,
+            superseded_at__isnull=True,
+        ).update(superseded_at=now, superseded_by=self.operator, superseded_by_agent=actor)
+        correction = FactCorrection.objects.create(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id=news_item.id,
+            source=news_item.news_source,
+            fact_key=normalized_fact_key,
+            original_value=news_item.headline,
+            corrected_value=corrected_value,
+            correction_state=correction_state,
+            reason=reason,
+            created_by=self.operator,
+            created_by_agent=actor,
+        )
+        self.invalidate_recommendations_for_trigger(correction)
+        AIService.invalidate_cached_insights(self.operator)
+        return correction
+
+    def fact_key_suggestions(self) -> list[str]:
+        return list(
+            FactCorrection.objects.filter(operator=self.operator, superseded_at__isnull=True)
+            .order_by("fact_key")
+            .values_list("fact_key", flat=True)
+            .distinct()
+        )
+
+    def set_artifact_review(self, news_item, artifact_review_state: str, reason: str, actor=None) -> ArtifactReview:
+        actor = self._audit_agent(actor)
+        now = timezone.now()
+        ArtifactReview.objects.filter(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id=news_item.id,
+            superseded_at__isnull=True,
+        ).update(superseded_at=now, superseded_by=self.operator, superseded_by_agent=actor)
+        artifact_review = ArtifactReview.objects.create(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id=news_item.id,
+            source=news_item.news_source,
+            artifact_review_state=artifact_review_state,
+            reason=reason,
+            created_by=self.operator,
+            created_by_agent=actor,
+        )
+        if artifact_review.artifact_review_state in {"disputed", "stale"}:
+            self.invalidate_recommendations_for_trigger(artifact_review)
+        AIService.invalidate_cached_insights(self.operator)
+        return artifact_review
+
+    def invalidate_recommendations_for_trigger(self, trigger) -> None:
+        if isinstance(trigger, FactCorrection):
+            invalidation_fields = {"fact_correction": trigger}
+        elif isinstance(trigger, ArtifactReview) and trigger.artifact_review_state in {"disputed", "stale"}:
+            invalidation_fields = {"artifact_review": trigger}
+        else:
+            return
+
+        artifact_id = str(trigger.source_artifact_id)
+        recommendations = StrategyRecommendation.objects.filter(user=self.operator).only("id", "context_inputs")
+        for recommendation in recommendations:
+            context_items = recommendation.context_inputs.get("items", [])
+            if any(str(item.get("news_item_id")) == artifact_id for item in context_items if isinstance(item, dict)):
+                RecommendationInvalidation.objects.get_or_create(
+                    recommendation=recommendation,
+                    defaults=invalidation_fields,
+                    **invalidation_fields,
+                )
+
+    def evidence_for_recommendation(self, recommendation: StrategyRecommendation) -> list[dict]:
+        from markets.models import NewsItem
+
+        context_items = recommendation.context_inputs.get("items", [])
+        artifact_ids = [
+            item.get("news_item_id")
+            for item in context_items
+            if isinstance(item, dict) and item.get("news_item_id")
+        ]
+        news_items = {
+            str(item.id): item
+            for item in NewsItem.objects.filter(id__in=artifact_ids).select_related("news_source")
+        }
+        corrections = FactCorrection.objects.filter(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id__in=artifact_ids,
+        ).order_by("-created_at")
+        reviews = ArtifactReview.objects.filter(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id__in=artifact_ids,
+        ).order_by("-created_at")
+        corrections_by_artifact: dict[str, list[FactCorrection]] = {}
+        reviews_by_artifact: dict[str, list[ArtifactReview]] = {}
+        for correction in corrections:
+            corrections_by_artifact.setdefault(str(correction.source_artifact_id), []).append(correction)
+        for review in reviews:
+            reviews_by_artifact.setdefault(str(review.source_artifact_id), []).append(review)
+
+        evidence = []
+        for item in context_items:
+            if not isinstance(item, dict) or not item.get("news_item_id"):
+                continue
+            artifact_id = str(item["news_item_id"])
+            news_item = news_items.get(artifact_id)
+            treatment = self.treatment_for_news_item(news_item) if news_item else {
+                "kind": "baseline", "state": None, "adjustment": 0
+            }
+            evidence.append(
+                {
+                    "news_item_id": artifact_id,
+                    "excerpt": item.get("headline", ""),
+                    "current_treatment": treatment,
+                    "correction_history": [
+                        {
+                            "id": str(correction.id),
+                            "fact_key": correction.fact_key,
+                            "original_value": correction.original_value,
+                            "corrected_value": correction.corrected_value,
+                            "correction_state": correction.correction_state,
+                            "reason": correction.reason,
+                            "created_at": correction.created_at,
+                            "superseded_at": correction.superseded_at,
+                        }
+                        for correction in corrections_by_artifact.get(artifact_id, [])
+                    ],
+                    "artifact_review_history": [
+                        {
+                            "id": str(review.id),
+                            "artifact_review_state": review.artifact_review_state,
+                            "reason": review.reason,
+                            "created_at": review.created_at,
+                            "superseded_at": review.superseded_at,
+                        }
+                        for review in reviews_by_artifact.get(artifact_id, [])
+                    ],
+                    "categorical_uncertainty": treatment["state"]
+                    if treatment["state"] in {"disputed", "stale"}
+                    else None,
+                }
+            )
+        return evidence
+
+    def set_source_stance(self, source, stance: str, actor=None) -> SourceStance:
+        actor = self._audit_agent(actor)
+        now = timezone.now()
+        SourceStance.objects.filter(
+            operator=self.operator,
+            source=source,
+            superseded_at__isnull=True,
+        ).update(superseded_at=now, superseded_by=self.operator, superseded_by_agent=actor)
+        source_stance = SourceStance.objects.create(
+            operator=self.operator,
+            source=source,
+            stance=stance,
+            created_by=self.operator,
+            created_by_agent=actor,
+        )
+        AIService.invalidate_cached_insights(self.operator)
+        return source_stance
+
+    def clear_source_stance(self, source, actor=None) -> None:
+        actor = self._audit_agent(actor)
+        SourceStance.objects.filter(
+            operator=self.operator,
+            source=source,
+            superseded_at__isnull=True,
+        ).update(superseded_at=timezone.now(), superseded_by=self.operator, superseded_by_agent=actor)
+        AIService.invalidate_cached_insights(self.operator)
+
+    def active_source_stance(self, source) -> SourceStance | None:
+        return SourceStance.objects.filter(
+            operator=self.operator,
+            source=source,
+            superseded_at__isnull=True,
+        ).first()
+
+    def treatment_for_news_item(self, news_item) -> dict:
+        correction = FactCorrection.objects.filter(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id=news_item.id,
+            superseded_at__isnull=True,
+        ).first()
+        if correction:
+            adjustment = -1 if correction.correction_state in {"disputed", "stale"} else 0
+            return {"kind": "fact_correction", "state": correction.correction_state, "adjustment": adjustment}
+
+        artifact_review = ArtifactReview.objects.filter(
+            operator=self.operator,
+            source_artifact_type="news_item",
+            source_artifact_id=news_item.id,
+            superseded_at__isnull=True,
+        ).first()
+        if artifact_review:
+            adjustment = 1 if artifact_review.artifact_review_state == "accepted" else -1
+            return {"kind": "artifact_review", "state": artifact_review.artifact_review_state, "adjustment": adjustment}
+
+        source_stance = self.active_source_stance(news_item.news_source)
+        if source_stance:
+            adjustment = 1 if source_stance.stance == "trusted" else -1
+            return {"kind": "source_stance", "state": source_stance.stance, "adjustment": adjustment}
+        return {"kind": "baseline", "state": None, "adjustment": 0}
 
 
 class AIService:
@@ -43,6 +293,7 @@ class AIService:
     DIVERGENCE_LOOKBACK_DAYS = 5
     DIVERGENCE_FLAT_MOVE_THRESHOLD = Decimal("0.005")
     DIVERGENCE_SIGNAL_THRESHOLD = Decimal("0.2")
+    INSIGHT_CACHE_REGISTRY_TTL = 86400
     POSITIVE_HEADLINE_MARKERS = {
         "beats",
         "beat",
@@ -90,6 +341,23 @@ class AIService:
         self.user = user
         self.ai_auth, _ = AIAuth.objects.get_or_create(user=user)
 
+    @classmethod
+    def _insight_cache_registry_key(cls, user) -> str:
+        return f"ai_insight_cache_keys:{user.id}"
+
+    @classmethod
+    def track_cached_insight_key(cls, user, cache_key: str) -> None:
+        registry_key = cls._insight_cache_registry_key(user)
+        keys = set(cache.get(registry_key, []))
+        keys.add(cache_key)
+        cache.set(registry_key, sorted(keys), timeout=cls.INSIGHT_CACHE_REGISTRY_TTL)
+
+    @classmethod
+    def invalidate_cached_insights(cls, user) -> None:
+        registry_key = cls._insight_cache_registry_key(user)
+        cache.delete_many(cache.get(registry_key, []))
+        cache.delete(registry_key)
+
     def has_ai_enabled(self) -> bool:
         """Check if user has AI enabled and has a usable API key configured."""
         if not self.ai_auth.enabled:
@@ -100,10 +368,9 @@ class AIService:
     def get_monthly_usage_usd(self) -> Decimal:
         """Get total usage for current month in USD."""
         month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        total = AICost.objects.filter(
-            ai_auth=self.ai_auth,
-            created_at__gte=month_start
-        ).aggregate(total=Sum("cost_usd"))["total"]
+        total = AICost.objects.filter(ai_auth=self.ai_auth, created_at__gte=month_start).aggregate(
+            total=Sum("cost_usd")
+        )["total"]
 
         return total or Decimal("0")
 
@@ -144,8 +411,9 @@ class AIService:
                 f"${self.get_monthly_budget_usd():.2f} spent this month."
             )
 
-    def log_call(self, model_name: str, prompt_tokens: int, completion_tokens: int,
-                 cost_usd: Decimal, task_type: str) -> AICost:
+    def log_call(
+        self, model_name: str, prompt_tokens: int, completion_tokens: int, cost_usd: Decimal, task_type: str
+    ) -> AICost:
         """Log an AI API call and its cost."""
         if not self.ai_auth:
             raise ValueError("No AI auth configured for this user")
@@ -280,7 +548,7 @@ class AIService:
             if start == -1 or end == -1 or end <= start:
                 return None
             try:
-                return json.loads(cleaned[start:end + 1])
+                return json.loads(cleaned[start : end + 1])
             except json.JSONDecodeError:
                 return None
 
@@ -400,16 +668,19 @@ class AIService:
         for item in context_items:
             prior_item = cls._best_prior_continuity_match(asset, item)
             label = "new" if prior_item is None else cls._continuity_label(item, prior_item)
-            story_items.append({
-                "label": label,
-                "news_item_id": item.get("news_item_id"),
-                "headline": item["headline"],
-                "source": item["source"],
-                "published_at": item.get("published_at"),
-                "sentiment": cls._sentiment_label(item.get("sentiment_score")),
-            })
+            story_items.append(
+                {
+                    "label": label,
+                    "news_item_id": item.get("news_item_id"),
+                    "headline": item["headline"],
+                    "source": item["source"],
+                    "published_at": item.get("published_at"),
+                    "sentiment": cls._sentiment_label(item.get("sentiment_score")),
+                }
+            )
 
         label_rank = {"shifted": 0, "continuing": 1, "new": 2}
+
         def sort_key(item: dict) -> tuple[int, float, str]:
             published_at = item["published_at"] or timezone.now()
             if timezone.is_naive(published_at):
@@ -424,7 +695,7 @@ class AIService:
             story_items,
             key=sort_key,
         )
-        return ordered[:cls.CONTINUITY_PROMPT_LIMIT]
+        return ordered[: cls.CONTINUITY_PROMPT_LIMIT]
 
     @classmethod
     def _trajectory_sentiment_value(cls, sentiment_label: str | None) -> int:
@@ -463,12 +734,8 @@ class AIService:
         early_average = cls._trajectory_weighted_average(values[:midpoint])
         late_average = cls._trajectory_weighted_average(values[midpoint:])
 
-        if (
-            early_average <= -cls.TRAJECTORY_SCORE_THRESHOLD
-            and late_average >= cls.TRAJECTORY_SCORE_THRESHOLD
-        ) or (
-            early_average >= cls.TRAJECTORY_SCORE_THRESHOLD
-            and late_average <= -cls.TRAJECTORY_SCORE_THRESHOLD
+        if (early_average <= -cls.TRAJECTORY_SCORE_THRESHOLD and late_average >= cls.TRAJECTORY_SCORE_THRESHOLD) or (
+            early_average >= cls.TRAJECTORY_SCORE_THRESHOLD and late_average <= -cls.TRAJECTORY_SCORE_THRESHOLD
         ):
             return "reversal"
 
@@ -503,15 +770,9 @@ class AIService:
                 f"across {evidence_count} retained items."
             )
         if state == "improving":
-            return (
-                f"{subject_type.title()} {subject} is turning more positive "
-                f"across {evidence_count} retained items."
-            )
+            return f"{subject_type.title()} {subject} is turning more positive across {evidence_count} retained items."
         if state == "deteriorating":
-            return (
-                f"{subject_type.title()} {subject} is turning more negative "
-                f"across {evidence_count} retained items."
-            )
+            return f"{subject_type.title()} {subject} is turning more negative across {evidence_count} retained items."
         return (
             f"{subject_type.title()} {subject} has mixed positive and negative "
             f"retained items with no clear dominant direction."
@@ -531,10 +792,7 @@ class AIService:
                 item.get("headline", "").lower(),
             ),
         )
-        sentiment_labels = [
-            cls._sentiment_label(item.get("sentiment_score")) or "neutral"
-            for item in ordered_items
-        ]
+        sentiment_labels = [cls._sentiment_label(item.get("sentiment_score")) or "neutral" for item in ordered_items]
         state = cls._trajectory_state(sentiment_labels)
         if state is None:
             return None
@@ -614,7 +872,7 @@ class AIService:
                 item["subject"].lower(),
             )
         )
-        return entries[:cls.TRAJECTORY_PROMPT_LIMIT]
+        return entries[: cls.TRAJECTORY_PROMPT_LIMIT]
 
     @staticmethod
     def build_sentiment_trajectory_prompt_section(entries: list[dict]) -> str:
@@ -752,6 +1010,15 @@ class AIService:
         return cls._vote_from_values(votes)
 
     @staticmethod
+    def recommendation_from_votes(technical_vote: str, context_vote: str, trajectory_vote: str) -> str:
+        supporting_votes = {context_vote, trajectory_vote}
+        if technical_vote == "positive" and "positive" in supporting_votes:
+            return "BUY"
+        if technical_vote == "negative" and "negative" in supporting_votes:
+            return "SELL"
+        return "HOLD"
+
+    @staticmethod
     def _format_percent(value: Decimal | None) -> str:
         if value is None:
             return "0.00%"
@@ -785,9 +1052,9 @@ class AIService:
         from markets.models import OHLCV
 
         rows = list(
-            OHLCV.objects.filter(asset=asset).order_by("-date").values_list("close", flat=True)[
-                :cls.DIVERGENCE_LOOKBACK_DAYS
-            ]
+            OHLCV.objects.filter(asset=asset)
+            .order_by("-date")
+            .values_list("close", flat=True)[: cls.DIVERGENCE_LOOKBACK_DAYS]
         )
         if len(rows) < 2:
             return None, None, None
@@ -807,13 +1074,11 @@ class AIService:
         from markets.models import OHLCV
 
         closes = list(
-            OHLCV.objects.filter(asset=asset).order_by("-date").values_list("close", flat=True)[
-                :cls.DIVERGENCE_LOOKBACK_DAYS
-            ]
+            OHLCV.objects.filter(asset=asset)
+            .order_by("-date")
+            .values_list("close", flat=True)[: cls.DIVERGENCE_LOOKBACK_DAYS]
         )
-        return hashlib.sha256(
-            json.dumps([str(value) for value in closes], default=str).encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha256(json.dumps([str(value) for value in closes], default=str).encode("utf-8")).hexdigest()
 
     @classmethod
     def _scope_move_signature(cls, assets) -> str:
@@ -852,9 +1117,7 @@ class AIService:
             return "- None"
 
         signal_votes = divergence_analysis.get("signal_votes", {})
-        actual_percent_move = cls._format_percent(
-            cls._decimal_or_none(divergence_analysis.get("actual_percent_move"))
-        )
+        actual_percent_move = cls._format_percent(cls._decimal_or_none(divergence_analysis.get("actual_percent_move")))
         flat_threshold_percent = cls._format_percent(
             cls._decimal_or_none(divergence_analysis.get("flat_threshold_percent"))
         )
@@ -890,9 +1153,7 @@ class AIService:
 
         for asset in assets:
             asset_indicators = (
-                indicators
-                if len(assets) == 1 and indicators
-                else cls._latest_indicators_for_asset(asset)
+                indicators if len(assets) == 1 and indicators else cls._latest_indicators_for_asset(asset)
             )
             first_close, last_close, move = cls._asset_latest_move(asset)
             if move is not None:
@@ -915,11 +1176,7 @@ class AIService:
         subject_symbols = {asset.display_symbol for asset in assets}
         trajectory_vote = cls._trajectory_vote(sentiment_trajectory, subject_symbols=subject_symbols)
         context_vote = cls._context_vote(
-            [
-                item
-                for item in news_items
-                if item.get("bucket") not in {"macro", "theme"}
-            ],
+            [item for item in news_items if item.get("bucket") not in {"macro", "theme"}],
             trajectory_vote,
         )
         shared_context_vote = cls._shared_context_vote(news_items)
@@ -937,9 +1194,8 @@ class AIService:
                     label = "no_divergence"
                 elif actual_direction == "flat":
                     label = "no_material_follow_through"
-                elif (
-                    (actual_direction == "up" and shared_context_vote == "positive")
-                    or (actual_direction == "down" and shared_context_vote == "negative")
+                elif (actual_direction == "up" and shared_context_vote == "positive") or (
+                    actual_direction == "down" and shared_context_vote == "negative"
                 ):
                     label = "competing_macro_priority"
                     macro_confirmation = True
@@ -1018,10 +1274,7 @@ class AIService:
         names = [asset.display_symbol, asset.provider_symbol, asset.name]
         base_name = cls._normalize_text(asset.name)
         if base_name:
-            stripped_name = " ".join(
-                token for token in base_name.split()
-                if token not in CORPORATE_SUFFIXES
-            )
+            stripped_name = " ".join(token for token in base_name.split() if token not in CORPORATE_SUFFIXES)
             if stripped_name and stripped_name != base_name:
                 names.append(stripped_name)
         return [name for name in names if name]
@@ -1036,6 +1289,14 @@ class AIService:
     @staticmethod
     def _source_quality(source: str) -> int:
         return SOURCE_QUALITY.get((source or "").lower(), 1)
+
+    @classmethod
+    def _source_quality_for_item(cls, item, operator=None) -> int:
+        quality = cls._source_quality(item.source)
+        if operator is None:
+            return quality
+        treatment = EvidenceReviewService(operator).treatment_for_news_item(item)
+        return max(0, min(4, quality + treatment["adjustment"]))
 
     @staticmethod
     def _impact_score(headline: str) -> int:
@@ -1099,7 +1360,7 @@ class AIService:
         return (
             directness,
             cls._impact_score(item["headline"]),
-            cls._source_quality(item["source"]),
+            item.get("source_quality", cls._source_quality(item["source"])),
             cls._recency_score(item.get("published_at")),
             item["headline"].lower(),
         )
@@ -1141,17 +1402,18 @@ class AIService:
         return None, "", ""
 
     @classmethod
-    def build_asset_context_pack(cls, asset, max_items: int = TOTAL_CONTEXT_LIMIT, news_items=None) -> list[dict]:
+    def build_asset_context_pack(
+        cls, asset, max_items: int = TOTAL_CONTEXT_LIMIT, news_items=None, operator=None
+    ) -> list[dict]:
         from markets.models import NewsItem
 
         asset_sector, asset_industry = cls._resolved_asset_metadata(asset)
         candidates: list[dict] = []
 
         if news_items is None:
-            news_items = (
-                NewsItem.objects.select_related("asset")
-                .order_by("-published_at", "-fetched_at")[:200]
-            )
+            news_items = NewsItem.objects.select_related("asset", "news_source").order_by(
+                "-published_at", "-fetched_at"
+            )[:200]
 
         bucket_raw_counts: dict[str, int] = {bucket: 0 for bucket in BUCKET_ORDER}
 
@@ -1164,20 +1426,23 @@ class AIService:
                 continue
             bucket_raw_counts[bucket] += 1
 
-            candidates.append({
-                "news_item_id": str(item.id),
-                "headline": item.headline,
-                "url": item.url,
-                "source": item.source,
-                "published_at": item.published_at or item.fetched_at,
-                "bucket": bucket,
-                "provenance": provenance,
-                "relevance_basis": relevance_basis,
-                "asset_symbol": item.asset.display_symbol if item.asset_id else None,
-                "market": item.asset.market if item.asset_id else None,
-                "sentiment_score": item.sentiment_score,
-                "dedupe_key": cls._headline_signature(item.headline),
-            })
+            candidates.append(
+                {
+                    "news_item_id": str(item.id),
+                    "headline": item.headline,
+                    "url": item.url,
+                    "source": item.source,
+                    "source_quality": cls._source_quality_for_item(item, operator),
+                    "published_at": item.published_at or item.fetched_at,
+                    "bucket": bucket,
+                    "provenance": provenance,
+                    "relevance_basis": relevance_basis,
+                    "asset_symbol": item.asset.display_symbol if item.asset_id else None,
+                    "market": item.asset.market if item.asset_id else None,
+                    "sentiment_score": item.sentiment_score,
+                    "dedupe_key": cls._headline_signature(item.headline),
+                }
+            )
 
         deduped: dict[str, dict] = {}
         for candidate in candidates:
@@ -1196,7 +1461,7 @@ class AIService:
                 selected_by_bucket[bucket],
                 key=cls._ranking_score,
                 reverse=True,
-            )[:BUCKET_LIMITS[bucket]]
+            )[: BUCKET_LIMITS[bucket]]
             selected.extend(ranked)
 
         selected = sorted(selected, key=cls._ranking_score, reverse=True)[:max_items]
@@ -1219,10 +1484,10 @@ class AIService:
         ]
 
     @classmethod
-    def build_scope_context_pack(cls, assets, max_items: int = TOTAL_CONTEXT_LIMIT) -> list[dict]:
+    def build_scope_context_pack(cls, assets, max_items: int = TOTAL_CONTEXT_LIMIT, operator=None) -> list[dict]:
         candidates: list[dict] = []
         for asset in assets:
-            candidates.extend(cls.build_asset_context_pack(asset, max_items=max_items))
+            candidates.extend(cls.build_asset_context_pack(asset, max_items=max_items, operator=operator))
 
         deduped: dict[str, dict] = {}
         for candidate in candidates:
@@ -1275,21 +1540,17 @@ class AIService:
         story_so_far: list[dict] | None = None,
         sentiment_trajectory: list[dict] | None = None,
         divergence_analysis: dict | None = None,
+        recommendation: str = "HOLD",
     ) -> str:
         if story_so_far:
-            story_section = "\n".join(
-                cls._format_story_line(item)
-                for item in story_so_far
-            )
+            story_section = "\n".join(cls._format_story_line(item) for item in story_so_far)
         else:
             story_section = "- None"
 
         trajectory_section = cls.build_sentiment_trajectory_prompt_section(sentiment_trajectory or [])
         divergence_section = cls.build_divergence_prompt_section(divergence_analysis)
 
-        news_lines = "\n".join(
-            AIService._format_news_line(item) for item in news_items
-        ) if news_items else "- None"
+        news_lines = "\n".join(AIService._format_news_line(item) for item in news_items) if news_items else "- None"
 
         return (
             "You are analyzing one asset for a paper trading app.\n\n"
@@ -1334,6 +1595,8 @@ class AIService:
             "Divergence analysis:\n"
             f"{divergence_section}\n\n"
             "Writing rules:\n"
+            f'- The recommendation is fixed at "{recommendation}" by deterministic evidence rules. '
+            "Explain it; do not choose a different recommendation.\n"
             "- Write the summary as the main takeaway for an everyday investor.\n"
             "- Keep the summary free of technical jargon and do not repeat the technical paragraph.\n"
             "- Technical summary should only describe the indicators and chart setup.\n"
@@ -1352,16 +1615,19 @@ class AIService:
         news_items: list[dict],
         sentiment_trajectory: list[dict] | None = None,
         divergence_analysis: dict | None = None,
+        recommendation: str = "HOLD",
     ) -> str:
-        holdings_lines = "\n".join(
-            f"- {item['symbol']} | {item['name']} | {item.get('position_detail', item.get('current_price', '-'))}"
-            for item in holdings
-        ) if holdings else "- None"
+        holdings_lines = (
+            "\n".join(
+                f"- {item['symbol']} | {item['name']} | {item.get('position_detail', item.get('current_price', '-'))}"
+                for item in holdings
+            )
+            if holdings
+            else "- None"
+        )
         trajectory_section = cls.build_sentiment_trajectory_prompt_section(sentiment_trajectory or [])
         divergence_section = cls.build_divergence_prompt_section(divergence_analysis)
-        news_lines = "\n".join(
-            AIService._format_news_line(item) for item in news_items
-        ) if news_items else "- None"
+        news_lines = "\n".join(AIService._format_news_line(item) for item in news_items) if news_items else "- None"
 
         return (
             "You are analyzing one monitored set for a paper trading app.\n\n"
@@ -1390,6 +1656,8 @@ class AIService:
             "Divergence analysis:\n"
             f"{divergence_section}\n\n"
             "Writing rules:\n"
+            f'- The recommendation is fixed at "{recommendation}" by deterministic evidence rules. '
+            "Explain it; do not choose a different recommendation.\n"
             "- Focus on the monitored set as a whole, not one asset at a time.\n"
             "- Explain how the holdings relate to each other and what the combined setup suggests.\n"
             '- If the headlines are weak, generic, or missing, set "news_context" to an empty string.\n'
@@ -1399,10 +1667,7 @@ class AIService:
 
     @staticmethod
     def build_sentiment_prompt(headlines: list[str]) -> str:
-        headline_records = [
-            {"id": index, "headline": headline}
-            for index, headline in enumerate(headlines)
-        ]
+        headline_records = [{"id": index, "headline": headline} for index, headline in enumerate(headlines)]
         return (
             "Analyze the sentiment of each headline and return ONLY valid JSON with this exact shape:\n"
             '{\n  "items": [\n    {"id": 0, "sentiment_score": -0.5}\n  ]\n}\n\n'
@@ -1513,7 +1778,7 @@ class AIService:
             raise ValueError("AI is not configured for this user")
 
         move_signature = self._asset_move_signature(asset)
-        cache_key = f"ai_insight:v5:{self.user.id}:{asset.id}:{move_signature}"
+        cache_key = f"ai_insight:v7:{self.user.id}:{asset.id}:{move_signature}"
         legacy_cache_key = f"ai_insight:{self.user.id}:{asset.id}"
         cached = cache.get(cache_key)
         if cached:
@@ -1534,9 +1799,13 @@ class AIService:
             raise ValueError("Not enough historical data to generate AI insight")
 
         NewsService.fetch_and_store_news(asset)
-        news_items = self.build_asset_context_pack(asset)
+        news_items = self.build_asset_context_pack(asset, operator=self.user)
         story_so_far = self.build_story_so_far(asset, news_items)
         sentiment_trajectory = self.build_sentiment_trajectory(news_items, {asset.display_symbol})
+        technical_vote = self._technical_vote(indicators, None)
+        trajectory_vote = self._trajectory_vote(sentiment_trajectory, {asset.display_symbol})
+        context_vote = self._context_vote(news_items, trajectory_vote)
+        recommendation = self.recommendation_from_votes(technical_vote, context_vote, trajectory_vote)
         divergence_analysis = self.build_divergence_analysis(
             "asset",
             [asset],
@@ -1554,6 +1823,7 @@ class AIService:
             story_so_far,
             sentiment_trajectory,
             divergence_analysis,
+            recommendation,
         )
 
         response_text = ""
@@ -1612,7 +1882,7 @@ class AIService:
         result = {
             "symbol": asset.display_symbol,
             "market": asset.market,
-            "recommendation": parsed.get("recommendation", "HOLD"),
+            "recommendation": recommendation,
             "confidence": int(parsed.get("confidence", 50)),
             "summary": parsed.get("summary", parsed.get("reasoning", "")),
             "technical_summary": parsed.get("technical_summary", ""),
@@ -1625,25 +1895,31 @@ class AIService:
             "divergence_disclosure": self.build_divergence_disclosure("asset"),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
-            "news_items": [
-                {
-                    "headline": item["headline"],
-                    "url": item["url"],
-                    "source": item["source"],
-                    "published_at": item["published_at"].isoformat() if item["published_at"] else None,
-                    "bucket": item["bucket"],
-                    "provenance": item["provenance"],
-                    "relevance_basis": item["relevance_basis"],
-                    "asset_symbol": item["asset_symbol"],
-                    "market": item["market"],
-                }
-                for item in news_items
-            ],
+            "news_items": self._insight_news_items(news_items),
         }
 
         cache.set(cache_key, result, timeout=86400)
+        self.track_cached_insight_key(self.user, cache_key)
 
         return result
+
+    @staticmethod
+    def _insight_news_items(news_items: list[dict]) -> list[dict]:
+        return [
+            {
+                "news_item_id": item.get("news_item_id"),
+                "headline": item["headline"],
+                "url": item["url"],
+                "source": item["source"],
+                "published_at": item["published_at"].isoformat() if item["published_at"] else None,
+                "bucket": item.get("bucket"),
+                "provenance": item.get("provenance"),
+                "relevance_basis": item.get("relevance_basis"),
+                "asset_symbol": item.get("asset_symbol"),
+                "market": item.get("market"),
+            }
+            for item in news_items
+        ]
 
     def analyze_scope(self, scope_type: str, scope_label: str, assets, holdings: list[dict]) -> dict:
         if scope_type not in {"portfolio", "watch"}:
@@ -1657,7 +1933,7 @@ class AIService:
         assets = sorted(self._scope_assets(assets), key=self._scope_asset_sort_key)
         holdings = self._canonical_scope_holdings(holdings)
 
-        news_items = self.build_scope_context_pack(assets)
+        news_items = self.build_scope_context_pack(assets, operator=self.user)
         sentiment_trajectory = self.build_sentiment_trajectory(
             news_items,
             {asset.display_symbol for asset in assets},
@@ -1667,6 +1943,12 @@ class AIService:
             assets,
             news_items,
             sentiment_trajectory,
+        )
+        signal_votes = (divergence_analysis or {}).get("signal_votes", {})
+        recommendation = self.recommendation_from_votes(
+            signal_votes.get("technical", "neutral"),
+            signal_votes.get("context", "neutral"),
+            signal_votes.get("trajectory", "neutral"),
         )
         move_signature = self._scope_move_signature(assets)
         scope_signature = hashlib.sha256(
@@ -1682,7 +1964,7 @@ class AIService:
                 default=str,
             ).encode("utf-8")
         ).hexdigest()
-        cache_key = f"ai_scope_insight:v5:{self.user.id}:{scope_type}:{scope_signature}"
+        cache_key = f"ai_scope_insight:v7:{self.user.id}:{scope_type}:{scope_signature}"
         cached = cache.get(cache_key)
         if cached:
             return cached
@@ -1697,6 +1979,7 @@ class AIService:
             news_items,
             sentiment_trajectory,
             divergence_analysis,
+            recommendation,
         )
 
         response_text = ""
@@ -1755,7 +2038,7 @@ class AIService:
             "scope_type": scope_type,
             "scope_label": scope_label,
             "asset_count": len(holdings),
-            "recommendation": parsed.get("recommendation", "HOLD"),
+            "recommendation": recommendation,
             "confidence": int(parsed.get("confidence", 50)),
             "summary": parsed.get("summary", ""),
             "technical_summary": parsed.get("technical_summary", ""),
@@ -1767,9 +2050,11 @@ class AIService:
             "divergence_disclosure": self.build_divergence_disclosure(scope_type),
             "model_used": model,
             "generated_at": timezone.now().isoformat(),
+            "news_items": self._insight_news_items(news_items),
         }
 
         cache.set(cache_key, result, timeout=900)
+        self.track_cached_insight_key(self.user, cache_key)
         return result
 
     @staticmethod
@@ -1813,15 +2098,15 @@ class AIService:
         try:
             if provider == "anthropic":
                 import anthropic
+
                 client = anthropic.Anthropic(api_key=api_key)
                 message = client.messages.create(
-                    model=model,
-                    max_tokens=500,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=model, max_tokens=500, messages=[{"role": "user", "content": prompt}]
                 )
                 response_text = message.content[0].text
             elif provider == "openai":
                 import openai
+
                 client = openai.OpenAI(api_key=api_key)
                 response = client.responses.create(
                     model=model,
@@ -1831,6 +2116,7 @@ class AIService:
                 response_text = response.output_text
             elif provider == "google":
                 import google.generativeai as genai
+
                 genai.configure(api_key=api_key)
                 model_obj = genai.GenerativeModel(model)
                 response = model_obj.generate_content(prompt)

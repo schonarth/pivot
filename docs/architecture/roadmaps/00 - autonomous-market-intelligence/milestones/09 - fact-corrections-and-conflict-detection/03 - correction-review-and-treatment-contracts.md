@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -97,8 +97,12 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+- Added operator-scoped correction, artifact-review, and source-stance audit models with immutable platform-captured headline originals, constrained states, and supersession history.
+- Added the shared `EvidenceReviewService` lifecycle, lower-snake fact-key normalization, active-only operator suggestions, and deterministic correction/artifact/source/baseline treatment.
+- Applied only the bounded `0..4` treatment adjustment during operator-owned strategy context selection; verdict, confidence, execution, invalidation, API, UI, and MCP behavior remain unchanged.
+- Added lifecycle, scope, precedence, clamp, and immutable-original coverage; updated strategy-validation news fixtures for the canonical `NewsSource` relation introduced by task 02.
 
 ## Open Follow-Ups
 
-- none
+- `makemigrations --check` still proposes pre-existing index-name renames in `markets` and `portfolios`; no task 03 migration is missing.
+- Focused tests passed (52). The final focused Ruff run found one import-order issue in `test_context.py`; it was corrected immediately before handoff but not rerun after the correction. Full `ruff check ai` also retains pre-existing failures outside this task.

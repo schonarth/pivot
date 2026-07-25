@@ -5,13 +5,77 @@ from .models import (
     TASK_MODELS,
     AIAuth,
     AIInstanceKey,
+    ArtifactReview,
+    FactCorrection,
+    SourceStance,
     StrategyRecommendation,
     StrategyScenarioFrame,
 )
+from .services import EvidenceReviewService
+
+
+class FactCorrectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FactCorrection
+        fields = (
+            "id",
+            "source_artifact_type",
+            "source_artifact_id",
+            "source",
+            "fact_key",
+            "original_value",
+            "corrected_value",
+            "correction_state",
+            "reason",
+            "created_at",
+            "superseded_at",
+        )
+        read_only_fields = ("original_value", "created_at", "superseded_at")
+
+
+class ArtifactReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ArtifactReview
+        fields = (
+            "id",
+            "source_artifact_type",
+            "source_artifact_id",
+            "source",
+            "artifact_review_state",
+            "reason",
+            "created_at",
+            "superseded_at",
+        )
+
+
+class SourceStanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SourceStance
+        fields = ("id", "source", "stance", "created_at", "superseded_at")
+
+
+class FactCorrectionRequestSerializer(serializers.Serializer):
+    news_item_id = serializers.UUIDField()
+    fact_key = serializers.CharField(max_length=100)
+    corrected_value = serializers.CharField()
+    correction_state = serializers.ChoiceField(choices=("corrected", "disputed", "stale"))
+    reason = serializers.CharField()
+
+
+class ArtifactReviewRequestSerializer(serializers.Serializer):
+    news_item_id = serializers.UUIDField()
+    artifact_review_state = serializers.ChoiceField(choices=("accepted", "disputed", "stale"))
+    reason = serializers.CharField()
+
+
+class SourceStanceRequestSerializer(serializers.Serializer):
+    source_id = serializers.IntegerField()
+    stance = serializers.ChoiceField(choices=("trusted", "untrusted"))
 
 
 class AIAuthSettingsSerializer(serializers.ModelSerializer):
     """Serializer for AI auth settings (no API key exposed)."""
+
     has_api_key = serializers.SerializerMethodField()
     available_providers = serializers.SerializerMethodField()
     available_models = serializers.SerializerMethodField()
@@ -93,6 +157,7 @@ class AIAuthSettingsSerializer(serializers.ModelSerializer):
 
 class AIBudgetSerializer(serializers.Serializer):
     """Serializer for AI budget info (for header/display)."""
+
     enabled = serializers.BooleanField()
     monthly_budget_usd = serializers.CharField()
     usage_usd = serializers.CharField()
@@ -133,6 +198,9 @@ class StrategyRecommendationSerializer(serializers.ModelSerializer):
     asset_display_symbol = serializers.CharField(source="asset.display_symbol", read_only=True)
     asset_name = serializers.CharField(source="asset.name", read_only=True)
     scenario_frames = StrategyScenarioFrameSerializer(many=True, read_only=True)
+    evidence = serializers.SerializerMethodField()
+    is_invalidated = serializers.SerializerMethodField()
+    latest_invalidation = serializers.SerializerMethodField()
 
     class Meta:
         model = StrategyRecommendation
@@ -153,5 +221,33 @@ class StrategyRecommendationSerializer(serializers.ModelSerializer):
             "verdict",
             "rationale",
             "scenario_frames",
+            "evidence",
+            "is_invalidated",
+            "latest_invalidation",
             "recorded_at",
         )
+
+    def get_evidence(self, obj):
+        return EvidenceReviewService(obj.user).evidence_for_recommendation(obj)
+
+    def get_is_invalidated(self, obj):
+        return self._latest_invalidation(obj) is not None
+
+    def get_latest_invalidation(self, obj):
+        invalidation = self._latest_invalidation(obj)
+        if invalidation is None:
+            return None
+        trigger = invalidation.fact_correction or invalidation.artifact_review
+        return {
+            "trigger_type": "fact_correction" if invalidation.fact_correction_id else "artifact_review",
+            "trigger_record_id": str(trigger.id),
+            "reason": trigger.reason,
+            "created_at": invalidation.created_at,
+        }
+
+    @staticmethod
+    def _latest_invalidation(obj):
+        prefetched = getattr(obj, "_latest_invalidations", None)
+        if prefetched is not None:
+            return prefetched[0] if prefetched else None
+        return obj.invalidations.select_related("fact_correction", "artifact_review").first()

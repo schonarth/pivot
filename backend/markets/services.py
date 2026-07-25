@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .ohlcv_provider import is_valid_ohlcv_record
-from .models import Asset, MarketConfig, NewsItem, OHLCV
+from .models import Asset, MarketConfig, NewsItem, NewsSource, OHLCV
 
 try:
     from exchange_calendars import get_calendar
@@ -304,6 +304,19 @@ class NewsService:
     CACHE_TTL = 4 * 3600
     EMPTY_CACHE_TTL = 15 * 60
 
+    SOURCE_FEED_URLS = {
+        "google_news_rss": "https://news.google.com/rss/search",
+        "yahoo_finance": "https://finance.yahoo.com/quote/{symbol}/news",
+        "marketwatch": "https://www.marketwatch.com/investing/stock/{symbol}",
+        "valor_economico": "https://www.valor.com.br/search",
+    }
+    RSS_FEED_URLS = {
+        "BR": "http://feeds.bloomberg.com/markets/news.rss?country=BR",
+        "US": "https://feeds.finance.yahoo.com/news",
+        "UK": "http://feeds.bloomberg.com/markets/news.rss?country=UK",
+        "EU": "http://feeds.bloomberg.com/markets/news.rss?country=EU",
+    }
+
     @staticmethod
     def _normalize_news_text(value, *, max_length: int) -> str:
         if value is None:
@@ -330,6 +343,16 @@ class NewsService:
             "summary": summary or None,
             "published_at": item.get("published_at"),
         }
+
+    @classmethod
+    def _news_source_for(cls, source: str, market: str) -> NewsSource:
+        feed_url = cls.RSS_FEED_URLS.get(market) if source == "rss_feed" else cls.SOURCE_FEED_URLS.get(source)
+        if not feed_url:
+            raise ValueError(f"Unknown news source label {source!r} for market {market!r}")
+        try:
+            return NewsSource.objects.get(feed_url=feed_url)
+        except NewsSource.DoesNotExist as error:
+            raise ValueError(f"Canonical news source is not seeded for {source!r} in market {market!r}") from error
 
     @classmethod
     def fetch_and_store_news(cls, asset: Asset) -> int:
@@ -545,6 +568,7 @@ class NewsService:
             normalized_item = cls._normalize_news_item(item)
             if not normalized_item:
                 continue
+            news_source = cls._news_source_for(normalized_item["source"], asset.market)
             news_item, created = NewsItem.objects.update_or_create(
                 asset=asset,
                 url=normalized_item["url"],
@@ -552,6 +576,7 @@ class NewsService:
                     "headline": normalized_item["headline"],
                     "summary": normalized_item.get("summary"),
                     "source": normalized_item["source"],
+                    "news_source": news_source,
                     "published_at": normalized_item.get("published_at"),
                 },
             )

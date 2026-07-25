@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from ai.services import AIBudgetError
-from markets.models import NewsItem, OHLCV
+from markets.models import NewsItem, NewsSource, OHLCV
 
 
 @pytest.mark.django_db
@@ -170,12 +170,17 @@ class TestMarketEndpoints:
 
     @patch("markets.views.NewsService.fetch_and_store_news")
     def test_asset_news_returns_recent_items_and_average_sentiment(self, mock_fetch_news, authenticated_client, asset):
+        news_source, _ = NewsSource.objects.get_or_create(
+            feed_url="https://example.com/news-source",
+            defaults={"institution_name": "Example News"},
+        )
         NewsItem.objects.create(
             asset=asset,
             headline="Momentum improves after earnings",
             summary="Analysts see better margins.",
             url="https://example.com/news-1",
             source="Example News",
+            news_source=news_source,
             sentiment_score=Decimal("0.80"),
         )
         NewsItem.objects.create(
@@ -184,6 +189,7 @@ class TestMarketEndpoints:
             summary="Operations remain on track.",
             url="https://example.com/news-2",
             source="Example News",
+            news_source=news_source,
             sentiment_score=Decimal("0.20"),
         )
 

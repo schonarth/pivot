@@ -90,8 +90,29 @@ SEED_ASSETS = {
 }
 
 
+NEWS_SOURCES = (
+    {"institution_name": "Google News", "feed_url": "https://news.google.com/rss/search", "market": None},
+    {"institution_name": "Yahoo Finance", "feed_url": "https://finance.yahoo.com/quote/{symbol}/news", "market": None},
+    {"institution_name": "Yahoo Finance", "feed_url": "https://feeds.finance.yahoo.com/news", "market": "US"},
+    {"institution_name": "MarketWatch", "feed_url": "https://www.marketwatch.com/investing/stock/{symbol}", "market": None},
+    {"institution_name": "Valor Econômico", "feed_url": "https://www.valor.com.br/search", "market": "BR"},
+    {"institution_name": "Bloomberg", "feed_url": "http://feeds.bloomberg.com/markets/news.rss?country=BR", "market": "BR"},
+    {"institution_name": "Bloomberg", "feed_url": "http://feeds.bloomberg.com/markets/news.rss?country=UK", "market": "UK"},
+    {"institution_name": "Bloomberg", "feed_url": "http://feeds.bloomberg.com/markets/news.rss?country=EU", "market": "EU"},
+)
+
+
+def seed_news_sources():
+    from markets.models import NewsSource
+
+    for source in NEWS_SOURCES:
+        NewsSource.objects.update_or_create(feed_url=source["feed_url"], defaults=source)
+
+
 def run_seed():
     from markets.services import get_or_create_asset
+
+    seed_news_sources()
 
     for market, assets in SEED_ASSETS.items():
         for asset_data in assets:

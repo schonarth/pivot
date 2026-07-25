@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -98,7 +98,13 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+- Added scoped UI evidence endpoints for recommendation evidence, fact-key suggestions, corrections, artifact reviews, and source-stance set/clear. They reuse `EvidenceReviewService`, preserve source/artifact scope, and return configured-source eligibility plus the development/test override state.
+- Added typed frontend evidence client methods and embedded the focused Evidence review surface in both latest and stored strategy/scenario review details. It displays immutable read-only originals, treatment, uncertainty, history, correction/review controls, fact-key suggestions and lower-snake blur normalization, and source-stance controls.
+- Source stance remains disabled below the configured-source threshold while artifact controls stay available. The `evidenceSourceStanceOverride=true` development/test query enables its coverage path. Manual trade submission remains separate from review actions.
+- UAT follow-up replaced inline forms with one reusable artifact-review modal, a compact reusable source-stance menu, and a single Save action that closes after persisting the selected correction and/or artifact review. AI Summary and AI Insight presentation remains unchanged.
+- UAT follow-up exposed the reusable review and source-stance text controls beside each AI Insight headline and added an AI Summary `Headlines used` section. Headline evidence can now load and save without requiring an earlier stored recommendation; recommendation outputs remain deterministic while the model supplies the explanatory text.
+- Verification: focused `TradeNewView` Vitest suite passed 8/8; frontend typecheck passed. Full Playwright passed 19/20; the existing registration smoke test failed because it expects a refresh token absent from the response. No standalone correction E2E fixture path exists; focused UI coverage exercises the required review behavior.
+- Latest verification: 68 focused backend tests passed; frontend typecheck and 13 focused frontend tests passed; rebuilt backend and frontend containers returned their expected health responses.
 
 ## Open Follow-Ups
 

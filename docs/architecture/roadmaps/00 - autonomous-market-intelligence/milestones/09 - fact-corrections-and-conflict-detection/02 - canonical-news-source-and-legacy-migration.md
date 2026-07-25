@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -100,8 +100,11 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+- Added system-managed `NewsSource`, seeded the eight current collector and fallback feed identities, and linked `NewsItem` with a protected relation.
+- Added deterministic migration of the five known legacy labels; `rss_feed` maps by asset market to Bloomberg BR/UK/EU or Yahoo Finance US. Unknown labels raise and preserve the migration transaction rather than receiving a generic source.
+- Updated `NewsService` to resolve canonical sources during ingestion while preserving `NewsItem.source` as provenance. Added focused RSS-ingestion and unknown-label tests; updated existing NewsItem fixtures for the required relation.
+- Rebuilt-container verification: `pytest markets ai/test_context.py` passed (61 tests) and the new migration passes focused Ruff. `makemigrations --check` proposes only pre-existing index-name renames in `markets` and `portfolios`; no Milestone 09 model migration is missing.
 
 ## Open Follow-Ups
 
-- none
+- Full `ruff check markets ai/news_context_policy.py` retains pre-existing repository lint failures outside this task's files.

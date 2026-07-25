@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+ done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -96,8 +96,11 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+- Added permanent reverse invalidation records with exactly one linked fact correction or artifact review trigger, plus idempotent matching against stored `news_item_id` context in the operator's recommendations.
+- Material fact corrections and disputed or stale artifact reviews now invalidate matching snapshots; accepted reviews and source stances do not. Existing recommendation verdict, confidence, execution behavior, and stored context remain unchanged.
+- Extended strategy recommendation responses with stored excerpt evidence, current treatment, correction and artifact-review history, categorical disputed/stale uncertainty, `is_invalidated`, and latest trigger explanation. Scenario frames remain nested under that same recommendation contract.
+- Added focused invalidation, scope, immutable snapshot, source-stance exclusion, and response-contract coverage. Task 04 coverage passed in the rebuilt container; the task-targeted run reached 36 passing tests.
 
 ## Open Follow-Ups
 
-- none
+- The shared target suite has one unrelated Task 05 source-count failure (`expected 1`, `got 5` after canonical source seeding). Focused Ruff has two unrelated Task 05 long lines in `ai/views.py` (lines 233 and 314). Task 04 changed-file lint is otherwise clean.

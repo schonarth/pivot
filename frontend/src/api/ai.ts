@@ -1,5 +1,10 @@
 import client from './client'
-import type { StrategyRecommendation } from '@/types'
+import type {
+  EvidenceArtifactReview,
+  EvidenceCorrection,
+  EvidenceReviewResponse,
+  StrategyRecommendation,
+} from '@/types'
 
 export interface AISettings {
   provider_name: string
@@ -82,4 +87,52 @@ export async function getStrategyRecommendations(portfolioId: string): Promise<S
     params: { portfolio_id: portfolioId },
   })
   return response.data
+}
+
+export async function getRecommendationEvidence(
+  recommendationId: string,
+  enableSourceStanceControls = false,
+): Promise<EvidenceReviewResponse> {
+  const response = await client.get(`/ai/strategy-recommendations/${recommendationId}/evidence/`, {
+    params: enableSourceStanceControls ? { enable_source_stance_controls: 'true' } : undefined,
+  })
+  return response.data
+}
+
+export async function getNewsItemEvidence(newsItemId: string): Promise<EvidenceReviewResponse> {
+  const response = await client.get(`/ai/evidence/news-items/${newsItemId}/`)
+  return response.data
+}
+
+export async function getFactKeySuggestions(): Promise<string[]> {
+  const response = await client.get('/ai/fact-key-suggestions/')
+  return response.data
+}
+
+export async function createFactCorrection(payload: {
+  news_item_id: string
+  fact_key: string
+  corrected_value: string
+  correction_state: 'corrected' | 'disputed' | 'stale'
+  reason: string
+}): Promise<EvidenceCorrection> {
+  const response = await client.post('/ai/evidence/corrections/', payload)
+  return response.data
+}
+
+export async function createArtifactReview(payload: {
+  news_item_id: string
+  artifact_review_state: 'accepted' | 'disputed' | 'stale'
+  reason: string
+}): Promise<EvidenceArtifactReview> {
+  const response = await client.post('/ai/evidence/artifact-reviews/', payload)
+  return response.data
+}
+
+export async function setSourceStance(sourceId: string, stance: 'trusted' | 'untrusted'): Promise<void> {
+  await client.post('/ai/evidence/source-stances/', { source_id: sourceId, stance })
+}
+
+export async function clearSourceStance(sourceId: string): Promise<void> {
+  await client.delete(`/ai/evidence/source-stances/${sourceId}/`)
 }

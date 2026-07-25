@@ -1,10 +1,15 @@
 from decimal import Decimal
+
 import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from ai.models import AIAuth, AICost
-from ai.services import AIService
+from ai.models import AIAuth, AICost, StrategyRecommendation
+from ai.services import AIService, EvidenceReviewService
+from markets.models import NewsItem, NewsSource
 
 
 @pytest.mark.django_db
@@ -83,9 +88,6 @@ class TestAISettingsEndpoints:
         owner_service.set_api_key("owner-key")
         owner_service.set_instance_default_api_key("instance-key", allow_other_users=True)
 
-        from rest_framework_simplejwt.tokens import RefreshToken
-        from rest_framework.test import APIClient
-
         refresh = RefreshToken.for_user(user2)
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
@@ -134,3 +136,179 @@ class TestAISettingsEndpoints:
         cost = AIService._estimate_provider_cost("anthropic", "claude-opus-4-6", 1000, 500)
 
         assert cost > 0
+
+
+@pytest.mark.django_db
+class TestStrategyRecommendationReviewEndpoint:
+    def test_reports_evidence_treatment_history_uncertainty_and_latest_invalidation(
+        self, authenticated_client, user, portfolio, asset
+    ):
+        source = NewsSource.objects.create(
+            institution_name="Test Source",
+            feed_url="https://example.com/feed",
+        )
+        news_item = NewsItem.objects.create(
+            asset=asset,
+            headline=f"{asset.display_symbol} raises guidance",
+            url="https://example.com/article",
+            source="fixture",
+            news_source=source,
+            published_at=timezone.now(),
+        )
+        recommendation = StrategyRecommendation.objects.create(
+            user=user,
+            portfolio=portfolio,
+            asset=asset,
+            action="BUY",
+            quantity=1,
+            candidate={"asset_symbol": asset.display_symbol},
+            technical_inputs={"vote": "positive"},
+            context_inputs={
+                "vote": "positive",
+                "items": [{"news_item_id": str(news_item.id), "headline": news_item.headline}],
+            },
+            sentiment_trajectory_inputs={"vote": "positive", "entries": []},
+            verdict="approve",
+            rationale="Stored recommendation rationale.",
+        )
+        EvidenceReviewService(user).create_fact_correction(
+            news_item=news_item,
+            fact_key="guidance",
+            corrected_value="Guidance was withdrawn.",
+            correction_state="disputed",
+            reason="Issuer correction.",
+        )
+
+        response = authenticated_client.get("/api/ai/strategy-recommendations/")
+
+        assert response.status_code == 200
+        payload = next(item for item in response.data if item["id"] == str(recommendation.id))
+        assert payload["is_invalidated"] is True
+        assert payload["latest_invalidation"]["trigger_type"] == "fact_correction"
+        assert payload["latest_invalidation"]["reason"] == "Issuer correction."
+        assert payload["evidence"] == [
+            {
+                "news_item_id": str(news_item.id),
+                "excerpt": news_item.headline,
+                "current_treatment": {"kind": "fact_correction", "state": "disputed", "adjustment": -1},
+                "correction_history": payload["evidence"][0]["correction_history"],
+                "artifact_review_history": [],
+                "categorical_uncertainty": "disputed",
+            }
+        ]
+        assert payload["evidence"][0]["correction_history"][0]["original_value"] == news_item.headline
+
+
+@pytest.mark.django_db
+class TestEvidenceReviewEndpoints:
+    def test_allows_reviewing_an_insight_headline_without_a_saved_recommendation(
+        self, authenticated_client, asset
+    ):
+        source = NewsSource.objects.create(
+            institution_name="Insight Source",
+            feed_url="https://example.com/insight-feed",
+            market="US",
+        )
+        news_item = NewsItem.objects.create(
+            asset=asset,
+            headline="AAA publishes an outlook update",
+            url="https://example.com/insight-article",
+            source="fixture",
+            news_source=source,
+            published_at=timezone.now(),
+        )
+
+        evidence_response = authenticated_client.get(f"/api/ai/evidence/news-items/{news_item.id}/")
+        correction_response = authenticated_client.post(
+            "/api/ai/evidence/corrections/",
+            {
+                "news_item_id": str(news_item.id),
+                "fact_key": "outlook",
+                "corrected_value": "Outlook was withdrawn.",
+                "correction_state": "corrected",
+                "reason": "Issuer update.",
+            },
+            format="json",
+        )
+
+        assert evidence_response.status_code == 200
+        assert evidence_response.data["evidence"][0]["news_item_id"] == str(news_item.id)
+        assert correction_response.status_code == 201
+
+    def test_returns_scoped_evidence_suggestions_and_applies_review_mutations(
+        self, authenticated_client, user, portfolio, asset
+    ):
+        source = NewsSource.objects.create(
+            institution_name="Test Source",
+            feed_url="https://example.com/evidence-feed",
+            market="US",
+        )
+        news_item = NewsItem.objects.create(
+            asset=asset,
+            headline="AAA reports earnings result",
+            url="https://example.com/evidence-article",
+            source="fixture",
+            news_source=source,
+            published_at=timezone.now(),
+        )
+        recommendation = StrategyRecommendation.objects.create(
+            user=user,
+            portfolio=portfolio,
+            asset=asset,
+            action="BUY",
+            quantity=1,
+            candidate={},
+            technical_inputs={},
+            context_inputs={"items": [{"news_item_id": str(news_item.id), "headline": news_item.headline}]},
+            sentiment_trajectory_inputs={},
+            verdict="approve",
+            rationale="Stored recommendation rationale.",
+        )
+
+        evidence_response = authenticated_client.get(
+            f"/api/ai/strategy-recommendations/{recommendation.id}/evidence/"
+        )
+
+        assert evidence_response.status_code == 200
+        assert evidence_response.data["fact_key_suggestions"] == []
+        assert evidence_response.data["evidence"][0]["original_value"] == news_item.headline
+        assert evidence_response.data["evidence"][0]["source_id"] == str(source.id)
+        assert evidence_response.data["evidence"][0]["eligible_source_count"] >= 2
+        assert evidence_response.data["evidence"][0]["source_stance_controls_enabled"] is True
+
+        correction_response = authenticated_client.post(
+            "/api/ai/evidence/corrections/",
+            {
+                "news_item_id": str(news_item.id),
+                "fact_key": "Earnings Result",
+                "corrected_value": "Earnings were restated.",
+                "correction_state": "corrected",
+                "reason": "Issuer filing.",
+            },
+            format="json",
+        )
+
+        assert correction_response.status_code == 201
+        assert correction_response.data["fact_key"] == "earnings_result"
+        assert correction_response.data["original_value"] == news_item.headline
+        assert authenticated_client.get("/api/ai/fact-key-suggestions/").data == ["earnings_result"]
+
+        review_response = authenticated_client.post(
+            "/api/ai/evidence/artifact-reviews/",
+            {
+                "news_item_id": str(news_item.id),
+                "artifact_review_state": "disputed",
+                "reason": "Conflicting report.",
+            },
+            format="json",
+        )
+        stance_response = authenticated_client.post(
+            "/api/ai/evidence/source-stances/",
+            {"source_id": str(source.id), "stance": "untrusted"},
+            format="json",
+        )
+        clear_response = authenticated_client.delete(f"/api/ai/evidence/source-stances/{source.id}/")
+
+        assert review_response.status_code == 201
+        assert stance_response.status_code == 201
+        assert clear_response.status_code == 204

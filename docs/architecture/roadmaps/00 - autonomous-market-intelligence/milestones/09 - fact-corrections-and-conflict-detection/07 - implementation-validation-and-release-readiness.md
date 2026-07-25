@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / validation
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -111,8 +111,14 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+- Added controlled end-to-end evidence-treatment coverage with mock news artifacts. A disputed high-quality artifact clears the operator cache, changes selected context, moves regenerated asset and scope insights from `BUY` to `HOLD`, changes their summaries, and moves a new `BUY` strategy recommendation from `approve` to `defer`.
+
+- Rebuilt backend validation: focused source, treatment, invalidation, review API, and MCP suite passed (`98 passed`); the full backend suite's first failure is pre-existing opportunity-discovery fixture cardinality (`ai/test_discovery.py::TestOpportunityDiscovery::test_discovery_endpoint_returns_structured_shortlist`, expected 1, received 2).
+- Migration check has no Milestone 09 delta. It only proposes existing `markets` and `portfolios` index renames. A validation-found constraint representation mismatch that proposed an AI migration was corrected without changing its database contract.
+- Fixed a Milestone 09 UI source-stance regression: `NewsSource` uses an integer primary key, while the UI serializer and clear route expected UUIDs, causing valid source-stance mutations to return 400/404. The UI now uses the canonical integer identity and its focused endpoint test passes.
+- Frontend typecheck and the focused Evidence review component suite pass. The full Vitest suite has existing failures in `DiscoveryView` status rendering and an incomplete `AssetsView` module mock. Playwright passes 19/20; the existing registration smoke test expects a JSON refresh token that the authentication API does not return.
+- MCP schema and API reference document scoped evidence retrieval and bounded correction, artifact-review, and source-stance operations. Milestone 10 may consume only the structured, read-only correction/artifact-review history, current treatment, categorical uncertainty, and permanent invalidation state; it must not infer trade execution authority from these records.
 
 ## Open Follow-Ups
 
-- none
+- Full-suite baseline failures listed above are unrelated to Milestone 09 and remain outside this task's scope.

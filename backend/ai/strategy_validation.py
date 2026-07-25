@@ -92,18 +92,12 @@ def _opposite_vote(action: str) -> str:
 
 
 def _verdict_for(action: str, technical_vote: str, context_vote: str, trajectory_vote: str) -> tuple[str, str]:
-    desired = _desired_vote(action)
-    opposite = _opposite_vote(action)
-
-    if technical_vote == opposite:
-        return "reject", "Technical evidence conflicts with the candidate direction."
-    if context_vote == opposite or trajectory_vote == opposite:
-        return "reject", "Context or sentiment evidence conflicts with the candidate direction."
-    if technical_vote == "neutral":
-        return "defer", "Technical evidence is insufficient for a recommendation."
-    if context_vote == desired or trajectory_vote == desired:
-        return "approve", "Technical and context evidence support the candidate direction."
-    return "defer", "Technical evidence is directional, but context support is insufficient."
+    recommendation = AIService.recommendation_from_votes(technical_vote, context_vote, trajectory_vote)
+    if recommendation == action:
+        return "approve", "The shared evidence recommendation supports the candidate direction."
+    if recommendation == "HOLD":
+        return "defer", "The shared evidence recommendation is HOLD."
+    return "reject", "The shared evidence recommendation conflicts with the candidate direction."
 
 
 def _fallback_rationale(verdict: str) -> str:
@@ -961,7 +955,7 @@ class StrategyValidationService:
         technical_inputs = _indicator_payload(indicators)
         technical_vote = AIService._technical_vote(technical_inputs, quote.price if quote else None)
 
-        context_items = AIService.build_asset_context_pack(asset)
+        context_items = AIService.build_asset_context_pack(asset, operator=self.user)
         sentiment_trajectory = AIService.build_sentiment_trajectory(context_items, {asset.display_symbol})
         trajectory_vote = AIService._trajectory_vote(sentiment_trajectory, {asset.display_symbol})
         context_vote = AIService._context_vote(context_items, trajectory_vote)

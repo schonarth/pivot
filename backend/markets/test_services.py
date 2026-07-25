@@ -39,6 +39,33 @@ class TestMarketOpenService:
 
 @pytest.mark.django_db
 class TestNewsService:
+    def test_store_news_items_links_rss_fallback_to_market_source(self):
+        asset = Asset.objects.create(
+            display_symbol="SHEL",
+            provider_symbol="SHEL.L",
+            name="Shell",
+            market="UK",
+            exchange="XLON",
+            currency="GBP",
+        )
+
+        with patch.object(NewsService, "_attach_sentiment_scores"):
+            NewsService._store_news_items(
+                asset,
+                [{
+                    "headline": "Shell market update",
+                    "url": "https://example.com/shell-update",
+                    "source": "rss_feed",
+                    "published_at": timezone.now(),
+                }],
+            )
+
+        stored = NewsItem.objects.get(asset=asset)
+
+        assert stored.source == "rss_feed"
+        assert stored.news_source.institution_name == "Bloomberg"
+        assert stored.news_source.feed_url == "http://feeds.bloomberg.com/markets/news.rss?country=UK"
+
     def test_google_news_queries_treat_sqli_shaped_asset_fields_as_plain_text(self):
         asset = Asset.objects.create(
             display_symbol="AAPL'; DROP TABLE news_items;--",
@@ -55,7 +82,7 @@ class TestNewsService:
         assert queries[1] == "AAPL'; DROP TABLE news_items;--"
         assert queries[2] == '"Apple"; DELETE FROM assets;--"'
 
-    def test_store_news_items_persists_hostile_strings_as_data(self):
+    def test_store_news_items_rejects_unknown_source_labels(self):
         asset = Asset.objects.create(
             display_symbol="AAPL",
             provider_symbol="AAPL",
@@ -75,13 +102,7 @@ class TestNewsService:
             }
         ]
 
-        with patch.object(NewsService, "_attach_sentiment_scores"):
-            created = NewsService._store_news_items(asset, payload)
+        with pytest.raises(ValueError, match="Unknown news source label"):
+            NewsService._store_news_items(asset, payload)
 
-        stored = NewsItem.objects.get(asset=asset)
-
-        assert created == 1
-        assert stored.headline == "Market update'); DROP TABLE news_items;--"
-        assert stored.summary == "Analyst note with control chars and extra spaces"
-        assert stored.url == "https://example.com/story?id=1';SELECT+1;--"
-        assert stored.source == "wire');DELETE FROM assets;--"
+        assert not NewsItem.objects.filter(asset=asset).exists()

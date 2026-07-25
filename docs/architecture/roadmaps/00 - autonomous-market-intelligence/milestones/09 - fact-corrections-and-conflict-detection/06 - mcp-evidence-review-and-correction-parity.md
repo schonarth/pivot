@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / implementation
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -98,8 +98,8 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+Implemented scoped MCP evidence retrieval and bounded correction, artifact-review, and source-stance mutations through `EvidenceReviewService`; added assistant-token audit links and an MCP schema contract. MCP can only mutate artifacts present in its operator's stored recommendation context; `original_value` is platform-captured and rejected from MCP input.
 
 ## Open Follow-Ups
 
-- none
+- `docker compose run --rm backend ruff check mcp ai` still reports pre-existing lint failures outside task 06; focused MCP tests pass.

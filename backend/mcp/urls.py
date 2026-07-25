@@ -4,7 +4,8 @@ from .views import (
     OTPGenerateView, TokenExchangeView, TokenValidateView, AgentsListView, AgentRevokeView,
     MCPAssetInsightView, MCPAssetLookupView, AISettingsView, StrategyRulesListView,
     StrategyInstancesListView, StrategyTradesListView, AgentTradesListView,
-    BacktestCreateView, BacktestResultsView, MCPSchemaView
+    BacktestCreateView, BacktestResultsView, MCPSchemaView, MCPEvidenceRetrieveView,
+    MCPFactCorrectionCreateView, MCPArtifactReviewCreateView, MCPSourceStanceCreateView,
 )
 
 urlpatterns = [
@@ -24,5 +25,9 @@ urlpatterns = [
     path('agent-trades/', AgentTradesListView.as_view(), name='agent-trades'),
     path('backtest/create/', BacktestCreateView.as_view(), name='backtest-create'),
     path('backtest/<uuid:backtest_id>/results/', BacktestResultsView.as_view(), name='backtest-results'),
+    path('evidence/<uuid:recommendation_id>/', MCPEvidenceRetrieveView.as_view(), name='evidence-retrieve'),
+    path('evidence/fact-corrections/', MCPFactCorrectionCreateView.as_view(), name='evidence-fact-correction'),
+    path('evidence/artifact-reviews/', MCPArtifactReviewCreateView.as_view(), name='evidence-artifact-review'),
+    path('evidence/source-stances/', MCPSourceStanceCreateView.as_view(), name='evidence-source-stance'),
     path('portfolios/', RedirectView.as_view(url='/api/portfolios/', permanent=False), name='portfolios-redirect'),
 ]

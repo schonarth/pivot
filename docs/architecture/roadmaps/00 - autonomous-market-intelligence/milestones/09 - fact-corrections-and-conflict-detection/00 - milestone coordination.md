@@ -14,19 +14,19 @@ SPEC-009 Fact Corrections and Conflict Detection
 
 ## Status
 
-planned
+done
 
 ## Owner
 
-unassigned
+Codex / coordination
 
 ## Date Started
 
-not started
+2026-07-25
 
 ## Date Completed
 
-not started
+2026-07-25
 
 ## Branch
 
@@ -112,8 +112,9 @@ feat/autonomous/09-fact-corrections
 
 ## Implementation Notes / What Was Done
 
-not started
+- Tasks 01 through 07 completed. Canonical source migration, correction/review treatment, permanent recommendation invalidation, advisory Evidence review UI, and scoped MCP parity are implemented and verified by the rebuilt backend focused suite (98 passing tests) and focused frontend suite/typecheck.
+- Task 07 fixed the validated integer `NewsSource` UI source-stance contract mismatch and documented the MCP evidence contract. Future autonomous gating receives read-only structured treatment, correction/review history, categorical uncertainty, and invalidation state only; no execution behavior was added.
 
 ## Open Follow-Ups
 
-- none
+- Existing baseline failures remain outside Milestone 09: opportunity-discovery fixture cardinality in the full backend suite; DiscoveryView rendering and AssetsView mock errors in the full frontend unit suite; registration smoke test expects a JSON refresh token absent from the authentication response (Playwright 19/20).

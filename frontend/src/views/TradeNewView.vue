@@ -189,9 +189,9 @@
           {{ recommendationDisplay.label }}
         </h2>
         <p>{{ latestRecommendation.rationale }}</p>
-        <div
-          v-if="latestRecommendation.scenario_frames.length"
-          class="scenario-section"
+          <div
+            v-if="latestRecommendation.scenario_frames.length"
+            class="scenario-section"
         >
           <h3>{{ t.scenarios }}</h3>
           <div class="scenario-list">
@@ -225,6 +225,10 @@
               </p>
             </div>
           </div>
+          <EvidenceReview
+            :recommendation-id="latestRecommendation.id"
+            :enable-source-stance-controls="evidenceSourceStanceOverride"
+          />
         </div>
       </div>
       <div
@@ -319,6 +323,10 @@
                         </div>
                       </div>
                     </div>
+                    <EvidenceReview
+                      :recommendation-id="item.id"
+                      :enable-source-stance-controls="evidenceSourceStanceOverride"
+                    />
                   </td>
                 </tr>
               </template>
@@ -334,6 +342,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MarketBadge from '@/components/MarketBadge.vue'
+import EvidenceReview from '@/components/EvidenceReview.vue'
 import { searchAssets as apiSearchAssets, getAssetPrice, getAsset } from '@/api/assets'
 import { createTrade } from '@/api/trades'
 import { getStrategyRecommendations, validateStrategyCandidate } from '@/api/ai'
@@ -371,6 +380,7 @@ const rawId = Array.isArray(propsId) ? propsId[0] : propsId
 const portfolioId = rawId ?? ''
 
 const preselectedAssetId = (route.query.asset as string) || null
+const evidenceSourceStanceOverride = route.query.evidenceSourceStanceOverride === 'true'
 
 const action = ref<'BUY' | 'SELL'>('BUY')
 const searchQuery = ref('')

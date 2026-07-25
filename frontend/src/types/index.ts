@@ -71,6 +71,7 @@ export interface MonitoredScopeInsight {
   divergence_disclosure?: string
   model_used: string
   generated_at: string
+  news_items?: AssetAIInsightNewsItem[]
 }
 
 export interface PortfolioScopeInsights {
@@ -134,6 +135,7 @@ export interface AssetQuote {
 }
 
 export interface AssetAIInsightNewsItem {
+  news_item_id?: string
   headline: string
   url?: string
   source: string
@@ -221,6 +223,45 @@ export interface StrategyRecommendation {
   rationale: string
   scenario_frames: StrategyScenarioFrame[]
   recorded_at: string
+}
+
+export interface EvidenceCorrection {
+  id: string
+  fact_key: string
+  original_value: string
+  corrected_value: string
+  correction_state: 'corrected' | 'disputed' | 'stale'
+  reason: string
+  created_at: string
+  superseded_at: string | null
+}
+
+export interface EvidenceArtifactReview {
+  id: string
+  artifact_review_state: 'accepted' | 'disputed' | 'stale'
+  reason: string
+  created_at: string
+  superseded_at: string | null
+}
+
+export interface EvidenceReviewItem {
+  news_item_id: string
+  excerpt: string
+  original_value: string
+  source_id: string
+  source_name: string
+  source_stance: 'trusted' | 'untrusted' | null
+  eligible_source_count: number
+  source_stance_controls_enabled: boolean
+  current_treatment: { kind: string; state: string | null; adjustment: number }
+  correction_history: EvidenceCorrection[]
+  artifact_review_history: EvidenceArtifactReview[]
+  categorical_uncertainty: 'disputed' | 'stale' | null
+}
+
+export interface EvidenceReviewResponse {
+  evidence: EvidenceReviewItem[]
+  fact_key_suggestions: string[]
 }
 
 export interface AlertTriggerTrade {

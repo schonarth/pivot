@@ -51,6 +51,13 @@ describe('ScopeInsightCard', () => {
           divergence_summary: 'Expected up, but broader context matched the opposite move.',
           divergence_disclosure: 'Broader-force labels only appear when explicit monitored-set or shared-context evidence exists.',
           news_context: 'News remains supportive.',
+          news_items: [
+            {
+              headline: 'Headline used by the summary',
+              source: 'Source A',
+              published_at: null,
+            },
+          ],
           reasoning: 'The monitored set is constructive.',
           model_used: 'gpt-4o-mini',
           generated_at: '2026-04-16T00:00:00Z',
@@ -78,6 +85,9 @@ describe('ScopeInsightCard', () => {
     expect(wrapper.text()).toContain('Broader-force labels only appear when explicit monitored-set or shared-context evidence exists.')
     expect(wrapper.text()).toContain('Sentiment trajectory')
     expect(wrapper.text()).toContain('News remains supportive.')
+    expect(wrapper.text()).toContain('News digest')
+    expect(wrapper.text()).toContain('Headlines used')
+    expect(wrapper.text()).toContain('Headline used by the summary')
     expect(wrapper.text()).toContain('gpt-4o-mini')
 
     wrapper.unmount()

@@ -48,7 +48,9 @@
         :divergence-summary="resolvedInsight.divergence_summary"
         :divergence-disclosure="resolvedInsight.divergence_disclosure"
         footer-label="News digest"
+        footnotes-label="Headlines used"
         :footer-text="resolvedInsight.news_context"
+        :footnotes="resolvedInsight.news_items ?? []"
         :model-used="resolvedInsight.model_used"
         :generated-at="resolvedInsight.generated_at"
       />
