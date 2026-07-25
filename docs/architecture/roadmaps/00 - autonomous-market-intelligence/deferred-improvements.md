@@ -157,7 +157,7 @@ News collection currently needs a pragmatic, low-friction path that yields enoug
 
 ### Current Safe Policy
 
-- allow simple code-level RSS source configuration that restores headline flow
+- keep a small system-managed source registry with institution name, feed URL, and optional market; do not expose source management controls
 - prefer accessible feeds over brittle HTML scraping in the critical ingestion path
 - keep source selection deterministic and lightweight for now
 
@@ -172,6 +172,8 @@ News collection currently needs a pragmatic, low-friction path that yields enoug
 - this work is useful, but not required to prove that headline ingestion is functioning again
 - the immediate priority is restoring non-zero headline volume without creating a new management surface prematurely
 
+Milestone 09 adds durable source identity so artifacts can reference their actual source and operators can apply per-source stance. It does not add source onboarding, tuning, or feed operations.
+
 ### Earliest Revisit
 
 - Milestone 01 or 02 implementation hardening
@@ -179,7 +181,7 @@ News collection currently needs a pragmatic, low-friction path that yields enoug
 
 ### Future Direction
 
-- define explicit RSS source registries by market, locale, and query purpose
+- extend the system-managed source registry by market, locale, and query purpose
 - support source priorities, caps, and failover rules
 - track feed health and last successful ingest
 - expose operator-visible controls for enabling, disabling, or tuning sources without code edits
@@ -391,6 +393,161 @@ The discovery roadmap increasingly depends on the stored asset universe being br
 - discovery quality may stay limited by whatever assets are already present locally
 - relevant symbols appearing repeatedly in news may remain invisible to the product until manually added
 - the system may miss a natural low-cost path for expanding coverage as news flow evolves
+
+
+---
+
+## 011 - Application Internationalization
+
+### Context
+
+The frontend and backend currently contain user-facing English text without a shared translation workflow. The product should support localized UI and backend-generated messages, including plural, date, time, and number formatting.
+
+### Current Safe Policy
+
+- keep the current English-only text unchanged through Milestone 11
+- do not introduce i18n dependencies or convert existing text during the immediate autonomous-market-intelligence work
+
+### Why Deferred
+
+- the product has progressed without i18n so far
+- introducing and migrating a translation workflow now would broaden the immediate milestone scope without advancing its safety goal
+- the work is best done as one deliberate cross-application migration after Milestone 11, rather than piecemeal during unrelated implementation tasks
+
+### Earliest Revisit
+
+- immediately after Milestone 11 is completed
+
+### Future Direction
+
+- use Vue I18n for the Vue frontend, including Composition API, locale message files, pluralization, and `Intl`-based date, time, and number formatting
+- use Django's built-in gettext framework for backend-generated user-facing text, including pluralization and locale middleware
+- migrate all existing user-facing text, then require new user-facing text to use the established translation path
+
+### Risk If Deferred Too Long
+
+- English-only text will continue to accumulate, increasing the later migration effort
+- user-facing text may become inconsistent across frontend and backend until both use shared localization conventions
+
+
+---
+
+## 012 - Per-Action MCP Agent Permissions
+
+### Context
+
+MCP agent tokens currently grant the authenticated assistant access to every MCP operation available within the owning operator's scope. That is sufficient while the MCP surface is small, but future mutating operations may need more deliberate delegation controls.
+
+Milestone 09 evidence review and correction is the immediate example: an operator may want an assistant to read evidence, propose a correction, apply a fact correction, or set a source stance, without granting every one of those actions.
+
+### Current Safe Policy
+
+- keep MCP access all-or-nothing per authenticated agent token within the owning operator's scope
+- allow operators to revoke an agent token entirely when they no longer want to delegate MCP access
+- enforce owner scope and retain the acting assistant identity in audit history for any future correction operation
+
+### Why Deferred
+
+- the current MCP surface does not yet justify a permissions model across every endpoint
+- per-action controls require token-schema changes, token-management UI and API, endpoint enforcement, migration, and comprehensive authorization tests
+- adding that system during Milestone 09 would broaden a correction-safety milestone into an MCP authorization project
+
+### Earliest Revisit
+
+- before enabling MCP correction writes in a production release
+- when additional MCP mutations make all-or-nothing token access too broad
+
+### Future Direction
+
+- add explicit per-action permission flags to MCP agent tokens
+- start with evidence-review permissions such as `can_read_evidence`, `can_propose_corrections`, `can_apply_corrections`, and `can_set_source_stance`
+- enforce each flag in the shared backend operation used by UI and MCP consumers
+- let operators inspect and change an agent's granted actions, while preserving audit history
+- extend the model only as new mutating MCP actions require it
+
+### Risk If Deferred Too Long
+
+- operators may need to choose between broad delegation and no delegation
+- sensitive write actions may become harder to delegate with confidence as MCP capabilities grow
+- later authorization work may need to retrofit permissions across a larger endpoint surface
+
+
+---
+
+## 013 - AI-Generated Conflict Detection Queue
+
+### Context
+
+Milestone 09 establishes operator- and MCP-assistant-initiated correction review. It deliberately does not ask AI to scan incoming evidence and create a queue of suspected factual conflicts.
+
+### Current Safe Policy
+
+- accept conflict candidates raised by an operator or delegated MCP assistant
+- allow AI to extract candidate facts or explain impact only within an initiated review
+- apply all stored corrections and evidence treatment deterministically
+
+### Why Deferred
+
+- an AI-generated queue needs richer, reliable source material and careful false-positive handling
+- full-article ingestion and other AI-powered analysis improvements should mature before automated conflict discovery is introduced
+- queue triage, prioritization, and operator trust controls would broaden Milestone 09 beyond its correction-safety foundation
+
+### Earliest Revisit
+
+- after full-article ingestion and related AI evidence-quality improvements have proven reliable
+- before relying on autonomous execution for decisions that depend materially on cross-source factual consistency
+
+### Future Direction
+
+- compare compatible structured facts across stored artifacts and flag likely conflicts for review
+- use AI to extract and normalize candidate facts from richer article content
+- keep generated items advisory, explainable, reviewable, and non-mutating
+- add queue-level false-positive controls only when operator review volume justifies them
+
+### Risk If Deferred Too Long
+
+- operators and assistants must continue to notice conflicts themselves
+- conflicting evidence may be reviewed later than an automated system could identify it
+- autonomous safety improvements may eventually need stronger proactive detection
+
+
+---
+
+## 014 - Shared Numerical Evidence Scoring for Strategy Decisions
+
+### Context
+
+Milestone 09 applies bounded numeric adjustments only to context selection. Strategy validation, scenario framing, and autonomous-execution eligibility remain categorical because the product has no shared, calibrated evidence-confidence score.
+
+### Current Safe Policy
+
+- use the existing context-selection source-quality dimension with small bounded adjustments
+- preserve categorical strategy verdicts, scenario confidence bands, and autonomous safety decisions
+- keep disputed and stale facts visible as structured uncertainty, rather than converting them into an opaque score
+
+### Why Deferred
+
+- a shared numerical score needs a stable range, contribution rules, calibration, and explanations across technical, context, scenario, and correction inputs
+- applying it prematurely risks false precision and makes safety behavior harder to inspect
+- the additional model, UI, caching, historical-snapshot, and regression-test work does not advance Milestone 09's immediate correction-safety goal enough to justify its cost
+
+### Earliest Revisit
+
+- after several correction reviews and paper-only strategy decisions provide evidence for calibration
+- before any product decision depends on fine-grained confidence differences rather than categorical safety states
+
+### Future Direction
+
+- define a shared, explainable evidence-confidence contract for strategy validation and scenario framing
+- specify score range, input contributions, caps, precedence, and historical snapshot behavior
+- expose score breakdowns alongside categorical safety states
+- calibrate against stored paper recommendations and correction outcomes before using the score for autonomous controls
+
+### Risk If Deferred Too Long
+
+- strategy decisions may remain less nuanced than a calibrated score could support
+- operators may need to rely on categorical states when comparing otherwise similar candidates
+- future confidence features may take longer to add if no shared contract emerges
 
 
 ---
