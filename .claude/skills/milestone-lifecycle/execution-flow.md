@@ -27,30 +27,21 @@ Each task spec should record:
 
 The goal is accountability and traceability, not bureaucracy.
 
-## Agent Execution Rule
+## Delegated Execution
 
-Each agent should begin by:
+When this execution flow is invoked to execute a milestone, the user authorizes sub-agent delegation for that milestone. No additional delegation confirmation is required.
 
-1. understanding what the task requires
-2. quickly scanning the project for previously implemented features, overlapping behavior, and existing patterns
+Numbered task files are the default execution units. The coordinator may provide one or more task files to `multitasking`, which determines safe sequential or parallel workstreams. Splitting a numbered task requires clear, disjoint boundaries.
 
-This scan is required to avoid duplicate implementations and to keep work aligned with the current architecture.
-
-Sub-agents are used primarily to keep context windows small, not merely to parallelize work.
-
-Default execution model:
-
-- orchestrator owns milestone coordination, sequencing, progress reporting, and UAT handoff
-- delegated agents own execution of the numbered task files after `00`
-- if one agent must handle multiple task files, it should still work through them sequentially with narrow context
+Sub-agents must retain small contexts. `multitasking` owns delegation details, including workstream coordination, ownership, contracts, reasoning effort, and reconciliation. Where observable behavior is defined, each implementation workstream uses `tdd`.
 
 ## Progress Tracking
 
 The orchestrator should:
 
-- report progress continuously
+- report user-facing progress continuously at meaningful milestones
 - update task files after implementation is complete
-- make incremental commits as significant tasks land
+- reconcile and verify integrated work before making incremental commits as significant tasks land
 - report in for UAT at the end of each milestone
 
 ## Implementation Notes Rule
