@@ -50,6 +50,34 @@ class EvidenceReviewService:
             raise ValueError("assistant does not belong to operator")
         return actor
 
+    def scoped_news_item(self, news_item_id):
+        from markets.models import NewsItem
+
+        for recommendation in StrategyRecommendation.objects.filter(user=self.operator).only("context_inputs"):
+            context_items = recommendation.context_inputs.get("items", [])
+            if any(
+                str(item.get("news_item_id")) == str(news_item_id)
+                for item in context_items
+                if isinstance(item, dict)
+            ):
+                return NewsItem.objects.filter(id=news_item_id).select_related("news_source").first()
+        return None
+
+    def scoped_source(self, source_id):
+        from markets.models import NewsItem
+
+        for recommendation in StrategyRecommendation.objects.filter(user=self.operator).only("context_inputs"):
+            context_items = recommendation.context_inputs.get("items", [])
+            for item in context_items:
+                if not isinstance(item, dict) or not item.get("news_item_id"):
+                    continue
+                news_item = NewsItem.objects.filter(
+                    id=item["news_item_id"], news_source_id=source_id
+                ).select_related("news_source").first()
+                if news_item:
+                    return news_item.news_source
+        return None
+
     @staticmethod
     def normalize_fact_key(value: str) -> str:
         normalized = re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")

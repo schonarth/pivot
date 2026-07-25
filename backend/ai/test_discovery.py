@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from ai.discovery import OpportunityDiscoveryService
 from ai.services import AIService
-from markets.models import Asset, NewsItem, OHLCV
+from markets.models import OHLCV, Asset, NewsItem, NewsSource
 from portfolios.models import Portfolio
 from trading.models import Position
 
@@ -32,6 +32,15 @@ def build_history(asset, start_close: Decimal, step: Decimal = Decimal("1.00")):
             volume=60000 + offset,
         )
         close += step
+
+
+@pytest.fixture
+def news_source():
+    return NewsSource.objects.create(
+        institution_name="Example News",
+        feed_url="https://example.com/discovery-feed",
+        market="US",
+    )
 
 
 @pytest.mark.django_db
@@ -56,7 +65,9 @@ class TestOpportunityDiscovery:
         assert "discovery_reason" in item
         assert "score_breakdown" in item
 
-    def test_shortlist_orders_by_context_when_technical_setup_is_equal(self, authenticated_client, asset):
+    def test_shortlist_orders_by_context_when_technical_setup_is_equal(
+        self, authenticated_client, asset, news_source
+    ):
         other_asset = Asset.objects.create(
             display_symbol="ZZZ9",
             provider_symbol="ZZZ9",
@@ -77,6 +88,7 @@ class TestOpportunityDiscovery:
             url="https://example.com/a",
             sentiment_score=Decimal("0.80"),
             published_at=timezone.now(),
+            news_source=news_source,
         )
 
         response = authenticated_client.get("/api/ai/discovery/", {"market": "US"})

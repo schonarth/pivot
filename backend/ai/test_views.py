@@ -201,9 +201,7 @@ class TestStrategyRecommendationReviewEndpoint:
 
 @pytest.mark.django_db
 class TestEvidenceReviewEndpoints:
-    def test_allows_reviewing_an_insight_headline_without_a_saved_recommendation(
-        self, authenticated_client, asset
-    ):
+    def test_other_user_evidence_returns_404(self, authenticated_client, user, user2, portfolio, asset):
         source = NewsSource.objects.create(
             institution_name="Insight Source",
             feed_url="https://example.com/insight-feed",
@@ -218,6 +216,26 @@ class TestEvidenceReviewEndpoints:
             published_at=timezone.now(),
         )
 
+        foreign_recommendation = StrategyRecommendation.objects.create(
+            user=user2,
+            portfolio=type(portfolio).objects.create(
+                user=user2,
+                name="Other",
+                market=portfolio.market,
+                initial_capital=portfolio.initial_capital,
+                current_cash=portfolio.current_cash,
+            ),
+            asset=asset,
+            action="BUY",
+            quantity=1,
+            candidate={},
+            technical_inputs={},
+            context_inputs={"items": [{"news_item_id": str(news_item.id), "headline": news_item.headline}]},
+            sentiment_trajectory_inputs={},
+            verdict="approve",
+            rationale="Stored recommendation rationale.",
+        )
+
         evidence_response = authenticated_client.get(f"/api/ai/evidence/news-items/{news_item.id}/")
         correction_response = authenticated_client.post(
             "/api/ai/evidence/corrections/",
@@ -230,12 +248,18 @@ class TestEvidenceReviewEndpoints:
             },
             format="json",
         )
+        stance_response = authenticated_client.post(
+            "/api/ai/evidence/source-stances/",
+            {"source_id": source.id, "stance": "untrusted"},
+            format="json",
+        )
 
-        assert evidence_response.status_code == 200
-        assert evidence_response.data["evidence"][0]["news_item_id"] == str(news_item.id)
-        assert correction_response.status_code == 201
+        assert foreign_recommendation.user == user2
+        assert evidence_response.status_code == 404
+        assert correction_response.status_code == 404
+        assert stance_response.status_code == 404
 
-    def test_returns_scoped_evidence_suggestions_and_applies_review_mutations(
+    def test_same_user_evidence_allows_reads_and_mutations(
         self, authenticated_client, user, portfolio, asset
     ):
         source = NewsSource.objects.create(
@@ -268,8 +292,10 @@ class TestEvidenceReviewEndpoints:
         evidence_response = authenticated_client.get(
             f"/api/ai/strategy-recommendations/{recommendation.id}/evidence/"
         )
+        headline_evidence_response = authenticated_client.get(f"/api/ai/evidence/news-items/{news_item.id}/")
 
         assert evidence_response.status_code == 200
+        assert headline_evidence_response.status_code == 200
         assert evidence_response.data["fact_key_suggestions"] == []
         assert evidence_response.data["evidence"][0]["original_value"] == news_item.headline
         assert evidence_response.data["evidence"][0]["source_id"] == str(source.id)

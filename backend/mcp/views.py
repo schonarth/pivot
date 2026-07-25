@@ -537,18 +537,9 @@ class MCPEvidenceView(APIView):
 
     @staticmethod
     def _news_item_for_operator(operator, news_item_id):
-        from ai.models import StrategyRecommendation
-        from markets.models import NewsItem
+        from ai.services import EvidenceReviewService
 
-        for recommendation in StrategyRecommendation.objects.filter(user=operator).only("context_inputs"):
-            context_items = recommendation.context_inputs.get("items", [])
-            if any(
-                str(item.get("news_item_id")) == str(news_item_id)
-                for item in context_items
-                if isinstance(item, dict)
-            ):
-                return NewsItem.objects.filter(id=news_item_id).select_related("news_source").first()
-        return None
+        return EvidenceReviewService(operator).scoped_news_item(news_item_id)
 
 
 class MCPEvidenceRetrieveView(MCPEvidenceView):
@@ -633,16 +624,11 @@ class MCPSourceStanceCreateView(MCPEvidenceView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        from markets.models import NewsSource
-
-        source = NewsSource.objects.filter(id=data["source_id"]).first()
-        if source is None or not any(
-            self._news_item_for_operator(agent.user, item.id)
-            for item in source.news_items.only("id")
-        ):
-            return Response({"error": "Evidence source not found"}, status=status.HTTP_404_NOT_FOUND)
-
         from ai.services import EvidenceReviewService
+
+        source = EvidenceReviewService(agent.user).scoped_source(data["source_id"])
+        if source is None:
+            return Response({"error": "Evidence source not found"}, status=status.HTTP_404_NOT_FOUND)
 
         service = EvidenceReviewService(agent.user)
         if data["clear"]:

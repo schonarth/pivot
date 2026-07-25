@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db.models import Prefetch, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -253,7 +254,7 @@ class EvidenceReviewViewSet(viewsets.ViewSet):
         return Response(EvidenceReviewService(request.user).fact_key_suggestions())
 
     def news_item_evidence(self, request, news_item_id):
-        news_item = get_object_or_404(NewsItem.objects.select_related("news_source"), id=news_item_id)
+        news_item = self._scoped_news_item(request.user, news_item_id)
         service = EvidenceReviewService(request.user)
         treatment = service.treatment_for_news_item(news_item)
         corrections = FactCorrection.objects.filter(
@@ -322,8 +323,14 @@ class EvidenceReviewViewSet(viewsets.ViewSet):
 
     @staticmethod
     def _scoped_news_item(user, news_item_id):
-        return get_object_or_404(NewsItem.objects.select_related("news_source"), id=news_item_id)
+        news_item = EvidenceReviewService(user).scoped_news_item(news_item_id)
+        if news_item is None:
+            raise Http404
+        return news_item
 
     @staticmethod
     def _scoped_source(user, source_id):
-        return get_object_or_404(NewsSource, id=source_id)
+        source = EvidenceReviewService(user).scoped_source(source_id)
+        if source is None:
+            raise Http404
+        return source
