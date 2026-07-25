@@ -17,6 +17,16 @@ Reference documentation for system design and implementation details.
 - **[WebSocket](architecture/websocket.md)** — Real-time updates via Channels
 - **[Frontend](architecture/frontend.md)** — Vue 3/Vite structure and conventions
 - **[Markets](architecture/markets.md)** — Supported markets and configurations
+- **[Backend conventions](architecture/backend.md)** — Runtime entry points and API URL convention
+- **[Simulated price data](architecture/simulated-price-data.md)** — Development-data isolation and simulation safety
+
+## Development
+
+Operational references for implementation and local development.
+
+- **[Commands and verification](development/commands-and-verification.md)** — Backend, frontend, tests, and Docker
+- **[Local operations](development/local-operations.md)** — Simulation, Compose watch, and migrations
+- **[Data safety](development/data-safety.md)** — Authorization required for destructive database operations
 
 ## Troubleshooting
 
@@ -37,9 +47,10 @@ Historical requirements and specifications documenting the vision and implementa
 - **[PRD — Paper Trader](reference/prd-paper-trader.md)** — Product requirements roadmap and business context
 - **[PRD — MLP Phase](reference/prd-mlp.md)** — Machine Learning Phase specification: AI insights, backtesting, technical analysis
 - **[Specification](reference/specification.md)** — MVP implementation specification with architecture, APIs, and data models
+- **[API reference](reference/api.md)** — Current endpoint, authentication, and field conventions
 
 ## Quick Links
 
-- **Commands**: See `AGENTS.md` for full command reference
+- **Commands**: [Development commands and verification](development/commands-and-verification.md)
 - **Lean reference**: `CLAUDE.md` for Claude Code-specific guidance
 - **To-do tracking**: `todos/` directory with pending and resolved issues

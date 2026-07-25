@@ -14,6 +14,7 @@ type: reference
 
 ## Key Locations
 
+- **Entry**: `src/main.ts` → `App.vue`; router: `src/router/index.ts`
 - **Pinia stores**: `auth`, `portfolios`, `markets` in `src/stores/`
 - **API base**: `${VITE_API_URL}/api` (dev proxied via Vite to `http://backend:8000`)
 - **Utilities**: `src/utils/numbers.ts` for parsing numeric input
@@ -22,7 +23,7 @@ type: reference
 ## Important Conventions
 
 - **Numeric input**: always use `parseNumericInput()` from `src/utils/numbers.ts` for user-entered currency/quantity (handles BR comma vs US dot decimal)
-- **Route params**: always use `props: true` in route config **and** `useRoute()` fallback to handle undefined values
+- **Route params**: views receiving `:id` use `defineProps<{ id?: string | string[] }>()` plus a `useRoute()` fallback. Always use `props: true` in route config and resolve `route.params.id`; router guards validate UUIDs and redirect invalid IDs to `/portfolios`.
 
 ## Testing
 
