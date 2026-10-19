@@ -39,8 +39,12 @@ class BacktestEngine:
             logger.warning(f"No open positions for backtest on {portfolio.name}")
             return None
 
+        from portfolios.services import get_fee_rate
+
+        fee_rate = get_fee_rate(portfolio.market)
         simulated_trades = []
-        all_p_and_l = []
+        pnl_by_date: dict = {}
+        closed_pnls = []
 
         for position in positions:
             asset = position.asset
@@ -65,14 +69,12 @@ class BacktestEngine:
                 "volume": float,
             })
 
-            trades = self._evaluate_conditions(asset, df)
-            position_p_and_l = self._calculate_position_pnl(position, trades)
-
-            for trade in trades:
-                trade["pnl"] = 0 if trade["action"] == "BUY" else float(position_p_and_l)
-
+            signals = self._evaluate_conditions(asset, df)
+            trades, curve, closed = self._simulate(signals, df, Decimal(position.quantity), fee_rate)
             simulated_trades.extend(trades)
-            all_p_and_l.append(position_p_and_l)
+            closed_pnls.extend(closed)
+            for day, value in curve.items():
+                pnl_by_date[day] = pnl_by_date.get(day, Decimal("0")) + value
 
         if not simulated_trades:
             logger.info(f"No trades generated in backtest for {portfolio.name}")
@@ -86,9 +88,10 @@ class BacktestEngine:
                 "win_rate": Decimal("0"),
             }
 
-        total_pnl = sum(Decimal(str(t.get("pnl", 0))) for t in simulated_trades)
-        winning_trades = len([t for t in simulated_trades if t.get("pnl", 0) > 0])
-        win_rate = (winning_trades / len(simulated_trades) * 100) if simulated_trades else 0
+        curve = [pnl_by_date[d] for d in sorted(pnl_by_date)]
+        total_pnl = curve[-1] if curve else Decimal("0")
+        winning = len([p for p in closed_pnls if p > 0])
+        win_rate = Decimal(winning * 100) / Decimal(len(closed_pnls)) if closed_pnls else Decimal("0")
 
         return {
             "trades": simulated_trades,
@@ -96,9 +99,46 @@ class BacktestEngine:
             "buy_count": len([t for t in simulated_trades if t["action"] == "BUY"]),
             "sell_count": len([t for t in simulated_trades if t["action"] == "SELL"]),
             "total_pnl": total_pnl,
-            "max_drawdown": self._calculate_max_drawdown(all_p_and_l),
-            "win_rate": Decimal(str(win_rate)),
+            "max_drawdown": self._calculate_max_drawdown(curve),
+            "win_rate": win_rate,
         }
+
+    @staticmethod
+    def _simulate(signals, df, quantity: Decimal, fee_rate: Decimal):
+        """Turn signals into fills with a long-only, one-lot position.
+
+        A signal is computed on a bar's close, so it fills at the NEXT bar's open (no look-ahead); a signal on the
+        last bar does not fill. BUY only opens from flat, SELL only closes an open lot (repeated signals are ignored).
+        Fees use the portfolio market's fee rate on both sides. Returns (fills, mark-to-market P&L per bar date,
+        P&L of each closed round trip); an open lot at the end is marked at the last close.
+        """
+        by_signal_date = {}
+        for sig in signals:
+            by_signal_date.setdefault(sig["date"], sig)  # one signal per bar
+        dates = [d.strftime("%Y-%m-%d") for d in df["date"]]
+        opens = [Decimal(str(v)) for v in df["open"]]
+        closes = [Decimal(str(v)) for v in df["close"]]
+
+        fills, curve, closed = [], {}, []
+        realized = Decimal("0")
+        entry_cost = None  # cash paid for the open lot, fees included
+        for i, day in enumerate(dates):
+            if i > 0 and dates[i - 1] in by_signal_date:
+                action = by_signal_date[dates[i - 1]]["action"]
+                price = opens[i]
+                fee = price * quantity * fee_rate
+                if action == "BUY" and entry_cost is None:
+                    entry_cost = price * quantity + fee
+                    fills.append({"date": day, "action": "BUY", "price": float(price), "pnl": 0.0})
+                elif action == "SELL" and entry_cost is not None:
+                    trip = price * quantity - fee - entry_cost
+                    realized += trip
+                    closed.append(trip)
+                    entry_cost = None
+                    fills.append({"date": day, "action": "SELL", "price": float(price), "pnl": float(trip)})
+            marked = closes[i] * quantity - entry_cost if entry_cost is not None else Decimal("0")
+            curve[day] = realized + marked
+        return fills, curve, closed
 
     def _evaluate_conditions(self, asset, df) -> list[dict]:
         """Evaluate strategy conditions for asset OHLCV data.
@@ -309,43 +349,11 @@ class BacktestEngine:
 
         return trades
 
-    def _calculate_position_pnl(self, position, trades) -> Decimal:
-        """Calculate P&L for a position based on simulated trades."""
-        if not trades:
-            return Decimal("0")
-
-        avg_cost = Decimal(str(position.average_cost))
-        quantity = Decimal(str(position.quantity))
-        pnl = Decimal("0")
-
-        for trade in trades:
-            price = Decimal(str(trade["price"]))
-            if trade["action"] == "SELL":
-                pnl += (price - avg_cost) * quantity
-            elif trade["action"] == "BUY":
-                avg_cost = price
-
-        return pnl
-
-    def _calculate_max_drawdown(self, equity_curves) -> Decimal:
-        """Calculate maximum drawdown from equity curves."""
-        if not equity_curves:
-            return Decimal("0")
-
-        values = [
-            Decimal(str(v)) if not isinstance(v, Decimal) else v
-            for v in equity_curves
-        ]
-
-        peak = values[0]
+    def _calculate_max_drawdown(self, pnl_curve) -> Decimal:
+        """Largest peak-to-trough fall of the cumulative P&L curve, in portfolio currency."""
+        peak = Decimal("0")
         max_drawdown = Decimal("0")
-
-        for value in values:
-            if value > peak:
-                peak = value
-            if peak != 0:
-                drawdown = (peak - value) / peak
-                if drawdown > max_drawdown:
-                    max_drawdown = drawdown
-
+        for value in pnl_curve:
+            peak = max(peak, value)
+            max_drawdown = max(max_drawdown, peak - value)
         return max_drawdown
