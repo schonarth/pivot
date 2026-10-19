@@ -179,10 +179,15 @@ class StrategyExecutor:
             with transaction.atomic():
                 if action == "BUY":
                     # Calculate quantity based on guardrails
+                    # Size against total equity, and only top the position up to its target size: the
+                    # rules are levels (e.g. MA20 > MA50), so a BUY signal repeats on every run.
+                    from portfolios.services import get_portfolio_summary
+
                     price = Decimal(str(ohlcv.close))
-                    portfolio_value = self.portfolio.get_portfolio_value()
+                    portfolio_value = Decimal(get_portfolio_summary(self.portfolio)["total_equity"])
                     max_position_value = portfolio_value * Decimal(max_position_size_pct) / Decimal(100)
-                    quantity = int(max_position_value / price)
+                    held_value = Decimal(position.quantity) * price
+                    quantity = int((max_position_value - held_value) / price)
 
                     if quantity <= 0:
                         logger.warning(
@@ -195,11 +200,11 @@ class StrategyExecutor:
                         asset=asset,
                         quantity=quantity,
                         rationale=f"Automated strategy: {self.strategy.rule.name}",
-                        executed_by="strategy"
+                        executed_by="autonomous"
                     )
 
                     self._record_strategy_trade("BUY", asset, quantity, price, trade)
-                    logger.info(f"Strategy {self.strategy.id} executed BUY for {asset.symbol}: {quantity} @ {price}")
+                    logger.info(f"Strategy {self.strategy.id} executed BUY for {asset.display_symbol}: {quantity} @ {price}")
                     return True
 
                 elif action == "SELL":
@@ -214,20 +219,21 @@ class StrategyExecutor:
                     )
                     if unrealized_loss_pct > Decimal(stop_loss_pct):
                         logger.info(
-                            f"Strategy {self.strategy.id}: Stop loss triggered for {asset.symbol} "
+                            f"Strategy {self.strategy.id}: Stop loss triggered for {asset.display_symbol} "
                             f"({unrealized_loss_pct:.2f}% loss)"
                         )
 
+                    sold = int(position.quantity)
                     trade = execute_sell(
                         portfolio=self.portfolio,
-                        position=position,
-                        quantity=int(position.quantity),
+                        asset=asset,
+                        quantity=sold,
                         rationale=f"Automated strategy: {self.strategy.rule.name}",
-                        executed_by="strategy"
+                        executed_by="autonomous"
                     )
 
-                    self._record_strategy_trade("SELL", asset, position.quantity, price, trade)
-                    logger.info(f"Strategy {self.strategy.id} executed SELL for {asset.symbol}: {position.quantity} @ {price}")
+                    self._record_strategy_trade("SELL", asset, sold, price, trade)
+                    logger.info(f"Strategy {self.strategy.id} executed SELL for {asset.display_symbol}: {sold} @ {price}")
                     return True
 
         except Exception as e:
